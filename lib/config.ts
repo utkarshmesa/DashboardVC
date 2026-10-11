@@ -6,6 +6,9 @@ export const REACH = 50;
 export const WARM = 25;
 export const HALF_LIFE_DAYS = 20;
 export const LOW_RELEVANCE = 0.4;
+export const EVIDENCE_TYPES = ['investment', 'authored', 'speaking'] as const; // evidence floor for contact actions
+export const EVIDENCE_MIN_RELEVANCE = 0.6;
+export const MIN_CALIBRATED_REACH = 25;
 
 export const TYPE_WEIGHT = { investment: 1.0, authored: 0.8, speaking: 0.7, press: 0.5, other: 0.3 } as const;
 export const SUBJECT_WEIGHT = { person: 1.0, firm: 0.7 } as const;

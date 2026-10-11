@@ -1,5 +1,5 @@
 // SPEC §9.6 action table. Pure, evaluated top-down. Firm dedupe arrives in Phase 2.
-import { LOW_RELEVANCE, REACH, WARM } from './config';
+import { EVIDENCE_MIN_RELEVANCE, EVIDENCE_TYPES, LOW_RELEVANCE, REACH, WARM } from './config';
 import type { FetchStatus, VcStatus } from './types';
 
 export const ACTIONS = {
@@ -23,12 +23,19 @@ export type ActionInput = {
   score: number;
   topRelevance: number | null;
   conflictCompany: string | null; // set when an accepted in-window signal is a possible competitor
+  hasEvidence: boolean;           // evidence floor for rows 5–7 (see meetsEvidenceFloor)
   now: Date;
   reach?: number;
   warm?: number;
 };
 
 export type ActionResult = { action: string; row: string; keepOtherColumns: boolean };
+
+// Evidence floor (SPEC §9.6): rows 5–7 need ≥ 1 counted signal (accepted, in-window, not a competitor, no thumbs-down)
+// of type investment / authored / speaking with relevance ≥ 0.6, whatever the score.
+export function meetsEvidenceFloor(counted: { signal_type: string | null; relevance: number | null }[]): boolean {
+  return counted.some((s) => !!s.signal_type && (EVIDENCE_TYPES as readonly string[]).includes(s.signal_type) && (s.relevance ?? 0) >= EVIDENCE_MIN_RELEVANCE);
+}
 
 export function contactedWithinDays(lastContactDate: string | null, now: Date, days: number): boolean {
   if (!lastContactDate) return false;
@@ -44,7 +51,7 @@ export function decideAction(i: ActionInput): ActionResult {
   if (contactedWithinDays(i.lastContactDate, i.now, 7)) return r('2', ACTIONS.wait);
   if (i.fetchStatus === 'failed') return r('3', ACTIONS.unavailable, true);
   if (i.conflictCompany) return r('4', ACTIONS.conflict(i.conflictCompany));
-  if (i.score >= reach) {
+  if (i.score >= reach && i.hasEvidence) {
     if (i.status === 'not_contacted') return r('5', ACTIONS.reach);
     if (i.status === 'awaiting_response') return r('6', ACTIONS.nudge);
     return r('7', ACTIONS.mention);

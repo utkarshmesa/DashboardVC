@@ -14,7 +14,7 @@ Twice a week this collects public signals (deals, writing, talks, press) about t
 
 | Check | Result |
 |---|---|
-| Golden recall (6 real deals, frozen fixtures, live classifier) | **4 / 6.** The two misses are data issues, documented in `docs/DECISIONS.md` #14 |
+| Golden recall (6 real deals, frozen fixtures; CI replays recorded Gemini responses) | **6 / 6**, after the owner-authorised seed corrections in `docs/DECISIONS.md` #14–16 |
 | Acceptance precision on the test split (gate ≥ 0.80) | *pending human labels:* `eval/labels.jsonl`, then `npm run eval` |
 | `about_this_vc` precision on the test split (gate ≥ 0.90) | *pending human labels* |
 | Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | 0.7 / 0 (defaults until tuned) |
@@ -25,7 +25,9 @@ Twice a week this collects public signals (deals, writing, talks, press) about t
 
 | Command | What it does |
 |---|---|
-| `npm test` | Unit tests; the recall test runs too when `GEMINI_API_KEY` and `GEMINI_MODEL` are set (required in CI) |
+| `npm test` | Unit tests plus the recall test, which replays recorded Gemini responses (no keys needed) |
+| `npm run test:recall:live` / `test:recall:record` | Recall test against live Gemini; record after any classifier prompt, schema or fixture change |
+| `npm run diagnose` | Score diagnosis per VC → `eval/score_diagnosis.md` |
 | `npm run test:db` | Ownership integration test against the Supabase project in `.env.local` |
 | `npm run import-seed` | SPEC §8 seed import (firms, persona, profiles) |
 | `npm run step [-- --force]` | Run the pipeline locally until the run is done |

@@ -406,17 +406,19 @@ score = min(100, round(100 × (top + 0.25 × sum(other groups))))
 | 2 | `last_contact_date` within 7 days | `Wait — contacted recently` |
 | 3 | `last_fetch_status = 'failed'` | `Data unavailable — retry` (other three columns unchanged) |
 | 4 | an accepted in-window signal has `possible_competitor = true` | `Check conflict — backed {company}` |
-| 5 | score ≥ REACH (50) and `not_contacted` | `Reach out this week` |
-| 6 | score ≥ REACH and `awaiting_response` | `Nudge — reference recent activity` |
-| 7 | score ≥ REACH and `in_conversation` | `Mention in next touchpoint` |
-| 8 | WARM (25) ≤ score < REACH | `Warm — reach out if capacity` |
+| 5 | score ≥ REACH (50), evidence floor met, and `not_contacted` | `Reach out this week` |
+| 6 | score ≥ REACH, evidence floor met, and `awaiting_response` | `Nudge — reference recent activity` |
+| 7 | score ≥ REACH, evidence floor met, and `in_conversation` | `Mention in next touchpoint` |
+| 8 | WARM (25) ≤ score (and rows 5–7 did not apply) | `Warm — reach out if capacity` |
 | 9a | 1 ≤ score < WARM and top signal relevance < 0.4 | `Low — activity outside your space` |
 | 9b | 1 ≤ score < WARM otherwise | `Low — weak or fading signal` |
 | 10 | no qualifying signal | `Quiet — hold` |
 
+**Evidence floor (rows 5–7):** a contact action needs at least one accepted, in-window signal (dated within the window, or `date_approx`; not a possible competitor; no thumbs-down) of type `investment`, `authored` or `speaking` with relevance ≥ 0.6, regardless of score. Without it, evaluation falls through to rows 8–10 (Warm / Low / Quiet).
+
 **Firm dedupe (final pass when a run finishes, including partial runs):** read every VC's current `follow_up_score` and action from `vcs`. Within one firm, only the highest-scoring VC keeps an action from rows 5–8; others get `Same firm — go via {name}`. Ties go to the higher trust level, then the better tier. Write changed actions via `apply_signals`, passing the other three values unchanged. When a VC stops being the top one at its firm, restore its own computed action on the next run.
 
-`REACH`, `WARM` and `HALF_LIFE_DAYS` are constants calibrated in Phase 2 (section 12.3).
+`REACH`, `WARM` and `HALF_LIFE_DAYS` are constants calibrated in Phase 2 (section 12.3). Calibration never chooses `REACH` below 25.
 
 Note on row 4: under the default TMS persona, several research leads (e.g. firms backing CargoFL, FreightFox or SuperProcure) may surface as conflicts. That is intended behaviour, not a bug.
 
@@ -467,7 +469,7 @@ Built in Phase 0 by hand: at least 60 real items from the spike, each labelled `
 
 ### 12.3 Ranking review — calibrating REACH, WARM and the half-life
 
-After the first full live run in Phase 2, export the 50 VCs with their evidence (no scores shown) to `/eval/ranking_review.csv`. A human marks each "would contact this week" or "would not". Choose `REACH`, `WARM` and `HALF_LIFE_DAYS` (grid: half-life 10/15/20/30; thresholds in steps of 5) to maximise agreement, record the agreement rate and chosen values in the README. Re-run the review after any persona change.
+After the first full live run in Phase 2, export the 50 VCs with their evidence (no scores shown) to `/eval/ranking_review.csv`. A human marks each "would contact this week" or "would not". Choose `REACH`, `WARM` and `HALF_LIFE_DAYS` (grid: half-life 10/15/20/30; thresholds in steps of 5; `REACH` ≥ 25) to maximise agreement, record the agreement rate and chosen values in the README. Re-run the review after any persona change.
 
 ### 12.4 Unit and integration tests
 

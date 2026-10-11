@@ -156,6 +156,13 @@ describe('runner', () => {
     expect(enriched.every((s) => s.status === 'accepted' && s.snippet?.startsWith('Full context') && s.url.startsWith('https://canonical.example/'))).toBe(true);
   });
 
+  it('evidence floor: a high score from press-only signals gets Warm, not Reach out', async () => {
+    const m = memoryStore(1);
+    await runAll(m.store, labeller({ signal_type: 'press', relevance: 1 }));
+    expect(m.vcs[0].follow_up_score).toBeGreaterThanOrEqual(50);
+    expect(m.vcs[0].recommended_action).toBe(ACTIONS.warm);
+  });
+
   it('firm RSS items are always subject=firm', async () => {
     const m = memoryStore(1, { firmRss: 'https://firm.example/feed' });
     const rss = async (): Promise<CollectResult> => ({ ok: true, items: [{ url: 'https://firm.example/p1', title: 'Firm 0 portfolio update', snippet: null, source: 'firm_rss', source_name: 'Firm blog', published_at: '2026-10-09T00:00:00Z', date_approx: false }] });

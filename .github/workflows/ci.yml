@@ -8,18 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      # Unit tests plus the recall test (live Gemini on frozen fixtures). DB ownership tests run only with RUN_DB_TESTS=1.
+      # Unit tests plus the recall test, which replays recorded Gemini responses (no live calls, no secrets).
+      # DB ownership tests run only with RUN_DB_TESTS=1 (npm run test:db).
       - run: npm test
         env:
           CI: 'true'
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_API_KEY_2: ${{ secrets.GEMINI_API_KEY_2 }}
-          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}

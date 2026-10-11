@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, decideAction, firmDedupe, sameFirm, type ActionInput, type DedupeRow } from '@/lib/actions';
+import { ACTIONS, decideAction, firmDedupe, meetsEvidenceFloor, sameFirm, type ActionInput, type DedupeRow } from '@/lib/actions';
 
 const NOW = new Date('2026-10-12T05:00:00Z');
-const base: ActionInput = { status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: 0, topRelevance: null, conflictCompany: null, now: NOW };
+const base: ActionInput = { status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: 0, topRelevance: null, conflictCompany: null, hasEvidence: true, now: NOW };
 const act = (o: Partial<ActionInput>) => decideAction({ ...base, ...o });
 
 describe('action table (SPEC §9.6)', () => {
@@ -36,6 +36,29 @@ describe('action table (SPEC §9.6)', () => {
   });
   it('row 10: no qualifying signal', () => {
     expect(act({ score: 0 }).action).toBe(ACTIONS.quiet);
+  });
+});
+
+describe('evidence floor (rows 5–7)', () => {
+  it('without strong evidence a high score falls through to Warm, not a contact action', () => {
+    expect(act({ score: 90, hasEvidence: false }).action).toBe(ACTIONS.warm);
+    expect(act({ score: 90, hasEvidence: false, status: 'awaiting_response' }).action).toBe(ACTIONS.warm);
+    expect(act({ score: 90, hasEvidence: false, status: 'in_conversation' }).action).toBe(ACTIONS.warm);
+  });
+  it('falls through to Low/Quiet when the score is below WARM anyway', () => {
+    expect(act({ score: 10, hasEvidence: false, topRelevance: 0.1 }).action).toBe(ACTIONS.lowOutside);
+    expect(act({ score: 0, hasEvidence: false }).action).toBe(ACTIONS.quiet);
+  });
+  it('does not override earlier rows', () => {
+    expect(act({ score: 90, hasEvidence: false, conflictCompany: 'X' }).action).toBe('Check conflict — backed X');
+    expect(act({ score: 90, hasEvidence: false, status: 'passed' }).action).toBe(ACTIONS.passed);
+  });
+  it('needs investment/authored/speaking with relevance ≥ 0.6', () => {
+    expect(meetsEvidenceFloor([{ signal_type: 'investment', relevance: 0.6 }])).toBe(true);
+    expect(meetsEvidenceFloor([{ signal_type: 'speaking', relevance: 0.9 }, { signal_type: 'press', relevance: 1 }])).toBe(true);
+    expect(meetsEvidenceFloor([{ signal_type: 'authored', relevance: 0.59 }])).toBe(false);
+    expect(meetsEvidenceFloor([{ signal_type: 'press', relevance: 1 }, { signal_type: 'other', relevance: 1 }])).toBe(false);
+    expect(meetsEvidenceFloor([])).toBe(false);
   });
 });
 

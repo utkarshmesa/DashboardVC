@@ -1,5 +1,5 @@
 // SPEC §9.1 batch runner. The unit of correctness is one VC; each step handles one batch end to end.
-import { decideAction, firmDedupe, type ActionResult, type DedupeRow } from './actions';
+import { decideAction, firmDedupe, meetsEvidenceFloor, type ActionResult, type DedupeRow } from './actions';
 import { classify, type ClassifyInput, type ClassifyOptions } from './classifier';
 import { enrichHeadline, googleNews, rssFeed, tavily, type CollectResult, type Enrichment } from './collectors';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
@@ -213,6 +213,7 @@ export async function evaluate(store: Store, vc: VcContext, fetch: FetchStatus, 
     score: result.score,
     topRelevance: result.top?.signal.relevance ?? null,
     conflictCompany: conflict?.company ?? null,
+    hasEvidence: meetsEvidenceFloor(result.counted.map((c) => c.signal)),
     now,
   });
   return { decision, result, signals, conflict };

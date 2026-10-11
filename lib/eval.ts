@@ -1,5 +1,6 @@
 // SPEC §12.2/§12.3 evaluation maths. Pure; used by scripts/eval.ts and scripts/calibrate.ts.
 import { acceptance, type Thresholds } from './classifier';
+import { MIN_CALIBRATED_REACH } from './config';
 import type { Labels } from './types';
 
 export type GoldLabel = {
@@ -76,7 +77,7 @@ export type ReviewRow = { vc_id: string; would_contact: boolean; scores: Record<
 export function calibrate(rows: ReviewRow[], halfLives = [10, 15, 20, 30]) {
   let best: { halfLife: number; reach: number; agreement: number } | null = null;
   for (const hl of halfLives) {
-    for (let reach = 5; reach <= 100; reach += 5) {
+    for (let reach = MIN_CALIBRATED_REACH; reach <= 100; reach += 5) { // never below 25 (SPEC §12.3)
       const agree = rows.filter((r) => (r.scores[hl] >= reach) === r.would_contact).length / (rows.length || 1);
       if (!best || agree > best.agreement + 1e-9 || (Math.abs(agree - best.agreement) < 1e-9 && hl === 20 && best.halfLife !== 20)) best = { halfLife: hl, reach, agreement: agree };
     }
@@ -89,4 +90,14 @@ export function calibrate(rows: ReviewRow[], halfLives = [10, 15, 20, 30]) {
   let warm = 5;
   for (let w = best.reach - 5; w >= 5; w -= 5) { if (yes.every((s) => s >= w || s >= best!.reach)) { warm = w; break; } }
   return { ...best, warm: Math.min(warm, best.reach - 5) };
+}
+
+// Recall window per golden event: days from the event's approx_date (first of that month) to the fixture's capture
+// time, plus 30. Golden events carry month-only dates and coverage trails the announcement, so a fixed window either
+// excludes older real deals (FreightFox, Oct 2023) or admits far more than one event's coverage; anchoring on the
+// event keeps every event's own articles in range and adds the normal 30-day signal window on top.
+export function recallWindowDays(approxDate: string, capturedAt: string): number {
+  const [y, m] = approxDate.split('-').map(Number);
+  const start = Date.UTC(y, (m || 1) - 1, 1);
+  return Math.ceil((Date.parse(capturedAt) - start) / 86_400_000) + 30;
 }

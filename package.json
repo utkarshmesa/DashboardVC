@@ -19,7 +19,9 @@
     "ranking:export": "tsx --conditions=react-server --env-file=.env.local scripts/ranking-review.ts export",
     "ranking:calibrate": "tsx --conditions=react-server --env-file=.env.local scripts/ranking-review.ts calibrate",
     "persona": "tsx --conditions=react-server --env-file=.env.local scripts/set-persona.ts",
-    "test:recall": "node --env-file=.env.local node_modules/vitest/vitest.mjs run tests/recall.test.ts"
+    "test:recall:live": "node scripts/test-recall.mjs live",
+    "test:recall:record": "node scripts/test-recall.mjs record",
+    "diagnose": "tsx --conditions=react-server --env-file=.env.local scripts/diagnose-scores.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

@@ -3,18 +3,17 @@
   "default_persona": "Freight procurement / TMS SaaS for Indian manufacturers",
   "events": [
     {
-      "id": "freightfox-2026",
+      "id": "freightfox-2023",
       "company": "FreightFox",
-      "round": "seed / bridge",
-      "approx_date": "2026-08",
+      "round": "seed",
+      "approx_date": "2023-10",
       "firm": "Aeravti Ventures",
       "tracked_vc": "Shubham Jhuria",
       "expected_types": [
         "investment"
       ],
-      "competitor_under_default_persona": true,
+      "competitor_under_default_persona": false,
       "sources": [
-        "https://www.itln.in/supply-chain/freightfox-raises-50-million-to-expand-freight-intelligence-platform-1360209",
         "https://entrackr.com/2023/10/aeravti-ventures-leads-seed-round-in-supply-chain-platform-freightfox"
       ]
     },
@@ -92,7 +91,7 @@
         "investment",
         "press"
       ],
-      "competitor_under_default_persona": true,
+      "competitor_under_default_persona": false,
       "sources": [
         "https://yourstory.com/2025/01/cargofl-raises-6-crore-seed-round-yournest-venture-capital"
       ]

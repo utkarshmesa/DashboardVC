@@ -43,7 +43,7 @@ Never invent facts. Return every item_id exactly once.`;
 
 const SIGNAL_TYPES = ['investment', 'authored', 'speaking', 'press', 'other', 'irrelevant'] as const;
 
-const responseSchema = {
+export const responseSchema = {
   type: Type.OBJECT,
   properties: {
     items: {

@@ -1,5 +1,5 @@
 {
-  "event_id": "freightfox-2026",
+  "event_id": "freightfox-2023",
   "company": "FreightFox",
   "firm": "Aeravti Ventures",
   "tracked_vc": "Shubham Jhuria",
@@ -23,14 +23,24 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQYTdmc0NfX1RxVTFwWldZTlRkQnR5emg4dzJFajVGbnZJVk80clFlX05EV1dNLXJtdlMwcHlpMUlxWWlHUlI5VnNSR0NUTVlXbURTZnpOMjVWSUFBeVlseENMRDJObFNYYV9fVDlYOFRVUFZyY3RMcHVxYXVkU1BfVE9ROUxJaXN3VmZWWTAtRTZ4RGhFeXJCNHVoN1hmcjjSAZ8BQVVfeXFMUGE3ZnNDX19UcVUxcFpXWU5UZEJ0eXpoOHcyRWo1Rm52SVZPNHJRZV9ORFdXTS1ybXZTMHB5aTFJcVlpR1JSOVZzUkdDVE1ZV21EU2Z6TjI1VklBQXlZbHhDTEQyTmxTWGFfX1Q5WDhUVVBWcmN0THB1cWF1ZFNQX1RPUTlMSWlzd1ZmVlkwLUU2eERoRXlyQjR1aDdYZnI4?oc=5",
       "source_name": "Indian Transport & Logistics",
-      "published_at": "2023-10-05T06:09:41.000Z"
+      "published_at": "2023-10-05T06:09:41.000Z",
+      "enrichment": {
+        "snippet": "# FreightFox raises $600K in seed funding The Pune-based intelligent supply chain platform FreightFox has secured $600,000 from Aeravti Ventures, with additional participation from strategic founders and top CXOs. FreightFox thinks that this investment will empower them to further develop their pla…",
+        "url": "https://www.itln.in/web-stories/freightfox-raises-600k-in-seed-funding-led-by-aeravti-ventures-752",
+        "captured_at": "2026-10-11T21:29:18.817Z"
+      }
     },
     {
       "title": "FreightFox raises $600K seed funding from Aeravti Ventures to revolutionize supply chain management",
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxOSHpKRS1oRzc4aTd2U1FYSUJJUFhxZWcwdXZhU3VteTVmMUhUaURGUHRzT0VWRGNoWUVoRUtxYUM0clBEU2p3Wm9fd2hjV2dGNUt0SE52V2JVU1NpOEhSZTVYUlZNZTBHcWpTZWdsZHVwUmRkN0V0dVRCS2hqbXJBelJKV21PMmcybkVmdlJNTHNYOEpQNnlmTm04cXhQWXZUeHJaaGdNTDBzNVlrU2sybVViMVZZY1o4ZFVqa0dRdWxxM3drM2U3UGFTNA?oc=5",
       "source_name": "Motorindia",
-      "published_at": "2023-10-19T10:01:04.000Z"
+      "published_at": "2023-10-19T10:01:04.000Z",
+      "enrichment": {
+        "snippet": "motorindia FreightFox, a Pune-based intelligent Supply Chain platform, has secured $600,000 in seed funding from Aeravti Ventures, with additional participation from strategic founders and top CXOs. This investment will empower FreightFox to further develop their platform and penetrate new markets.…",
+        "url": "https://www.motorindiaonline.in/freightfox-raises-600k-seed-funding-from-aeravti-ventures-to-revolutionize-supply-chain-management",
+        "captured_at": "2026-10-11T21:29:21.218Z"
+      }
     },
     {
       "title": "FreightFox raises Rs 5 crore in funding led by HighLeaf",
@@ -44,7 +54,12 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxOUXdDR1F4WEtNX004MGxRSTYxbVFMek1RakRCUmV3N3Zzd3UwUTFXZXhuRHJHaGRTOEJGV2JtQUpWTGlKUEJCTjYtbnl1cFlHNVlJNUdjZS02WkV4S3F1Q25XRi0tSVVFc0E5Ti1qbENaWFNRZjNCTzdfSTVjOS1tdzlzeC1wcVZzTGZ1QUxHOWdQRTJhS29JR25PRFFKMGNQ0gGgAUFVX3lxTE5Rd0NHUXhYS01fTTgwbFFJNjFtUUx6TVFqREJSZXc3dnN3dTBRMVdleG5EckdoZFM4QkZXYm1BSlZMaUpQQkJONi1ueXVwWUc1WUk1R2NlLTZaRXhLcXVDbldGLS1JVUVzQTlOLWpsQ1pYU1FmM0JPN19JNWM5LW13OXN4LXBxVnNMZnVBTEc5Z1BFMmFLb0lHbk9EUUowY1A?oc=5",
       "source_name": "Entrackr",
-      "published_at": "2023-10-04T07:00:00.000Z"
+      "published_at": "2023-10-04T07:00:00.000Z",
+      "enrichment": {
+        "snippet": "Intelligent supply chain platform FreightFox has raised $600000 in a seed funding round led by Aeravti Ventures along with participation",
+        "url": "https://entrackr.com/2023/10/aeravti-ventures-leads-seed-round-in-supply-chain-platform-freightfox",
+        "captured_at": "2026-10-11T21:29:22.683Z"
+      }
     },
     {
       "title": "FreightFox Raises Rs 5 Crore in Pre-Series A Round to Expand Enterprise and Global Operations",
@@ -65,7 +80,12 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxOdlVfN1lwRGFOaW1fNWxnWGpUNUk3dkpxSndTbzIwcWVlQkI1T0kyenV4WGI4cjQtUElzVFNEOTVwc1daSnNOcHM5eWRHM0J1VVVTOU5VZ25Hb1NIV2VjOTVVV0psMlhnNG5aSVJfb2lNSU1tYUFoeDVjblNPY29pTDRxdjdzal9XOHdsM29lNktvYWMzMFh5c2V5UnBMNGc0TWFQNUlydTFVVnJ5cW14WGY3TWtBRHl4N3ZocldrRng1cVU2d1dfY3oyRllrZ2VfWHFN0gHYAUFVX3lxTE55ZlpZeGlRbG9oVEdhell4V3RzOGVzVUZwN19tVUk4ejFqSFMxcFV5dU0yc1NrRjdscFc0VUJpUElIcTF6ZjZEV21HN0NvdnVvSjlWY0FtU3ZISGdOcFc3bUtJRktvYlFFWFpvMmZFLVFPUW8tNjBjZW1zUkF2R3p6WjJZRE5iY0JCb2RBTmkySTJ6QkViZi1Ka1MyRGNZZm9jaXhwNWwyYm9hRUstMVNTZXpiN1IteWNKSExZSnVmUFJKUmZJYXNZQ3NUeEJYLWVzOERNQnM2SA?oc=5",
       "source_name": "The Economic Times",
-      "published_at": "2023-10-04T07:00:00.000Z"
+      "published_at": "2023-10-04T07:00:00.000Z",
+      "enrichment": {
+        "snippet": "# FreightFox raises $600K in seed funding The Pune-based intelligent supply chain platform FreightFox has secured $600,000 from Aeravti Ventures, with additional participation from strategic founders and top CXOs. FreightFox thinks that this investment will empower them to further develop their pla…",
+        "url": "https://www.itln.in/web-stories/freightfox-raises-600k-in-seed-funding-led-by-aeravti-ventures-752",
+        "captured_at": "2026-10-11T21:29:22.939Z"
+      }
     },
     {
       "title": "Intelligent supply chain startup FreightFox raises $600K led by investors",

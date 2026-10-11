@@ -1,11 +1,13 @@
 // One-off: freezes SPEC §9.2 enrichment (Tavily headline search → ≤300-char snippet + canonical URL) into the golden
-// fixtures for snippet-less items that pass the filter at the 700-day recall window. The recall test then mirrors
+// fixtures for snippet-less items that pass the filter at the event's recall window. The recall test then mirrors
 // production: classify, enrich accepted snippet-less items, reclassify. Raw items are not modified.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { enrichHeadline } from '../lib/collectors';
+import { recallWindowDays } from '../lib/eval';
 import { filterReason } from '../lib/filter';
 
 const DIR = new URL('../eval/fixtures/golden/', import.meta.url);
+const golden: { id: string; approx_date: string }[] = JSON.parse(readFileSync(new URL('../seed/golden_events.json', import.meta.url), 'utf8')).events;
 const key = process.env.TAVILY_API_KEY;
 if (!key) { console.error('Missing required env: TAVILY_API_KEY'); process.exit(1); }
 
@@ -18,7 +20,8 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json'))) {
   const now = new Date(fx.captured_at);
   for (const it of fx.items as FxItem[]) {
     if (it.snippet || it.enrichment !== undefined) continue;
-    if (filterReason(it, vc, 700, now)) continue;
+    const ev = golden.find((e) => e.id === fx.event_id);
+    if (!ev || filterReason(it, vc, recallWindowDays(ev.approx_date, fx.captured_at), now)) continue;
     credits++;
     const r = await enrichHeadline(it.title, key);
     it.enrichment = r.match ? { ...r.match, captured_at: new Date().toISOString() } : null;

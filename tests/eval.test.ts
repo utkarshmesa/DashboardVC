@@ -42,4 +42,10 @@ describe('eval maths', () => {
     expect(r.reach).toBeLessThanOrEqual(35);
     expect(r.warm).toBeLessThan(r.reach);
   });
+
+  it('calibration never chooses REACH below 25', () => {
+    const row = (would: boolean, s: number) => ({ vc_id: String(s), would_contact: would, scores: { 10: s, 15: s, 20: s, 30: s } });
+    const r = calibrate([row(true, 12), row(true, 11), row(false, 3), row(false, 0)]);
+    expect(r.reach).toBeGreaterThanOrEqual(25);
+  });
 });
