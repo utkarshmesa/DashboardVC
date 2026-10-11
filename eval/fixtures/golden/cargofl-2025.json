@@ -1,0 +1,88 @@
+{
+  "event_id": "cargofl-2025",
+  "company": "CargoFL",
+  "firm": "YourNest",
+  "tracked_vc": "Girish Shivani",
+  "vc_aliases": [],
+  "firm_aliases": [
+    "YourNest Venture Capital",
+    "YourNest VC"
+  ],
+  "query": "\"CargoFL\" \"YourNest\"",
+  "collector": "google_news",
+  "captured_at": "2026-10-11T17:25:10.272Z",
+  "http_status": 200,
+  "error": null,
+  "items": [
+    {
+      "title": "CargoFL raises Rs 6.75 Cr in seed round led by YourNest",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQay1IcE9kMmppTGZWVnE2QjJVUkIyM1FlYk14LV95U3gtZVE0VEFuRmM3ZjdvaDVBTkg0WjQySHYwa0I1RUVhRWQ0U09CRW5GNVFCOUpramNwdmh0QXg1OE9CbzdSTmFjVXdfTHpOVU9ZV2ZBWnhySFpsa2pBYUFlcVNTYzF6OENadWJkaG5uaUFOUQ?oc=5",
+      "source_name": "YourStory.com",
+      "published_at": "2025-01-02T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL raises ₹6.75 crore in seed round led by YourNest",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQejNvdUpoaFUyZmVXVEdjcjFkWllXNzhSNUNXekotNE1tX0VCRzg1dkc3a3d4OWVjd3QzN2stb2VTX3JuYlc2NHg1Wl9lNWVhc2hTeUd0WlBkTXc1azVzSUhRVEZMZG1LMk1LYjlXaWF4Y2ViZ0JaeTNBdl9HUE9OVUdGX19nR3pEcl9HY1NvOFNwMzlneXpiaNIBngFBVV95cUxNaUU1bFBBY0ZLVEJVZVBiRHNqZlVjUUltLVRkSDRLV3dnOWZKS1ZLNW9fc3ZRSzd5cVBwdTRKbHFiRXFZOG5BUXktVXd3Q2RqeHA2U2tqSzZtamJqa2FqeEI2UThMLU5fY0V4cVZHcThHaTRpbWRmZVhoOWhFNjUxYms4VWMtY0ZSMlJFVDE2Q0hRTDViTzRsTktWOUlSZw?oc=5",
+      "source_name": "Indian Transport & Logistics",
+      "published_at": "2025-01-02T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL raises ₹6.75 crore in seed funding round led by YourNest Venture Capital",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxONFhobDRfU3gwTk5qd19Yd292TnJ3bk1VZHhQUzVZSjlILURxeHp5UVZFYldRcUFEc0dDSURMVnUySUMwZk1DekdXOXlDZVh3aVVmRTJRZlJ0a1owMVZZNFJYRkJLa01FY0thRVE3UUlDMGljYkpHUlJQTkZLQmprTVIzVEgzMnFCMG1lTWNBeFVFZko4VGpEZ3NIN2ZrUndmY0hlcXMtc2hxZTQ?oc=5",
+      "source_name": "MarcaMoney",
+      "published_at": "2025-01-05T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL raises seed funding round",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBFSTIyRGRMSktvbVZ0ZHQ1VlNHeEFOWVBXZC1FQm5xNkxvWm9QMmJFdVBubTgzZTVFeDRwckJxVlRldjQycWZyMlNzZFl0Z3M2dFJnVHZScnlURVZzT1Y4ZXFha1Q1aGxSbUZIYWMxRkxOak1mVlFSVWZhc9IBe0FVX3lxTFBFSTIyRGRMSktvbVZ0ZHQ1VlNHeEFOWVBXZC1FQm5xNkxvWm9QMmJFdVBubTgzZTVFeDRwckJxVlRldjQycWZyMlNzZFl0Z3M2dFJnVHZScnlURVZzT1Y4ZXFha1Q1aGxSbUZIYWMxRkxOak1mVlFSVWZhcw?oc=5",
+      "source_name": "Entrackr",
+      "published_at": "2025-01-02T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL Funding 2026 – Total Funding, Rounds & Investors",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE5POFJBSnV1MDNfNHhaNlFzSHBOcnNpZm9BY3FjRlRwUjZxSHY2X2JBcHM4S3pZdm9ZaFo3d2l3UXpJd2NvbXM3eHhuVjhqSHphYmNpcg?oc=5",
+      "source_name": "Inc42",
+      "published_at": "2025-01-09T11:51:11.000Z"
+    },
+    {
+      "title": "SanchiConnect and YourNest VC invest Rs 48 crore in 8 startups under VAP",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPMGRNVEFMUDl6dDE5YjZncldaalpUWmhiOFRfOFhCRnJwZnJJWUIzdW5oOVZXWGU2VzRrcGxDU29hTE1GaGpJVWpUTV9wTXpvbU1WbERYdzZFR1lGcHNrWm1wMTY4Z0VSNW11QjBVVzh5c2xRVlV5TVRpdVBlNElBOEZhUmxsQy1YcTB4SWxDRTJxMzZSVXF6aU96UjNSVFBuNkV3RG45d0lPTU9RTGFjQWE3RTVpWWFvd1HSAboBQVVfeXFMTzBkTVRBTFA5enQxOWI2Z3JXWmpaVFpoYjhUXzhYQkZycGZySVlCM3VuaDlWV1hlNlc0a3BsQ1NvYUxNRmhqSVVqVE1fcE16b21NVmxEWHc2RUdZRnBza1ptcDE2OGdFUjVtdUIwVVc4eXNsUVZVeU1UaXVQZTRJQThGYVJsbEMtWHEweElsQ0UycTM2UlVxemlPelIzUlRQbjZFd0RuOXdJT01PUUxhY0FhN0U1aVlhb3dR?oc=5",
+      "source_name": "Indian Startup News",
+      "published_at": "2024-12-17T08:00:00.000Z"
+    },
+    {
+      "title": "SanchiConnect and YourNest invest in 8 startups under VAP",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxNMmNRRlQ1MnpmMHdFN29ZM3BmaFRKam9OXzRMcFlvVjNNcXgxSno5UW5pVlk2TGZJNXl0VjRzTTJSejNmTUVoX2Z1cGktNTRRdFBPQmJfMjNjazFkZ25VLXVFcU13VExtak9rQklXWHhkVFpLS3BlSjdneDJ6N3ZVbnZnX3hicnJrMTh6R08xa2cwT280YXBnT2lIOU95R1I5Umt5OU1UY0c3Z2hILU9FbjJsbjEzRDJUTVVYM9IBvAFBVV95cUxNMmNRRlQ1MnpmMHdFN29ZM3BmaFRKam9OXzRMcFlvVjNNcXgxSno5UW5pVlk2TGZJNXl0VjRzTTJSejNmTUVoX2Z1cGktNTRRdFBPQmJfMjNjazFkZ25VLXVFcU13VExtak9rQklXWHhkVFpLS3BlSjdneDJ6N3ZVbnZnX3hicnJrMTh6R08xa2cwT280YXBnT2lIOU95R1I5Umt5OU1UY0c3Z2hILU9FbjJsbjEzRDJUTVVYMw?oc=5",
+      "source_name": "Entrackr",
+      "published_at": "2024-12-16T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL Captable 2026 – Shareholders & Equity Distribution",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9IZGxGRnY3Y1c4TlpZRHZBUmVvblU5YlRFRGJRRmd3dnRLMzFFMzhyMjU3azh2OHJWQWJneUpQYTlyWDBlOTdCWHJJdzNBaXRyTzVXcUxB?oc=5",
+      "source_name": "Inc42",
+      "published_at": "2026-07-21T16:49:56.000Z"
+    },
+    {
+      "title": "CargoFL — Funding, Revenue & Investors (2026)",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiSkFVX3lxTFBJelRLWjUxMjhzUHhyamJrY3pQNGl5eFZxcVBPXzhJSC1nU09IZ0FnMXU5SkJpUnlDeEl1cjVRSnp5eXZKMGhQVmh3?oc=5",
+      "source_name": "Inc42",
+      "published_at": "2025-01-01T08:00:00.000Z"
+    },
+    {
+      "title": "CargoFL Nets ₹6.75 Cr to Boost Global Logistics Tech",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxPOUNrVWZXNmhhNGFIODhxcEpjNUhsSEprOVA4VHBOZHRKZU9MbVY4bDF4d1Q5a3pHSEVuX2t1UF9fY3JXV29rUEJwRFpTSV9EVE53bzJDTGRBUkZCYjljTHFnQ0hILV9XS19VYzVtRUs1M3lLemZkbjlNanZKLU14UEhiZmNzN1I4cGJqX0xkeUpzMXVUWWZteFg3NnZoY09jNzAwWnQ4Z1hHbG5lQ0ZudjA3Yw?oc=5",
+      "source_name": "Infomance",
+      "published_at": "2025-03-01T08:00:00.000Z"
+    }
+  ]
+}

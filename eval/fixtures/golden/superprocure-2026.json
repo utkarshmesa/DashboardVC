@@ -1,0 +1,22 @@
+{
+  "event_id": "superprocure-2026",
+  "company": "SuperProcure",
+  "firm": "Pentathlon Ventures",
+  "tracked_vc": "Madhukar Bhatia",
+  "vc_aliases": [],
+  "firm_aliases": [],
+  "query": "\"SuperProcure\" \"Pentathlon Ventures\"",
+  "collector": "google_news",
+  "captured_at": "2026-10-11T17:25:10.272Z",
+  "http_status": 200,
+  "error": null,
+  "items": [
+    {
+      "title": "SuperProcure, a Unified TMS Platform, Secures ₹14 Cr Investment Led by Pentathlon Ventures",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxOd0xSY3U2cnAzR2ppeUVKcmdxaEpVd1B3TDFhOHB6TFoxRGcyQUdHOV9FOS03TlphTGtmX3pQeDBLS2g0RVBhTE10ZXMwM2h3WXlYTHk1NGVHdVMyYkJlUm80YmxiMlo1YXZXRmNOajZCZ2o2RUFGbFZMZWlBbjNFbGpDdW9ZN0FUeW9CVW1YZERVeTJhSXh2eloyWk1abGktdzRvY2FoZmRiU1F0RFdDQVB5cnJSdnJHRXMtQ0hnMnlpV1k5Ri1lRUhOZjdHR2xFNFBwSWlDLVBQV1RYUk5J?oc=5",
+      "source_name": "PR Newswire",
+      "published_at": "2026-02-25T08:00:00.000Z"
+    }
+  ]
+}

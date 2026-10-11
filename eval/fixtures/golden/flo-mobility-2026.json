@@ -1,0 +1,64 @@
+{
+  "event_id": "flo-mobility-2026",
+  "company": "Flo Mobility",
+  "firm": "Arali Ventures",
+  "tracked_vc": "Arun Raghavan",
+  "vc_aliases": [],
+  "firm_aliases": [],
+  "query": "\"Flo Mobility\" \"Arali Ventures\"",
+  "collector": "google_news",
+  "captured_at": "2026-10-11T17:25:10.272Z",
+  "http_status": 200,
+  "error": null,
+  "items": [
+    {
+      "title": "Flo Mobility Raises USD 2.5 Million Pre-Series A from Mela Ventures and Arali Ventures",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMi-wFBVV95cUxQc3JCbzBINXR6UDFwM1VIM2RQaG9NZHBrM05tRkhWVWIxUDRaWTBNMFp5SkFZa3pSTWhmRHN1U0VmRUhKMlJTOXJweW9PN3JlbzFGdHZMUzJtZVlzVzkzZjJFMjdCRl9mYW5NVFNpQjFEMTU3WXplWGFNWWkzOWhvOXBhN0hkMmtVU0J4dXg0SUxONE91TjNBN3l1bFJjWUVRVVZPcmRmeVFjN1JIZE4xa0d3NzJjV09sdy1xVjNjSWV5cGgzM0FUeFhwVjljTXdnczdKaEFwVmx1YXlHNzduZ0gwc1Z1aGFiOEpsVEVKSkp6RkNsSUQ3ZWhkRdIBgAJBVV95cUxQcmtDbFB5WnRRWVpTQ3lib0gxNEFzeTRLRkVnWjl4aUlDVVpDZ0hadTJxWjBraHpXaEhlaGtXNm9iSFg2RGdPWlY5d210YXpIVGFCeG5qb3lTTVNDWnFjdHFyTktOMTJLQUQ2TVJNM3RfWHNMaVVsWU9Mb05nQzdBRjVjc2FRUlBicG8tbU9Fb2ZBaUFFRElfODBLU0JyNnZqVFZzRWRjd0F3aG5kaEplemFpNEFHSUJpZUpkU1d5VGRhU2ducHFHV1F3MVpNSlNDcjdZc0k2Wk9wdDlYMVltdy1wNDNXaTFYT21OWkFkbzBqb3pJQmZYZmhQb0MzTEg1?oc=5",
+      "source_name": "Business Standard",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    },
+    {
+      "title": "Construction robotics startup Flo Mobility raises $2.5 Mn in pre-Series A round",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQMEhGYXlNSW1YbWhYdURtU0JRMlpXSXRvSkVtdUw0Ml8wbzlpXzFUSWZKYlJxcGlKNkRJRDZrUGQwV3kyYkMzWExYN3VLbnNwaVN0VlN1S20tMDZFUjFEX19pdU40QllFdUYxOGJFSU1HNVZ4VWlIVHdVT2xnNnNDTkxIUG1CVk9sdnBIUnFCSmdUQ0ctOFBsb0xwSEVvcmhrSF9WZnZXYkpDLXBTVkZUdW51UmdwaXfSAbcBQVVfeXFMUDBIRmF5TUltWG1oWHVEbVNCUTJaV0l0b0pFbXVMNDJfMG85aV8xVElmSmJScXBpSjZESUQ2a1BkMFd5MmJDM1hMWDd1S25zcGlTdFZTdUttLTA2RVIxRF9faXVONEJZRXVGMThiRUlNRzVWeFVpSFR3VU9sZzZzQ05MSFBtQlZPbHZwSFJxQkpnVENHLThQbG9McEhFb3Joa0hfVmZ2V2JKQy1wU1ZGVHVudVJncGl3?oc=5",
+      "source_name": "Entrackr",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    },
+    {
+      "title": "Flo Mobility raises $2.5 mn funding led by Mela Ventures and Arali Ventures",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMi8wFBVV95cUxOZVI4N2doNGVZZ1Q1eGIwYjR1UGg5dWpGR1QtQlJDWGFsWlIxcTIwckdTdWJKa1JvNzl6MTZtdE1kazF3NkU2QzF3Ui00TVM1dm9fdU1GWldma3BTLVdGcENEVEplbnBxT04tS1ZfWk9NMERRVHZBQk5UbmEweV85aWhPSXB6VWhtV0ZZOWx3bWVBTl9QeVBjVmlCSDRJLWNENmhrQW83SkVNcnhReXdXMUNiSXJLSGZNQ3JfVkRDNExnQUswWEl6cXNPVUlQclpzcDM1RXJLZFJ6dENJYXBtNUkxM19WRWFycnd3dnZ0aE5PaU3SAfgBQVVfeXFMUDJOX3F4QmpsV1dfMlJwWnFFdXNTSTgybmEzM0ZzcURQbnQtLUp0blV3QUNJckIzVGJleVBaZGtGY2NlcUFKYm14Yy1BRzBiOGZyVWoxQmtJNlFkSExlc1drQTljQktKQmpTdlVhb181bWgyQjZPYnZTc1B2QTZHUW9aVUd3aDZxZzhuU2hJcTEwamczMTNDUUdxY0V1cW5hOXJWY09raG1DZHdDNnBfNlg3VjlaV3YySHZSRm43T1hwMWRLRDZvZnRYWWVYUnoxbFRjSm0zSkYzRXJma3ZiN2tnY3pxUTdQMmlVNXZXT1B6MnNEbzJHZDA?oc=5",
+      "source_name": "ET Entrepreneur",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    },
+    {
+      "title": "Flo Mobility builds robots that haul construction materials. L&T and Godrej use them",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMib0FVX3lxTE16clRkQjZYdHN3dldBQXhmOVVMTmltaFZHZmh0b0ltYWowdjFIV3MzbXNNSlItQ1NkbTlZZnc1NkEyZWUzX0hfNV8tYzZFWTlUa1lZb3Q1SUVURGJrWkVweVh3QjYxSm1pWE4zb2kyWQ?oc=5",
+      "source_name": "YourStory.com",
+      "published_at": "2026-07-23T07:00:00.000Z"
+    },
+    {
+      "title": "How is Flo Mobility Transforming Construction Robotics?",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxOc3lwTnpDdWxrOFZQR0tocE1aNjBzc1JfaldhWXZlYmxuXzgtYzMta1oyZ3NWZFB5NHdIMUJKc1doM0pEM1lTd2MwUU11Um9nMzdjVE1Fbm83TnppNVBoOWxtb0pWMmhIbXZKMEt0Qmc1ZFcwakZCVjdoNDEtT2FqOUM3UVRiZjdUcG0yZTAycWtvSV80RWZiOXFJZWIxc0ZfUW95VTRkWmx0SDRmemxETjVfM3ZNanFLVUJn?oc=5",
+      "source_name": "Analytics India Magazine",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    },
+    {
+      "title": "Indian Construction Robotics Startup Flo Mobility Raises $2.5M in Funding",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPZjRyMlJFYmZTRmVuLV9Fa21FY0d1dDREcU56TnVUVFlUa3J1ZWV4dnlWaGhGd3h3VXpqNEJ6TFJBaXhXOE9tNDNEak40ZWxMVWhtNFBiYkdxRlJOSnBZLXFIV00zTWlvOC1EYlBrcEduVVJLNHNJUFlfN201bzV1eFJYUXRNRVFFV2p2VGxpdldJcEV5bHBNOE1idGZPY2hXNk04N0NDak5CTDRYR0VV?oc=5",
+      "source_name": "AI Insider",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    },
+    {
+      "title": "Startup News Today: Indian Robotics Startup Flo Mobility Bags $2.5 Mn for Construction Automation",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQV3JPdjFhTW0wa0tqVkRjZHh4eW44YnFIYzd4alF3b013a2hKVnZGajJjTk1CLVdNMWROS3JqbjNUVlJMZkFucFI5Vjc3TzVLOG4yaGNuc0xxRTRYVEkzZDZMVWFxU1VvNWc2NHlvcklSdjg0aUg5dEUtcExWclhGVEp2TE13VEtJeFEtMzVvY0hlNFFBc0hqRTBLQldxczZSLVNpNExXUlhuNlJkZEJMSkxGdG9iQ2FybmlBWkxMOXpwNE9RTFNHWFQ1VTLSAdoBQVVfeXFMUG1uWmJvRTR2STBsdHU5VGpVVzViNV81NUVBZlNyUE1LVVhWNVRHdUVtSFVvUDRMTFp0UXZXNXRUcjJ0MVBTb28yRHljOS1SYjVpbXZzMV96LWN6ejQxSko3SVZwZmk4c01YMm9SN3BkeTRZeWRpNUkxN3ZwVU0tZUlQUElYWjBNdllKMWUwMkxrSGJFRnRLdXJOQXE3YTI2YThtWDVud2UtaDVuWG1nQW4wa0RPaWVXSDQ4S0FFNVRNdlVGWW1kck5XSHhfS1R2VnhSbkp2OUdoOWc?oc=5",
+      "source_name": "Analytics Insight",
+      "published_at": "2026-05-11T07:00:00.000Z"
+    }
+  ]
+}

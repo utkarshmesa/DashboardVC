@@ -1,0 +1,64 @@
+{
+  "event_id": "hexalog-2026",
+  "company": "Hexalog",
+  "firm": "Enrission India Capital",
+  "tracked_vc": "Harsh Deodhar",
+  "vc_aliases": [],
+  "firm_aliases": [],
+  "query": "\"Hexalog\" \"Enrission India Capital\"",
+  "collector": "google_news",
+  "captured_at": "2026-10-11T17:25:10.272Z",
+  "http_status": 200,
+  "error": null,
+  "items": [
+    {
+      "title": "Hexalog bags $4 Mn in seed round led by ENRISSION INDIA CAPITAL",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiowFBVV95cUxQT0gzWVpqMzU5YXozbzhmYW1fRW1KTy1lR3ZQajdONkk4dEJwdHlYOEZPc0hhME5BRDhlV2ZpS3N0UTBoR1phUzd0ZzlZZks2WnhyOWZBMHVjTURsVkxvTlBzc0duUHJ0cFlIZjlyZ1dxNUJvc29yTTgtblZFcE9oUUdPcjJ3YW9lTjdRckx1Y0tsOTJaSDhSb2paYVhzZTRFX09v0gGjAUFVX3lxTFBPSDNZWmozNTlhejNvOGZhbV9FbUpPLWVHdlBqN042STh0QnB0eVg4Rk9zSGEwTkFEOGVXZmlLc3RRMGhHWmFTN3RnOVlmSzZaeHI5ZkEwdWNNRGxWTG9OUHNzR25QcnRwWUhmOXJnV3E1Qm9zb3JNOC1uVkVwT2hRR09yMndhb2VON1FyTHVjS2w5MlpIOFJvalphWHNlNEVfT28?oc=5",
+      "source_name": "Entrackr",
+      "published_at": "2026-01-13T08:00:00.000Z"
+    },
+    {
+      "title": "Hexalog Raises USD 4 Mn in Seed Round Led by Enrission India Capital",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQNTRKMThFdUtwM1V6VjZobFhSVFM5TzRQUld6T1o5UGVzV2pscGVqVVZxZUc0dGJrUWJuMG84b3dpMHBEUktjUmNZbnFvbjVFQk9sWGhEeUg3c0dNT0VlREhoVG5NaXpIU3NJbGI5RmFGMmlfdWlPQ1c5OG9fdjY4N0RaOGQ2RGR5aTRFTnc0aVlUeFFsSy1aTUV3SGJWTnk1c3pZaUw4YS02VTEzY2pFLVE3UWR1M1VtNFUtMmJn?oc=5",
+      "source_name": "Entrepreneur India",
+      "published_at": "2026-01-14T08:00:00.000Z"
+    },
+    {
+      "title": "Hexalog raises $4 million in seed funding led by Enrission India Capital",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxPcUFrcHlybTNGeTZmNTRQck9ZRDJJOXh1eDBFN1lKaUlnUnZLQUQ4U0FfUkFDekQ0dEc4NUVQZHg1RU9DTjRWUU1xNGdTbC1RTUNPd1FiSnVpRjhTR2FxZHV6SnM5bFVZbmJWVHYxWlBfN0dncEhWWldoa2t1dzcwbElobHQweWdoanJrblpuOUh3UTZCYWVLaDdSUllkcEZM?oc=5",
+      "source_name": "MarcaMoney",
+      "published_at": "2026-01-13T08:00:00.000Z"
+    },
+    {
+      "title": "Hexalog Secures $4 Mn Funding To Digitise Cross-Border Supply Chains",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxQNm9fUjJCUFNvMS1TbW1TZWZMNXgzNEpGUlpVVkxzSjVtUVFZYU9HZFZjeXFkU08xNDUwNGR2bEhNUHQyUENrbFIwWXJsTnZHNVJCS3lyM296al92cHZ1Q0I3UmhYWk4zZ3J4V25zUkNLSHBzdUIwV3JuSUx5czdBYUw3SmtRR1gzN0ZQU2EyQ3BmMUJiU3c?oc=5",
+      "source_name": "Inc42",
+      "published_at": "2026-01-13T08:00:00.000Z"
+    },
+    {
+      "title": "Hexalog Raises $4 Million in Seed Funding to Build AI-Led Orchestration for Cross-Border Logistics",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxQU19vWi1oX0lQX3pFRF8xZ2RzVzdGQzZiZ09NMHRrYm16T25KS3FQM0NkRzlXY0pTaDVpLWxONnBGY09sSTZ5czZVX2dXTFFZMzgtQmJZR0lQMWpNY2NLZkU3T2MxaWZSRUpveGFjc2w4OGpSQzBqRzBkZ2s4OHhPeE1KQkg2dUpUa1ZJdlU1QzhuekFGdUF6TFhkVk5uMEhoWV9QS2FCWDJ2QXF5aGgyYTExeEtvalE0ZUhFVHJRUWVxSDdtcmZCdHp4WmNnbmpOWGtYYjVwQ3FNRElY?oc=5",
+      "source_name": "Indian Startup Times",
+      "published_at": "2026-01-13T08:00:00.000Z"
+    },
+    {
+      "title": "Liquidnitro Games Raises USD 19.1 Mn Series A Led By Northpoint Capital",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOaWJUczdTSEZ0UUZWVnh5Z1NjdVN3REthaWtnQ1BjVkxtSzhxclcxQ3dzNk5QVU5XUENZU1JDWUdGZ2dQN1Jxc0ZzLUxfM0MzY19QSGJfNW9tNTUtSVo0QldBb3BMU1pLdDFpbXFZZXVPRHo5UkFqbWI3Q1lwdnpzR3U4UnBENzlnUmJ6eUR3Ul90Q1ZPUm96ekk5N3poekRoQ3dfbmd6Y1hKUHVuVEZMYW0wVU9jNVZ3VGItLW44bUM?oc=5",
+      "source_name": "Entrepreneur India",
+      "published_at": "2026-01-14T08:00:00.000Z"
+    },
+    {
+      "title": "From Pee Safe To EtherealX— Indian Startups Raised $269 Mn This Week",
+      "snippet": null,
+      "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxQWXN3QjBXSVhCUmZqcTJIay1iUVUzemJjb3ZLcGpxVEVqOGlYQmR4YmFTS2tpQktuUnJqdThRMV8zLWUwd1ExcktHMzNPX3F5U3d5THQwTk5BVktoV1F4VktUWDVscU1nWWhwY0NfOVZaWlV4c0o1VGlFUHhFQ1Z4eFBfZVhyd0RlcEZFWm1Pd3EzY0Ry?oc=5",
+      "source_name": "Inc42",
+      "published_at": "2026-01-17T08:00:00.000Z"
+    }
+  ]
+}
