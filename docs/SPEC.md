@@ -347,7 +347,9 @@ Founder's product (judge possible_competitor against this only): {my_product, or
 
 For each item, using ONLY the provided title and snippet:
 - about_this_vc: true only if the item is about this specific person or their
-  firm, not a namesake or an unrelated mention.
+  firm, not a namesake or an unrelated mention. False when the person or firm
+  appears only as one entry in a list, directory, registry or ranking of many
+  entities, or only in passing in someone else's content.
 - confidence: 0 to 1.
 - subject: person | firm
   person = the item names this specific person as the actor or speaker.
@@ -357,7 +359,12 @@ For each item, using ONLY the provided title and snippet:
   authored   = wrote, posted or published something.
   speaking   = spoke at, or appeared on, an event, panel or podcast.
   press      = quoted or profiled in the media.
-  other      = any other news about the person or firm.
+  other      = any other news about the person or firm (e.g. a hire,
+               promotion, fund launch or office opening).
+  irrelevant = not an activity or news item: a profile, bio, "about us",
+               team or social-media profile page, an investor directory or
+               database entry, a contact list or registry, or text with no
+               identifiable action by the person or firm.
   (Type and subject are independent: a firm-level funding announcement is
    signal_type=investment, subject=firm.)
 - relevance_level: core | logistics_non_software | adjacent | unrelated,

@@ -15,11 +15,14 @@ Twice a week this collects public signals (deals, writing, talks, press) about t
 | Check | Result |
 |---|---|
 | Golden recall (6 real deals, frozen fixtures; CI replays recorded Gemini responses) | **6 / 6**, after the owner-authorised seed corrections in `docs/DECISIONS.md` #14–16 |
-| Acceptance precision on the test split (gate ≥ 0.80) | *pending human labels:* `eval/labels.jsonl`, then `npm run eval` |
-| `about_this_vc` precision on the test split (gate ≥ 0.90) | *pending human labels* |
-| Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | 0.7 / 0 (defaults until tuned) |
+| Acceptance precision on the test split (gate ≥ 0.80) | **0.95** (recall 0.95; 30 test items) |
+| `about_this_vc` precision on the test split (gate ≥ 0.90) | **1.00** (recall 1.00) |
+| Type accuracy / relevance-level accuracy (test) | 0.70 / 0.77 |
+| Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | **0.7 / 0.** Tuned on the tune split; 0.5–0.7 tie, so the default is kept |
 | Ranking review agreement | *pending:* fill `eval/ranking_review.csv`, then `npm run ranking:calibrate` |
 | Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` | 50 / 25 / 20 (defaults until calibrated) |
+
+Labels (`eval/labels.jsonl`, 60 items, 10 not about the VC) were written by the builder (Claude Code) from first principles at the owner's request, not by a human; see `docs/DECISIONS.md` #20–21 for this and for the prompt definitions tightened during tuning.
 
 ## Commands
 

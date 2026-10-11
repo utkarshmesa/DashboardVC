@@ -1,6 +1,6 @@
 // SPEC §12.2/§12.3 evaluation maths. Pure; used by scripts/eval.ts and scripts/calibrate.ts.
 import { acceptance, type Thresholds } from './classifier';
-import { MIN_CALIBRATED_REACH } from './config';
+import { MIN_CALIBRATED_REACH, MIN_CONFIDENCE, MIN_RELEVANCE } from './config';
 import type { Labels } from './types';
 
 export type GoldLabel = {
@@ -52,7 +52,8 @@ export function evaluateLabels(gold: GoldLabel[], pred: Map<number, Labels>, t: 
 export const GATE = { acceptancePrecision: 0.8, aboutPrecision: 0.9 };
 
 // Grid-search thresholds on the tune split: maximise acceptance recall subject to the gate's precision bars;
-// if no setting meets the bars, maximise acceptance precision. Ties prefer lower thresholds (more recall), then defaults.
+// if no setting meets the bars, maximise acceptance precision. Ties prefer the current constants (closest first), so a
+// threshold only moves when the data shows a gain.
 export function tuneThresholds(gold: GoldLabel[], pred: Map<number, Labels>) {
   const grid: Thresholds[] = [];
   // Relevance is one of four fixed values (0.1 / 0.4 / 0.7 / 1.0); floors between them select which levels are accepted.
@@ -61,7 +62,8 @@ export function tuneThresholds(gold: GoldLabel[], pred: Map<number, Labels>) {
   const meets = scored.filter((s) => (s.m.acceptance.precision ?? 0) >= GATE.acceptancePrecision && (s.m.about.precision ?? 0) >= GATE.aboutPrecision);
   const pool = meets.length ? meets : scored;
   const key = (s: (typeof scored)[number]) => (meets.length ? (s.m.acceptance.recall ?? 0) : (s.m.acceptance.precision ?? 0));
-  pool.sort((a, b) => key(b) - key(a) || a.t.minConfidence - b.t.minConfidence || a.t.minRelevance - b.t.minRelevance);
+  const dist = (t: Thresholds) => Math.abs(t.minConfidence - MIN_CONFIDENCE) + Math.abs(t.minRelevance - MIN_RELEVANCE);
+  pool.sort((a, b) => key(b) - key(a) || dist(a.t) - dist(b.t) || a.t.minConfidence - b.t.minConfidence);
   return { best: pool[0], metGate: meets.length > 0 };
 }
 

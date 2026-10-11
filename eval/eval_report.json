@@ -1,0 +1,71 @@
+{
+  "model": "gemini-3.8-flash",
+  "generated_at": "2026-10-11T21:53:24.593Z",
+  "labels": 60,
+  "tune": 30,
+  "test": 30,
+  "tuned": {
+    "minConfidence": 0.7,
+    "minRelevance": 0,
+    "tune_metrics": {
+      "n": 30,
+      "acceptance": {
+        "precision": 1,
+        "recall": 0.9411764705882353,
+        "tp": 16,
+        "fp": 0,
+        "fn": 1
+      },
+      "about": {
+        "precision": 0.9230769230769231,
+        "recall": 1
+      },
+      "typeAccuracy": 0.9375,
+      "relevanceLevelAccuracy": 0.875
+    },
+    "met_gate_on_tune": true
+  },
+  "test_at_tuned": {
+    "n": 30,
+    "acceptance": {
+      "precision": 0.95,
+      "recall": 0.95,
+      "tp": 19,
+      "fp": 1,
+      "fn": 1
+    },
+    "about": {
+      "precision": 1,
+      "recall": 1
+    },
+    "typeAccuracy": 0.7,
+    "relevanceLevelAccuracy": 0.7692307692307693
+  },
+  "test_at_current_constants": {
+    "thresholds": {
+      "minConfidence": 0.7,
+      "minRelevance": 0
+    },
+    "metrics": {
+      "n": 30,
+      "acceptance": {
+        "precision": 0.95,
+        "recall": 0.95,
+        "tp": 19,
+        "fp": 1,
+        "fn": 1
+      },
+      "about": {
+        "precision": 1,
+        "recall": 1
+      },
+      "typeAccuracy": 0.7,
+      "relevanceLevelAccuracy": 0.7692307692307693
+    }
+  },
+  "gate": {
+    "acceptancePrecision": 0.8,
+    "aboutPrecision": 0.9
+  },
+  "gate_passed_on_test": true
+}
