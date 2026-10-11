@@ -1,0 +1,101 @@
+{
+  "note": "Real deals from the Oct 2026 research, used as recall fixtures. Dates are approximate (month). Capture each with a query of \"Company\" \"Firm\" and no when: operator, then freeze the raw item in /eval/fixtures/. expected_types lists acceptable signal_type values; subject may be person or firm, since many articles name only the firm.",
+  "default_persona": "Freight procurement / TMS SaaS for Indian manufacturers",
+  "events": [
+    {
+      "id": "freightfox-2026",
+      "company": "FreightFox",
+      "round": "seed / bridge",
+      "approx_date": "2026-08",
+      "firm": "Aeravti Ventures",
+      "tracked_vc": "Shubham Jhuria",
+      "expected_types": [
+        "investment"
+      ],
+      "competitor_under_default_persona": true,
+      "sources": [
+        "https://www.itln.in/supply-chain/freightfox-raises-50-million-to-expand-freight-intelligence-platform-1360209",
+        "https://entrackr.com/2023/10/aeravti-ventures-leads-seed-round-in-supply-chain-platform-freightfox"
+      ]
+    },
+    {
+      "id": "yantra-packs-2026",
+      "company": "Yantra Packs",
+      "round": "seed",
+      "approx_date": "2026-08",
+      "firm": "Caret Capital",
+      "tracked_vc": "Prajakt Raut",
+      "expected_types": [
+        "investment"
+      ],
+      "competitor_under_default_persona": false,
+      "sources": [
+        "https://www.moneycontrol.com/news/business/yantra-packs-raises-seed-funding-from-caret-capital-to-expand-reusable-packaging-network-14010610.html",
+        "https://indianstartupnews.com/funding/logistics-and-supply-chain-startup-yantra-packs-raises-rs-12-crore-in-seed-funding-from-caret-capital-12398243"
+      ]
+    },
+    {
+      "id": "flo-mobility-2026",
+      "company": "Flo Mobility",
+      "round": "pre-Series A",
+      "approx_date": "2026-05",
+      "firm": "Arali Ventures",
+      "tracked_vc": "Arun Raghavan",
+      "expected_types": [
+        "investment"
+      ],
+      "competitor_under_default_persona": false,
+      "sources": [
+        "https://melaventures.in/press-release/mela-ventures-invests-in-flo-mobility/"
+      ]
+    },
+    {
+      "id": "superprocure-2026",
+      "company": "SuperProcure",
+      "round": "investment",
+      "approx_date": "2026-02",
+      "firm": "Pentathlon Ventures",
+      "tracked_vc": "Madhukar Bhatia",
+      "expected_types": [
+        "investment"
+      ],
+      "competitor_under_default_persona": true,
+      "sources": [
+        "https://www.prnewswire.com/in/news-releases/superprocure-a-unified-tms-platform-secures-14-cr-investment-led-by-pentathlon-ventures-302696123.html",
+        "https://pentathlon.vc/portfolio/superprocure/"
+      ]
+    },
+    {
+      "id": "hexalog-2026",
+      "company": "Hexalog",
+      "round": "seed",
+      "approx_date": "2026-01",
+      "firm": "Enrission India Capital",
+      "tracked_vc": "Harsh Deodhar",
+      "expected_types": [
+        "investment",
+        "press"
+      ],
+      "competitor_under_default_persona": false,
+      "sources": [
+        "https://india.entrepreneur.com/?p=92482"
+      ]
+    },
+    {
+      "id": "cargofl-2025",
+      "company": "CargoFL",
+      "round": "seed",
+      "approx_date": "2025-01",
+      "firm": "YourNest",
+      "tracked_vc": "Girish Shivani",
+      "expected_types": [
+        "investment",
+        "press"
+      ],
+      "competitor_under_default_persona": true,
+      "sources": [
+        "https://yourstory.com/2025/01/cargofl-raises-6-crore-seed-round-yournest-venture-capital"
+      ]
+    }
+  ]
+}
