@@ -1,0 +1,27 @@
+{
+  "name": "vc-pipeline-spike",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 throwaway spike. Nothing outside /spike may import from here.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prepare-data": "tsx scripts/prepare.ts",
+    "local": "tsx --env-file=../.env.local scripts/run-local.ts",
+    "golden": "tsx --env-file=../.env.local scripts/golden.ts",
+    "export-labels": "tsx scripts/export-labels.ts",
+    "call-vercel": "tsx --env-file=../.env.local scripts/call-vercel.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.28.0",
+    "rss-parser": "^3.13.0",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

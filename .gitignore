@@ -12,3 +12,5 @@ coverage/
 # misc
 .DS_Store
 *.log
+# spike run outputs (contain fetched headlines/snippets; eval/ holds the frozen copies)
+spike/out/
