@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, decideAction, type ActionInput } from '@/lib/actions';
+import { ACTIONS, decideAction, firmDedupe, sameFirm, type ActionInput, type DedupeRow } from '@/lib/actions';
 
 const NOW = new Date('2026-10-12T05:00:00Z');
 const base: ActionInput = { status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: 0, topRelevance: null, conflictCompany: null, now: NOW };
@@ -36,5 +36,20 @@ describe('action table (SPEC §9.6)', () => {
   });
   it('row 10: no qualifying signal', () => {
     expect(act({ score: 0 }).action).toBe(ACTIONS.quiet);
+  });
+});
+
+describe('firm dedupe', () => {
+  const row = (o: Partial<DedupeRow>): DedupeRow => ({ id: 'x', name: 'X', firm: 'Accel', score: 60, action: ACTIONS.reach, trust: 'B', tier: 2, ...o });
+  it('only the highest scorer at a firm keeps a row 5–8 action', () => {
+    const ch = firmDedupe([row({ id: 'a', name: 'A', score: 70 }), row({ id: 'b', name: 'B', score: 55, action: ACTIONS.warm }), row({ id: 'c', firm: 'Blume', name: 'C' })]);
+    expect(ch).toEqual([{ id: 'b', action: sameFirm('A') }]);
+  });
+  it('ties go to higher trust, then better tier', () => {
+    expect(firmDedupe([row({ id: 'a', name: 'A', trust: 'B' }), row({ id: 'b', name: 'B', trust: 'A' })])).toEqual([{ id: 'a', action: sameFirm('B') }]);
+    expect(firmDedupe([row({ id: 'a', name: 'A', tier: 3 }), row({ id: 'b', name: 'B', tier: 1 })])).toEqual([{ id: 'a', action: sameFirm('B') }]);
+  });
+  it('ignores non-contact actions and single-VC firms', () => {
+    expect(firmDedupe([row({ id: 'a', name: 'A' }), row({ id: 'b', name: 'B', action: ACTIONS.quiet }), row({ id: 'c', name: 'C', action: 'Check conflict — backed X' })])).toEqual([]);
   });
 });

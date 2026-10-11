@@ -53,3 +53,40 @@ export function decideAction(i: ActionInput): ActionResult {
   if (i.score >= 1) return (i.topRelevance ?? 0) < LOW_RELEVANCE ? r('9a', ACTIONS.lowOutside) : r('9b', ACTIONS.lowWeak);
   return r('10', ACTIONS.quiet);
 }
+
+// ---- Firm dedupe (SPEC §9.6, final pass when a run finishes) ----
+
+export const CONTACT_ACTIONS: readonly string[] = [ACTIONS.reach, ACTIONS.nudge, ACTIONS.mention, ACTIONS.warm]; // rows 5–8
+export const sameFirm = (name: string) => `Same firm — go via ${name}`;
+
+export type DedupeRow = {
+  id: string;
+  name: string;
+  firm: string;
+  score: number | null;
+  action: string | null;
+  trust: string | null; // A > A- > B > C
+  tier: number | null;  // lower is better
+};
+
+const TRUST_RANK: Record<string, number> = { A: 0, 'A-': 1, B: 2, C: 3 };
+const trustRank = (t: string | null) => (t && t in TRUST_RANK ? TRUST_RANK[t] : 9);
+
+// Within one firm only the highest-scoring VC keeps a row 5–8 action; ties go to higher trust, then better tier
+// (then name, for determinism). Returns only the rows whose action must change.
+export function firmDedupe(rows: DedupeRow[]): { id: string; action: string }[] {
+  const byFirm = new Map<string, DedupeRow[]>();
+  for (const r of rows) {
+    if (!r.action || !CONTACT_ACTIONS.includes(r.action)) continue;
+    const key = r.firm.trim().toLowerCase();
+    byFirm.set(key, [...(byFirm.get(key) ?? []), r]);
+  }
+  const changes: { id: string; action: string }[] = [];
+  for (const group of byFirm.values()) {
+    if (group.length < 2) continue;
+    const [top, ...rest] = [...group].sort((a, b) =>
+      (b.score ?? 0) - (a.score ?? 0) || trustRank(a.trust) - trustRank(b.trust) || (a.tier ?? 99) - (b.tier ?? 99) || a.name.localeCompare(b.name));
+    for (const r of rest) changes.push({ id: r.id, action: sameFirm(top.name) });
+  }
+  return changes;
+}

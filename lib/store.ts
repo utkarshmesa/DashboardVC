@@ -1,7 +1,7 @@
 import 'server-only';
 import { DEFAULT_COMPANY_PROFILE, LOCK_STALE_MINUTES } from './config';
 import { db } from './db';
-import type { RunInfo, Store, Trigger } from './runner';
+import type { RunInfo, Store, StoredSignal, Trigger } from './runner';
 import type { FetchStatus, LabelUpdate, NewSignal, SignalRow, VcContext, VcRow } from './types';
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -11,7 +11,7 @@ function must<T>(r: { data: T | null; error: { message: string; code?: string } 
   return r.data as T;
 }
 
-const SIGNAL_COLS = 'id, vc_id, url, title, snippet, source, published_at, date_approx, status, reject_reason, subject, signal_type, about_this_vc, confidence, relevance, possible_competitor, competitor_evidence, event_key, summary';
+const SIGNAL_COLS = 'id, vc_id, url, title, snippet, source, published_at, date_approx, status, reject_reason, subject, signal_type, about_this_vc, confidence, relevance, possible_competitor, competitor_evidence, funded_company, role_change_hint, event_key, summary, enriched_run';
 
 export const supabaseStore: Store = {
   // SPEC §9.1 step 0: default vc_profile for any vcs row without one; firm_key matched by firm name or alias.
@@ -55,11 +55,11 @@ export const supabaseStore: Store = {
     const profiles = must(await db().from('vc_profile').select('vc_id, firm_key, aliases, ambiguous_name').in('vc_id', ids), 'load profiles') as
       { vc_id: string; firm_key: string | null; aliases: string[] | null; ambiguous_name: boolean | null }[];
     const keys = [...new Set(profiles.map((p) => p.firm_key).filter((k): k is string => !!k))];
-    const firms = keys.length ? must(await db().from('firms').select('firm_key, aliases').in('firm_key', keys), 'load firms') as { firm_key: string; aliases: string[] | null }[] : [];
+    const firms = keys.length ? must(await db().from('firms').select('firm_key, aliases, firm_rss').in('firm_key', keys), 'load firms') as { firm_key: string; aliases: string[] | null; firm_rss: string | null }[] : [];
     return rows.map((row): VcContext => {
       const p = profiles.find((x) => x.vc_id === row.id);
       const f = firms.find((x) => x.firm_key === p?.firm_key);
-      return { id: row.id, name: row.name, firm: row.firm, aliases: p?.aliases ?? [], firmAliases: f?.aliases ?? [], ambiguous: !!p?.ambiguous_name, row };
+      return { id: row.id, name: row.name, firm: row.firm, aliases: p?.aliases ?? [], firmAliases: f?.aliases ?? [], ambiguous: !!p?.ambiguous_name, firmRss: f?.firm_rss ?? null, row };
     });
   },
 
@@ -100,7 +100,35 @@ export const supabaseStore: Store = {
     if (!rows.length) return [];
     const downs = must(await db().from('signal_feedback').select('signal_id').eq('verdict', 'down').in('signal_id', rows.map((r) => r.id)), 'feedback') as { signal_id: number }[];
     const down = new Set(downs.map((d) => d.signal_id));
-    return rows.map((r) => ({ ...r, relevance: r.relevance === null ? null : Number(r.relevance), thumbs_down: down.has(r.id) }));
+    return rows.map((r): StoredSignal => ({ ...r, relevance: r.relevance === null ? null : Number(r.relevance), thumbs_down: down.has(r.id) }));
+  },
+
+  async enrichedCount(runId) {
+    const r = await db().from('signals').select('id', { count: 'exact', head: true }).eq('enriched_run', runId);
+    if (r.error) throw new Error(`enriched count: ${r.error.message}`);
+    return r.count ?? 0;
+  },
+
+  // Adds the enrichment snippet and canonical URL, and sends the item back to the classifier.
+  // If the canonical URL already exists for this VC, keep the original URL (unique key) but still add the snippet.
+  async enrichSignal(id, e) {
+    const base = { snippet: e.snippet, enriched_run: e.runId, status: 'pending', reject_reason: null };
+    const r = await db().from('signals').update({ ...base, url: e.url, url_hash: e.url_hash }).eq('id', id);
+    if (!r.error) return true;
+    if (r.error.code !== '23505') throw new Error(`enrich signal: ${r.error.message}`);
+    must(await db().from('signals').update(base).eq('id', id), 'enrich signal');
+    return true;
+  },
+
+  async dedupeRows() {
+    const vcs = must(await db().from('vcs').select('id, name, firm, follow_up_score, recommended_action, last_signal_date, signal_summary'), 'load vcs') as
+      { id: string; name: string; firm: string; follow_up_score: number | null; recommended_action: string | null; last_signal_date: string | null; signal_summary: string | null }[];
+    const prof = must(await db().from('vc_profile').select('vc_id, trust, tier'), 'load profiles') as { vc_id: string; trust: string | null; tier: number | null }[];
+    return vcs.map((v) => {
+      const p = prof.find((x) => x.vc_id === v.id);
+      return { id: v.id, name: v.name, firm: v.firm, score: v.follow_up_score, action: v.recommended_action, trust: p?.trust ?? null, tier: p?.tier ?? null,
+        last_signal_date: v.last_signal_date, signal_summary: v.signal_summary };
+    });
   },
 
   async applySignals(vcId, lastSignalDate, summary, score, action) {
@@ -132,3 +160,19 @@ export const supabaseStore: Store = {
     return status;
   },
 };
+
+// SPEC §2: changing the persona resets every in-window signal that reached the classifier to pending,
+// so the next run reclassifies it against the new persona.
+export async function setCompanyProfile(value: string, windowDays: number): Promise<number> {
+  const text = value.trim();
+  if (!text) throw new Error('persona cannot be empty');
+  must(await db().from('settings').upsert({ key: 'company_profile', value: text, updated_at: new Date().toISOString() }, { onConflict: 'key' }), 'save persona');
+  const since = new Date(Date.now() - windowDays * 86_400_000).toISOString();
+  const r = await db().from('signals')
+    .update({ status: 'pending', reject_reason: null }, { count: 'exact' })
+    .in('status', ['accepted', 'rejected', 'unclassified'])
+    .or('about_this_vc.not.is.null,status.eq.unclassified')
+    .or(`published_at.gte.${since},published_at.is.null`);
+  if (r.error) throw new Error(`reset signals: ${r.error.message}`);
+  return r.count ?? 0;
+}

@@ -11,6 +11,7 @@ export function runStep(trigger: Trigger, force = false): Promise<StepResult> {
     classifyOpts: { keys: env.geminiKeys, model: env.geminiModel },
     tavilyKey: env.tavilyKey,
     tavilyBudget: env.tavilyBudget,
+    enrichment: true, // Phase 0 gate (docs/DECISIONS.md)
   });
 }
 

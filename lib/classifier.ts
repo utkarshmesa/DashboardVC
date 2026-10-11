@@ -1,7 +1,8 @@
-// SPEC §9.4 classifier (Phase 1 subset: no competitor, role-change or hook fields yet; see docs/DECISIONS.md).
+// SPEC §9.4 classifier. The hook field and its guard arrive in Phase 3. funded_company is an addition
+// (docs/DECISIONS.md) so the conflict action can name the company; a code guard keeps it verbatim.
 import { ApiError, GoogleGenAI, Type } from '@google/genai';
 import { z } from 'zod';
-import { CLASSIFY_CAP, MIN_CONFIDENCE } from './config';
+import { CLASSIFY_CAP, MIN_CONFIDENCE, MIN_RELEVANCE } from './config';
 import { sleep } from './text';
 import type { Labels, LabelUpdate, SignalStatus } from './types';
 
@@ -24,6 +25,16 @@ For each item, using ONLY the provided title and snippet:
   (Type and subject are independent: a firm-level funding announcement is
    signal_type=investment, subject=firm.)
 - relevance: 0 to 1, how related the item is to the founder's space.
+- possible_competitor: true only for an investment in a company that the
+  title or snippet itself describes as selling substantially the same product
+  as the founder's company. If true, competitor_evidence must be the exact
+  words from the title or snippet (max 12 words) that describe that product.
+  If the text doesn't describe the product, set false. Never use outside
+  knowledge for this field.
+- funded_company: for signal_type investment, the name of the funded company
+  exactly as written in the title or snippet; otherwise null.
+- role_change_hint: if the item says the person joined, left, or is "former"
+  at a firm, a short phrase; otherwise null.
 - event_key: a short lowercase slug for the underlying event, so different
   articles about the same event share it.
 - summary: at most 20 words, factual, only from the item text.
@@ -46,10 +57,15 @@ const responseSchema = {
           subject: { type: Type.STRING, enum: ['person', 'firm'] },
           signal_type: { type: Type.STRING, enum: [...SIGNAL_TYPES] },
           relevance: { type: Type.NUMBER },
+          possible_competitor: { type: Type.BOOLEAN },
+          competitor_evidence: { type: Type.STRING, nullable: true },
+          funded_company: { type: Type.STRING, nullable: true },
+          role_change_hint: { type: Type.STRING, nullable: true },
           event_key: { type: Type.STRING },
           summary: { type: Type.STRING },
         },
-        required: ['item_id', 'about_this_vc', 'confidence', 'subject', 'signal_type', 'relevance', 'event_key', 'summary'],
+        required: ['item_id', 'about_this_vc', 'confidence', 'subject', 'signal_type', 'relevance', 'possible_competitor',
+          'competitor_evidence', 'funded_company', 'role_change_hint', 'event_key', 'summary'],
       },
     },
   },
@@ -63,6 +79,10 @@ export const LabelItemZ = z.object({
   subject: z.enum(['person', 'firm']),
   signal_type: z.enum(SIGNAL_TYPES),
   relevance: z.number().min(0).max(1),
+  possible_competitor: z.boolean(),
+  competitor_evidence: z.string().nullable(),
+  funded_company: z.string().nullable(),
+  role_change_hint: z.string().nullable(),
   event_key: z.string(),
   summary: z.string(),
 });
@@ -100,6 +120,7 @@ export type ClassifyOptions = {
   companyProfile: string;
   generate?: GenerateFn;
   backoffMs?: number[];
+  thresholds?: Thresholds;
 };
 
 export type ClassifyResult = {
@@ -116,12 +137,26 @@ function retryAfterMs(e: unknown): number | null {
   return m ? Math.ceil(Number(m[1]) * 1000) : null;
 }
 
-export function acceptance(l: Labels): { status: SignalStatus; reject_reason: string | null } {
-  if (l.about_this_vc && l.confidence >= MIN_CONFIDENCE && l.signal_type !== 'irrelevant') return { status: 'accepted', reject_reason: null };
-  return {
-    status: 'rejected',
-    reject_reason: !l.about_this_vc ? 'llm_not_about_vc' : l.signal_type === 'irrelevant' ? 'llm_irrelevant' : 'llm_low_confidence',
-  };
+export type Thresholds = { minConfidence: number; minRelevance: number };
+export const DEFAULT_THRESHOLDS: Thresholds = { minConfidence: MIN_CONFIDENCE, minRelevance: MIN_RELEVANCE };
+
+export function acceptance(l: Labels, t: Thresholds = DEFAULT_THRESHOLDS): { status: SignalStatus; reject_reason: string | null } {
+  if (!l.about_this_vc) return { status: 'rejected', reject_reason: 'llm_not_about_vc' };
+  if (l.signal_type === 'irrelevant') return { status: 'rejected', reject_reason: 'llm_irrelevant' };
+  if (l.confidence < t.minConfidence) return { status: 'rejected', reject_reason: 'llm_low_confidence' };
+  if (l.relevance < t.minRelevance) return { status: 'rejected', reject_reason: 'llm_low_relevance' };
+  return { status: 'accepted', reject_reason: null };
+}
+
+// SPEC §9.4 competitor guard, plus the same verbatim rule for funded_company.
+export function applyGuards(l: Labels, item: { title: string; snippet: string | null }): Labels {
+  const text = `${item.title} ${item.snippet ?? ''}`.toLowerCase();
+  const inText = (s: string | null) => !!s && !!s.trim() && text.includes(s.trim().toLowerCase());
+  const out = { ...l };
+  if (out.possible_competitor && !inText(out.competitor_evidence)) { out.possible_competitor = false; out.competitor_evidence = null; }
+  if (!out.possible_competitor) out.competitor_evidence = null;
+  if (!inText(out.funded_company)) out.funded_company = null;
+  return out;
 }
 
 // Parses model output; returns null if it is not valid against the schema.
@@ -183,12 +218,14 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
     }
 
     const ids = new Set(chunk.map((c) => c.item_id));
+    const byItem = new Map(chunk.map((c) => [c.item_id, c]));
     const seen = new Set<number>();
     for (const l of parsed?.items ?? []) {
       if (!ids.has(l.item_id) || seen.has(l.item_id)) continue; // ignore unknown or repeated ids
       seen.add(l.item_id);
-      const { item_id, ...labels } = l;
-      out.updates.push({ id: item_id, ...labels, ...acceptance(labels) });
+      const { item_id, ...raw } = l;
+      const labels = applyGuards(raw, byItem.get(item_id)!);
+      out.updates.push({ id: item_id, ...labels, ...acceptance(labels, opts.thresholds) });
     }
     for (const c of chunk) if (!seen.has(c.item_id)) out.unclassified.push(c.item_id);
   }

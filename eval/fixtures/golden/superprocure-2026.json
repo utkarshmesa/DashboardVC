@@ -16,7 +16,12 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMi3wFBVV95cUxOd0xSY3U2cnAzR2ppeUVKcmdxaEpVd1B3TDFhOHB6TFoxRGcyQUdHOV9FOS03TlphTGtmX3pQeDBLS2g0RVBhTE10ZXMwM2h3WXlYTHk1NGVHdVMyYkJlUm80YmxiMlo1YXZXRmNOajZCZ2o2RUFGbFZMZWlBbjNFbGpDdW9ZN0FUeW9CVW1YZERVeTJhSXh2eloyWk1abGktdzRvY2FoZmRiU1F0RFdDQVB5cnJSdnJHRXMtQ0hnMnlpV1k5Ri1lRUhOZjdHR2xFNFBwSWlDLVBQV1RYUk5J?oc=5",
       "source_name": "PR Newswire",
-      "published_at": "2026-02-25T08:00:00.000Z"
+      "published_at": "2026-02-25T08:00:00.000Z",
+      "enrichment": {
+        "snippet": "Incubated at the IIM Calcutta Innovation Park ecosystem and backed by marquee investors like IndiaMART and Caret Capital, SuperProcure has secured ₹14 crore (USD ~1.6M) in a funding round led by Pentathlon Ventures. Continue Reading SuperProcure, a Unified TMS Platform, Secures ₹14 Cr Investment Le…",
+        "url": "https://www.prnewswire.com/in/news-releases/superprocure-a-unified-tms-platform-secures-14-cr-investment-led-by-pentathlon-ventures-302696123.html",
+        "captured_at": "2026-10-11T20:44:14.230Z"
+      }
     }
   ]
 }

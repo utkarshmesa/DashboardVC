@@ -3,7 +3,7 @@ export type FetchStatus = 'ok' | 'partial' | 'failed';
 export type SignalType = 'investment' | 'authored' | 'speaking' | 'press' | 'other' | 'irrelevant';
 export type Subject = 'person' | 'firm';
 export type SignalStatus = 'pending' | 'accepted' | 'rejected' | 'unclassified';
-export type SignalSource = 'google_news' | 'tavily';
+export type SignalSource = 'google_news' | 'tavily' | 'person_rss' | 'firm_rss';
 
 export type VcRow = {
   id: string;
@@ -28,6 +28,7 @@ export type VcContext = {
   aliases: string[];
   firmAliases: string[];
   ambiguous: boolean;
+  firmRss: string | null;
   row: VcRow;
 };
 
@@ -67,8 +68,11 @@ export type SignalRow = {
   relevance: number | null;
   possible_competitor: boolean | null;
   competitor_evidence: string | null;
+  funded_company: string | null;
+  role_change_hint: string | null;
   event_key: string | null;
   summary: string | null;
+  enriched_run: string | null;
 };
 
 export type Labels = {
@@ -77,6 +81,10 @@ export type Labels = {
   subject: Subject;
   signal_type: SignalType;
   relevance: number;
+  possible_competitor: boolean;
+  competitor_evidence: string | null;
+  funded_company: string | null;
+  role_change_hint: string | null;
   event_key: string;
   summary: string;
 };

@@ -16,7 +16,12 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMi-wFBVV95cUxQc3JCbzBINXR6UDFwM1VIM2RQaG9NZHBrM05tRkhWVWIxUDRaWTBNMFp5SkFZa3pSTWhmRHN1U0VmRUhKMlJTOXJweW9PN3JlbzFGdHZMUzJtZVlzVzkzZjJFMjdCRl9mYW5NVFNpQjFEMTU3WXplWGFNWWkzOWhvOXBhN0hkMmtVU0J4dXg0SUxONE91TjNBN3l1bFJjWUVRVVZPcmRmeVFjN1JIZE4xa0d3NzJjV09sdy1xVjNjSWV5cGgzM0FUeFhwVjljTXdnczdKaEFwVmx1YXlHNzduZ0gwc1Z1aGFiOEpsVEVKSkp6RkNsSUQ3ZWhkRdIBgAJBVV95cUxQcmtDbFB5WnRRWVpTQ3lib0gxNEFzeTRLRkVnWjl4aUlDVVpDZ0hadTJxWjBraHpXaEhlaGtXNm9iSFg2RGdPWlY5d210YXpIVGFCeG5qb3lTTVNDWnFjdHFyTktOMTJLQUQ2TVJNM3RfWHNMaVVsWU9Mb05nQzdBRjVjc2FRUlBicG8tbU9Fb2ZBaUFFRElfODBLU0JyNnZqVFZzRWRjd0F3aG5kaEplemFpNEFHSUJpZUpkU1d5VGRhU2ducHFHV1F3MVpNSlNDcjdZc0k2Wk9wdDlYMVltdy1wNDNXaTFYT21OWkFkbzBqb3pJQmZYZmhQb0MzTEg1?oc=5",
       "source_name": "Business Standard",
-      "published_at": "2026-05-11T07:00:00.000Z"
+      "published_at": "2026-05-11T07:00:00.000Z",
+      "enrichment": {
+        "snippet": "VMPL Bengaluru (Karnataka) [India], May 11: Flo Mobility Private Limited, a Bengaluru-based company pioneering Physical AI solutions for construction, has raised $2.5 million in a pre-Series A round co-led by Mela Ventures and Arali Ventures. The funding will be used to scale manufacturing, advance…",
+        "url": "https://www.business-standard.com/content/press-releases-ani/flo-mobility-raises-usd-2-5-million-pre-series-a-from-mela-ventures-and-arali-ventures-126051100542_1.html",
+        "captured_at": "2026-10-11T20:44:01.504Z"
+      }
     },
     {
       "title": "Construction robotics startup Flo Mobility raises $2.5 Mn in pre-Series A round",
@@ -30,7 +35,8 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMi8wFBVV95cUxOZVI4N2doNGVZZ1Q1eGIwYjR1UGg5dWpGR1QtQlJDWGFsWlIxcTIwckdTdWJKa1JvNzl6MTZtdE1kazF3NkU2QzF3Ui00TVM1dm9fdU1GWldma3BTLVdGcENEVEplbnBxT04tS1ZfWk9NMERRVHZBQk5UbmEweV85aWhPSXB6VWhtV0ZZOWx3bWVBTl9QeVBjVmlCSDRJLWNENmhrQW83SkVNcnhReXdXMUNiSXJLSGZNQ3JfVkRDNExnQUswWEl6cXNPVUlQclpzcDM1RXJLZFJ6dENJYXBtNUkxM19WRWFycnd3dnZ0aE5PaU3SAfgBQVVfeXFMUDJOX3F4QmpsV1dfMlJwWnFFdXNTSTgybmEzM0ZzcURQbnQtLUp0blV3QUNJckIzVGJleVBaZGtGY2NlcUFKYm14Yy1BRzBiOGZyVWoxQmtJNlFkSExlc1drQTljQktKQmpTdlVhb181bWgyQjZPYnZTc1B2QTZHUW9aVUd3aDZxZzhuU2hJcTEwamczMTNDUUdxY0V1cW5hOXJWY09raG1DZHdDNnBfNlg3VjlaV3YySHZSRm43T1hwMWRLRDZvZnRYWWVYUnoxbFRjSm0zSkYzRXJma3ZiN2tnY3pxUTdQMmlVNXZXT1B6MnNEbzJHZDA?oc=5",
       "source_name": "ET Entrepreneur",
-      "published_at": "2026-05-11T07:00:00.000Z"
+      "published_at": "2026-05-11T07:00:00.000Z",
+      "enrichment": null
     },
     {
       "title": "Flo Mobility builds robots that haul construction materials. L&T and Godrej use them",

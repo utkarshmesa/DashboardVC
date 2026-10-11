@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { classify, parseResponse, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
+import { applyGuards, classify, parseResponse, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
 
 const input = (item_id: number, vc_id = 'vc1'): ClassifyInput => ({
   item_id, vc_id, vc_name: 'A B', vc_firm: 'F', vc_aliases: [], firm_aliases: [], title: 't', snippet: null, source: 'google_news',
 });
 const label = (item_id: number, o: Record<string, unknown> = {}) => ({
-  item_id, about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 0.5, event_key: 'e', summary: 's', ...o,
+  item_id, about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 0.5,
+  possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', ...o,
 });
 const opts = (generate: GenerateFn, keys = ['k1']) => ({ keys, model: 'm', companyProfile: 'p', generate, backoffMs: [1, 1, 1] });
 
@@ -63,5 +64,25 @@ describe('classifier', () => {
     const r = await classify([input(1)], opts(gen, ['bad', 'good']));
     expect(used).toEqual(['bad', 'good']);
     expect(r.updates).toHaveLength(1);
+  });
+  it('competitor guard clears flags whose evidence is not verbatim in the text', async () => {
+    const it2 = (title: string): ClassifyInput => ({ ...input(1), title });
+    const gen = (o: Record<string, unknown>): GenerateFn => async () => JSON.stringify({ items: [label(1, o)] });
+    let r = await classify([it2('SuperProcure, a Unified TMS Platform, secures funding')], opts(gen({ possible_competitor: true, competitor_evidence: 'Unified TMS Platform', funded_company: 'SuperProcure' })));
+    expect(r.updates[0]).toMatchObject({ possible_competitor: true, competitor_evidence: 'Unified TMS Platform', funded_company: 'SuperProcure' });
+    r = await classify([it2('CargoFL raises seed round')], opts(gen({ possible_competitor: true, competitor_evidence: 'freight procurement platform', funded_company: 'Cargo FL Inc' })));
+    expect(r.updates[0]).toMatchObject({ possible_competitor: false, competitor_evidence: null, funded_company: null });
+  });
+
+  it('applyGuards keeps funded_company only when it is in the text', () => {
+    const l = { ...label(1), funded_company: 'Yantra Packs' } as never;
+    expect(applyGuards(l, { title: 'Yantra Packs raises Rs 12 Cr', snippet: null }).funded_company).toBe('Yantra Packs');
+    expect(applyGuards(l, { title: 'Packaging startup raises Rs 12 Cr', snippet: null }).funded_company).toBeNull();
+  });
+
+  it('relevance floor rejects with llm_low_relevance', async () => {
+    const gen: GenerateFn = async () => JSON.stringify({ items: [label(1, { relevance: 0.1 })] });
+    const r = await classify([input(1)], { ...opts(gen), thresholds: { minConfidence: 0.7, minRelevance: 0.2 } });
+    expect(r.updates[0]).toMatchObject({ status: 'rejected', reject_reason: 'llm_low_relevance' });
   });
 });

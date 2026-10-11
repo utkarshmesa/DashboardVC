@@ -1,6 +1,7 @@
 // Constants from the spec. Calibrated values (REACH, WARM, HALF_LIFE_DAYS, MIN_CONFIDENCE) are tuned in Phase 2.
 export const SIGNAL_WINDOW_DAYS = 30;
 export const MIN_CONFIDENCE = 0.7;
+export const MIN_RELEVANCE = 0; // acceptance relevance floor; tuned in Phase 2 on the eval tune split
 export const REACH = 50;
 export const WARM = 25;
 export const HALF_LIFE_DAYS = 20;
@@ -12,6 +13,7 @@ export const SUBJECT_WEIGHT = { person: 1.0, firm: 0.7 } as const;
 export const BATCH_SIZE = 10;
 export const COLLECT_CONCURRENCY = 3;
 export const CLASSIFY_CAP = 40;
+export const ENRICH_PER_RUN = 10;
 export const FETCH_TIMEOUT_MS = 10_000;
 export const GOOGLE_NEWS_SPACING_MS = 300;
 export const SNIPPET_MAX = 300;

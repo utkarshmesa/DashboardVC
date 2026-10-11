@@ -104,3 +104,59 @@ export async function tavily(vc: VcContext, apiKey: string): Promise<CollectResu
     return { items: [], ok: false, error: `tavily ${(e as Error).message}` };
   }
 }
+
+// Person RSS (vcs.rss_url) and firm RSS (firms.firm_rss). The window filter drops old items;
+// firm-feed items are firm-level evidence, never assumed to be about the person.
+export async function rssFeed(url: string, source: 'person_rss' | 'firm_rss'): Promise<CollectResult> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; vc-pipeline/1.0)' } });
+    if (!res.ok) return { items: [], ok: false, error: `${source} HTTP ${res.status}` };
+    const feed = await parser.parseString(await res.text());
+    const items = (feed.items ?? []).filter((it) => it.link && it.title).map((it): RawItem => {
+      const text = stripTags(it.contentSnippet ?? it.content ?? '');
+      return {
+        url: it.link!,
+        title: it.title!.trim(),
+        snippet: snippetIfExtra(text, it.title!, null),
+        source,
+        source_name: feed.title?.trim() || null,
+        published_at: it.isoDate ?? (it.pubDate ? new Date(it.pubDate).toISOString() : null),
+        date_approx: false,
+      };
+    });
+    return { items, ok: true };
+  } catch (e) {
+    return { items: [], ok: false, error: `${source} ${(e as Error).message}` };
+  }
+}
+
+export type Enrichment = { snippet: string; url: string };
+
+// SPEC §9.2 enrichment: one Tavily basic search with the headline as the query; use the result whose title
+// matches the headline (equal or containing, after normalisation) for a ≤300-char snippet and canonical URL.
+export async function enrichHeadline(title: string, apiKey: string): Promise<{ ok: boolean; match: Enrichment | null; error?: string }> {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ query: title, search_depth: 'basic', max_results: 5, exclude_domains: TAVILY_EXCLUDE_DOMAINS }),
+    });
+    if (!res.ok) return { ok: false, match: null, error: `tavily enrich HTTP ${res.status}` };
+    const j = (await res.json()) as { results?: Array<{ url: string; title: string; content?: string }> };
+    return { ok: true, match: matchEnrichment(title, j.results ?? []) };
+  } catch (e) {
+    return { ok: false, match: null, error: `tavily enrich ${(e as Error).message}` };
+  }
+}
+
+export function matchEnrichment(title: string, results: Array<{ url: string; title: string; content?: string }>): Enrichment | null {
+  const want = normTitle(title);
+  for (const r of results) {
+    const got = normTitle(splitGoogleTitle(r.title ?? '').title);
+    const matches = got === want || (Math.min(got.length, want.length) >= 20 && (got.includes(want) || want.includes(got)));
+    const content = r.content ? stripTags(r.content) : '';
+    if (matches && r.url && content) return { snippet: truncate(content), url: r.url };
+  }
+  return null;
+}

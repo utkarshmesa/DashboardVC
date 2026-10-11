@@ -3,7 +3,7 @@
 Read `docs/SPEC.md` fully before any work. It is the only spec.
 Do NOT read or build `docs/later/` unless I explicitly say so.
 
-Current phase: **Phase 1 — Walking skeleton, deployed.** (I update this line.)
+Current phase: **Phase 2 — Correctness.** (I update this line.)
 
 Non-negotiables (details in SPEC §3 and §16):
 - Gemini Flash only for AI. No Anthropic/Claude API in the app.

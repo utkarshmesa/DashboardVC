@@ -19,21 +19,32 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQay1IcE9kMmppTGZWVnE2QjJVUkIyM1FlYk14LV95U3gtZVE0VEFuRmM3ZjdvaDVBTkg0WjQySHYwa0I1RUVhRWQ0U09CRW5GNVFCOUpramNwdmh0QXg1OE9CbzdSTmFjVXdfTHpOVU9ZV2ZBWnhySFpsa2pBYUFlcVNTYzF6OENadWJkaG5uaUFOUQ?oc=5",
       "source_name": "YourStory.com",
-      "published_at": "2025-01-02T08:00:00.000Z"
+      "published_at": "2025-01-02T08:00:00.000Z",
+      "enrichment": {
+        "snippet": "CargoFL, a B2B logistics technology platform, has raised Rs 6.75 crore in its seed round, led by YourNest Venture Capital.",
+        "url": "https://yourstory.com/2025/01/cargofl-raises-6-crore-seed-round-yournest-venture-capital",
+        "captured_at": "2026-10-11T20:43:52.602Z"
+      }
     },
     {
       "title": "CargoFL raises ₹6.75 crore in seed round led by YourNest",
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQejNvdUpoaFUyZmVXVEdjcjFkWllXNzhSNUNXekotNE1tX0VCRzg1dkc3a3d4OWVjd3QzN2stb2VTX3JuYlc2NHg1Wl9lNWVhc2hTeUd0WlBkTXc1azVzSUhRVEZMZG1LMk1LYjlXaWF4Y2ViZ0JaeTNBdl9HUE9OVUdGX19nR3pEcl9HY1NvOFNwMzlneXpiaNIBngFBVV95cUxNaUU1bFBBY0ZLVEJVZVBiRHNqZlVjUUltLVRkSDRLV3dnOWZKS1ZLNW9fc3ZRSzd5cVBwdTRKbHFiRXFZOG5BUXktVXd3Q2RqeHA2U2tqSzZtamJqa2FqeEI2UThMLU5fY0V4cVZHcThHaTRpbWRmZVhoOWhFNjUxYms4VWMtY0ZSMlJFVDE2Q0hRTDViTzRsTktWOUlSZw?oc=5",
       "source_name": "Indian Transport & Logistics",
-      "published_at": "2025-01-02T08:00:00.000Z"
+      "published_at": "2025-01-02T08:00:00.000Z",
+      "enrichment": null
     },
     {
       "title": "CargoFL raises ₹6.75 crore in seed funding round led by YourNest Venture Capital",
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxONFhobDRfU3gwTk5qd19Yd292TnJ3bk1VZHhQUzVZSjlILURxeHp5UVZFYldRcUFEc0dDSURMVnUySUMwZk1DekdXOXlDZVh3aVVmRTJRZlJ0a1owMVZZNFJYRkJLa01FY0thRVE3UUlDMGljYkpHUlJQTkZLQmprTVIzVEgzMnFCMG1lTWNBeFVFZko4VGpEZ3NIN2ZrUndmY0hlcXMtc2hxZTQ?oc=5",
       "source_name": "MarcaMoney",
-      "published_at": "2025-01-05T08:00:00.000Z"
+      "published_at": "2025-01-05T08:00:00.000Z",
+      "enrichment": {
+        "snippet": "CargoFL raises ₹6.75 crore in seed funding round led by YourNest Venture Capital SHARE CargoFL, a Pune-based B2B technology ecosystem for logistics, has raised ₹6.75 crore in its seed funding round, led by YourNest Venture Capital. [...] Marca Money About Us Calculators Contact Us Privacy Policy Ma…",
+        "url": "https://www.marcamoney.com/cargofl-raises-6-75-crore-in-seed-funding-round-led-by-yournest-venture-capital",
+        "captured_at": "2026-10-11T20:43:54.766Z"
+      }
     },
     {
       "title": "CargoFL raises seed funding round",
@@ -54,14 +65,24 @@
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPMGRNVEFMUDl6dDE5YjZncldaalpUWmhiOFRfOFhCRnJwZnJJWUIzdW5oOVZXWGU2VzRrcGxDU29hTE1GaGpJVWpUTV9wTXpvbU1WbERYdzZFR1lGcHNrWm1wMTY4Z0VSNW11QjBVVzh5c2xRVlV5TVRpdVBlNElBOEZhUmxsQy1YcTB4SWxDRTJxMzZSVXF6aU96UjNSVFBuNkV3RG45d0lPTU9RTGFjQWE3RTVpWWFvd1HSAboBQVVfeXFMTzBkTVRBTFA5enQxOWI2Z3JXWmpaVFpoYjhUXzhYQkZycGZySVlCM3VuaDlWV1hlNlc0a3BsQ1NvYUxNRmhqSVVqVE1fcE16b21NVmxEWHc2RUdZRnBza1ptcDE2OGdFUjVtdUIwVVc4eXNsUVZVeU1UaXVQZTRJQThGYVJsbEMtWHEweElsQ0UycTM2UlVxemlPelIzUlRQbjZFd0RuOXdJT01PUUxhY0FhN0U1aVlhb3dR?oc=5",
       "source_name": "Indian Startup News",
-      "published_at": "2024-12-17T08:00:00.000Z"
+      "published_at": "2024-12-17T08:00:00.000Z",
+      "enrichment": {
+        "snippet": "SanchiConnect, in partnership with YourNest Venture Capital, has invested Rs 48 crore (around $6 million) in eight innovative startups as part",
+        "url": "https://indianstartupnews.com/funding/sanchiconnect-and-yournest-vc-invest-rs-48-crore-in-8-startups-under-vap-8444138",
+        "captured_at": "2026-10-11T20:43:56.922Z"
+      }
     },
     {
       "title": "SanchiConnect and YourNest invest in 8 startups under VAP",
       "snippet": null,
       "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxNMmNRRlQ1MnpmMHdFN29ZM3BmaFRKam9OXzRMcFlvVjNNcXgxSno5UW5pVlk2TGZJNXl0VjRzTTJSejNmTUVoX2Z1cGktNTRRdFBPQmJfMjNjazFkZ25VLXVFcU13VExtak9rQklXWHhkVFpLS3BlSjdneDJ6N3ZVbnZnX3hicnJrMTh6R08xa2cwT280YXBnT2lIOU95R1I5Umt5OU1UY0c3Z2hILU9FbjJsbjEzRDJUTVVYM9IBvAFBVV95cUxNMmNRRlQ1MnpmMHdFN29ZM3BmaFRKam9OXzRMcFlvVjNNcXgxSno5UW5pVlk2TGZJNXl0VjRzTTJSejNmTUVoX2Z1cGktNTRRdFBPQmJfMjNjazFkZ25VLXVFcU13VExtak9rQklXWHhkVFpLS3BlSjdneDJ6N3ZVbnZnX3hicnJrMTh6R08xa2cwT280YXBnT2lIOU95R1I5Umt5OU1UY0c3Z2hILU9FbjJsbjEzRDJUTVVYMw?oc=5",
       "source_name": "Entrackr",
-      "published_at": "2024-12-16T08:00:00.000Z"
+      "published_at": "2024-12-16T08:00:00.000Z",
+      "enrichment": {
+        "snippet": "SanchiConnect, a deep-tech enablement network in partnership with YourNest Venture Capital, has invested Rs 48 crore (about $6 million) in",
+        "url": "https://entrackr.com/snippets/sanchiconnect-and-yournest-invest-in-8-startups-under-velocity-accelerator-program-8443714",
+        "captured_at": "2026-10-11T20:43:59.412Z"
+      }
     },
     {
       "title": "CargoFL Captable 2026 – Shareholders & Equity Distribution",
