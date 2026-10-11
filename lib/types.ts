@@ -66,6 +66,7 @@ export type SignalRow = {
   about_this_vc: boolean | null;
   confidence: number | null;
   relevance: number | null;
+  relevance_level: string | null;
   possible_competitor: boolean | null;
   competitor_evidence: string | null;
   funded_company: string | null;
@@ -80,7 +81,8 @@ export type Labels = {
   confidence: number;
   subject: Subject;
   signal_type: SignalType;
-  relevance: number;
+  relevance: number; // mapped in code from relevance_level
+  relevance_level: 'core' | 'logistics_non_software' | 'adjacent' | 'unrelated';
   possible_competitor: boolean;
   competitor_evidence: string | null;
   funded_company: string | null;

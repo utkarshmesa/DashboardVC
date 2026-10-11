@@ -5,16 +5,17 @@ const input = (item_id: number, vc_id = 'vc1'): ClassifyInput => ({
   item_id, vc_id, vc_name: 'A B', vc_firm: 'F', vc_aliases: [], firm_aliases: [], title: 't', snippet: null, source: 'google_news',
 });
 const label = (item_id: number, o: Record<string, unknown> = {}) => ({
-  item_id, about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 0.5,
+  item_id, about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance_level: 'adjacent',
   possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', ...o,
 });
-const opts = (generate: GenerateFn, keys = ['k1']) => ({ keys, model: 'm', companyProfile: 'p', generate, backoffMs: [1, 1, 1] });
+const opts = (generate: GenerateFn, keys = ['k1'], myProduct = 'TMS SaaS') => ({ keys, model: 'm', persona: { targetSpace: 'logistics software', myProduct }, generate, backoffMs: [1, 1, 1] });
 
 describe('classifier', () => {
   it('zod rejects malformed output', () => {
     expect(parseResponse('not json')).toBeNull();
     expect(parseResponse(JSON.stringify({ items: [label(1, { confidence: 2 })] }))).toBeNull();
     expect(parseResponse(JSON.stringify({ items: [label(1, { signal_type: 'gossip' })] }))).toBeNull();
+    expect(parseResponse(JSON.stringify({ items: [label(1, { relevance_level: 'somewhat' })] }))).toBeNull();
     expect(parseResponse(JSON.stringify({ items: [label(1)] }))).not.toBeNull();
   });
 
@@ -75,14 +76,36 @@ describe('classifier', () => {
   });
 
   it('applyGuards keeps funded_company only when it is in the text', () => {
-    const l = { ...label(1), funded_company: 'Yantra Packs' } as never;
+    const l = { ...label(1), relevance: 0.4, funded_company: 'Yantra Packs' } as never;
     expect(applyGuards(l, { title: 'Yantra Packs raises Rs 12 Cr', snippet: null }).funded_company).toBe('Yantra Packs');
     expect(applyGuards(l, { title: 'Packaging startup raises Rs 12 Cr', snippet: null }).funded_company).toBeNull();
   });
 
   it('relevance floor rejects with llm_low_relevance', async () => {
-    const gen: GenerateFn = async () => JSON.stringify({ items: [label(1, { relevance: 0.1 })] });
+    const gen: GenerateFn = async () => JSON.stringify({ items: [label(1, { relevance_level: 'unrelated' })] });
     const r = await classify([input(1)], { ...opts(gen), thresholds: { minConfidence: 0.7, minRelevance: 0.2 } });
     expect(r.updates[0]).toMatchObject({ status: 'rejected', reject_reason: 'llm_low_relevance' });
+  });
+
+  it('maps relevance_level to 1.0 / 0.7 / 0.4 / 0.1 and stores both', async () => {
+    const levels = ['core', 'logistics_non_software', 'adjacent', 'unrelated'] as const;
+    const gen: GenerateFn = async () => JSON.stringify({ items: levels.map((lv, i) => label(i + 1, { relevance_level: lv })) });
+    const r = await classify(levels.map((_, i) => input(i + 1)), opts(gen));
+    expect(r.updates.map((u) => [u.relevance_level, u.relevance])).toEqual([['core', 1], ['logistics_non_software', 0.7], ['adjacent', 0.4], ['unrelated', 0.1]]);
+  });
+
+  it('an empty my_product never yields a competitor flag', async () => {
+    const it2: ClassifyInput = { ...input(1), title: 'SuperProcure, a Unified TMS Platform, secures funding' };
+    const gen: GenerateFn = async () => JSON.stringify({ items: [label(1, { possible_competitor: true, competitor_evidence: 'Unified TMS Platform' })] });
+    expect((await classify([it2], opts(gen, ['k1'], 'TMS SaaS'))).updates[0].possible_competitor).toBe(true);
+    expect((await classify([it2], opts(gen, ['k1'], '   '))).updates[0]).toMatchObject({ possible_competitor: false, competitor_evidence: null });
+  });
+
+  it('the prompt separates target space (relevance) from product (competitor)', async () => {
+    let system = '';
+    const gen: GenerateFn = async (a) => { system = a.system; return JSON.stringify({ items: [label(1)] }); };
+    await classify([input(1)], opts(gen, ['k1'], ''));
+    expect(system).toContain("Founder's target space (judge relevance_level against this only): logistics software");
+    expect(system).toContain('(none: always set possible_competitor to false)');
   });
 });

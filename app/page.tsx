@@ -1,5 +1,7 @@
 // Phase 1: a plain table of vcs. The full dashboard (sections, evidence drawer, edits) is Phase 3.
+import Link from 'next/link';
 import { db } from '@/lib/db';
+import { loadPersona } from '@/lib/store';
 import type { VcRow } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -8,10 +10,11 @@ const ist = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST' : '—';
 
 export default async function Home() {
-  const [vcsRes, runRes, creditsRes] = await Promise.all([
+  const [vcsRes, runRes, creditsRes, persona] = await Promise.all([
     db().from('vcs').select('*').order('follow_up_score', { ascending: false, nullsFirst: false }).order('name'),
     db().from('runs').select('status, trigger, started_at, finished_at').order('started_at', { ascending: false }).limit(1),
     db().from('runs').select('tavily_credits').gte('started_at', new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()),
+    loadPersona(),
   ]);
   if (vcsRes.error) throw new Error(vcsRes.error.message);
   const vcs = (vcsRes.data ?? []) as VcRow[];
@@ -26,6 +29,13 @@ export default async function Home() {
         <span>Next run: Mon &amp; Thu 06:00 IST</span>
         <span>Tavily credits this month: {credits}</span>
       </header>
+      <section className="mb-5 space-y-1 rounded border border-neutral-200 px-3 py-2 text-sm">
+        <p className="line-clamp-1" title={persona.targetSpace}><span className="text-neutral-500">Target space:</span> {persona.targetSpace}</p>
+        <p className="line-clamp-1" title={persona.myProduct || 'Not set'}>
+          <span className="text-neutral-500">My product:</span> {persona.myProduct || <em className="text-neutral-500">not set (competitor flags off)</em>}
+        </p>
+        <p><Link href="/settings" className="text-neutral-600 underline">Edit</Link></p>
+      </section>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>

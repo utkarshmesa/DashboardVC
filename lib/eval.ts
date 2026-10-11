@@ -8,8 +8,8 @@ export type GoldLabel = {
   about_this_vc: boolean;
   subject: 'person' | 'firm';
   signal_type: Labels['signal_type'];
-  relevant: boolean;
-  competitor: boolean;
+  relevance_level: Labels['relevance_level']; // judged against target_space
+  competitor: boolean;                        // judged against my_product
 };
 
 // An item "should be accepted" when it is about this VC and is a real signal (not irrelevant).
@@ -21,11 +21,12 @@ export type EvalMetrics = {
   n: number;
   acceptance: { precision: number | null; recall: number | null; tp: number; fp: number; fn: number };
   about: { precision: number | null; recall: number | null };
-  typeAccuracy: number | null; // on items gold-about and predicted-accepted
+  typeAccuracy: number | null;           // on items gold-about and predicted-accepted
+  relevanceLevelAccuracy: number | null; // on items gold-about (relevance only matters for real signals)
 };
 
 export function evaluateLabels(gold: GoldLabel[], pred: Map<number, Labels>, t: Thresholds): EvalMetrics {
-  let tp = 0, fp = 0, fn = 0, aboutTp = 0, aboutPredPos = 0, aboutGoldPos = 0, typeHit = 0, typeN = 0;
+  let tp = 0, fp = 0, fn = 0, aboutTp = 0, aboutPredPos = 0, aboutGoldPos = 0, typeHit = 0, typeN = 0, relHit = 0, relN = 0;
   for (const g of gold) {
     const p = pred.get(g.item_id);
     if (!p) continue;
@@ -37,12 +38,14 @@ export function evaluateLabels(gold: GoldLabel[], pred: Map<number, Labels>, t: 
     if (g.about_this_vc) aboutGoldPos++;
     if (p.about_this_vc && g.about_this_vc) aboutTp++;
     if (predAccept && g.about_this_vc) { typeN++; if (p.signal_type === g.signal_type) typeHit++; }
+    if (g.about_this_vc) { relN++; if (p.relevance_level === g.relevance_level) relHit++; }
   }
   return {
     n: gold.filter((g) => pred.has(g.item_id)).length,
     acceptance: { precision: ratio(tp, tp + fp), recall: ratio(tp, tp + fn), tp, fp, fn },
     about: { precision: ratio(aboutTp, aboutPredPos), recall: ratio(aboutTp, aboutGoldPos) },
     typeAccuracy: ratio(typeHit, typeN),
+    relevanceLevelAccuracy: ratio(relHit, relN),
   };
 }
 
@@ -52,7 +55,8 @@ export const GATE = { acceptancePrecision: 0.8, aboutPrecision: 0.9 };
 // if no setting meets the bars, maximise acceptance precision. Ties prefer lower thresholds (more recall), then defaults.
 export function tuneThresholds(gold: GoldLabel[], pred: Map<number, Labels>) {
   const grid: Thresholds[] = [];
-  for (let c = 50; c <= 95; c += 5) for (let r = 0; r <= 50; r += 5) grid.push({ minConfidence: c / 100, minRelevance: r / 100 });
+  // Relevance is one of four fixed values (0.1 / 0.4 / 0.7 / 1.0); floors between them select which levels are accepted.
+  for (let c = 50; c <= 95; c += 5) for (const r of [0, 0.25, 0.55, 0.85]) grid.push({ minConfidence: c / 100, minRelevance: r });
   const scored = grid.map((t) => ({ t, m: evaluateLabels(gold, pred, t) }));
   const meets = scored.filter((s) => (s.m.acceptance.precision ?? 0) >= GATE.acceptancePrecision && (s.m.about.precision ?? 0) >= GATE.aboutPrecision);
   const pool = meets.length ? meets : scored;

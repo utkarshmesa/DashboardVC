@@ -1,13 +1,18 @@
 // SPEC §9.4 classifier. The hook field and its guard arrive in Phase 3. funded_company is an addition
 // (docs/DECISIONS.md) so the conflict action can name the company; a code guard keeps it verbatim.
+// Relevance is judged against target_space only, as a fixed level that code maps to a number; possible_competitor is
+// judged against my_product only (never flagged when my_product is empty).
 import { ApiError, GoogleGenAI, Type } from '@google/genai';
 import { z } from 'zod';
-import { CLASSIFY_CAP, MIN_CONFIDENCE, MIN_RELEVANCE } from './config';
+import { CLASSIFY_CAP, MIN_CONFIDENCE, MIN_RELEVANCE, RELEVANCE_LEVELS, RELEVANCE_VALUE, type RelevanceLevel } from './config';
 import { sleep } from './text';
 import type { Labels, LabelUpdate, SignalStatus } from './types';
 
-export const systemInstruction = (companyProfile: string) => `You classify web items about venture capital investors for a startup founder.
-Founder's company: ${companyProfile}
+export type Persona = { targetSpace: string; myProduct: string };
+
+export const systemInstruction = (p: Persona) => `You classify web items about venture capital investors for a startup founder.
+Founder's target space (judge relevance_level against this only): ${p.targetSpace}
+Founder's product (judge possible_competitor against this only): ${p.myProduct.trim() || '(none: always set possible_competitor to false)'}
 
 For each item, using ONLY the provided title and snippet:
 - about_this_vc: true only if the item is about this specific person or their
@@ -24,10 +29,22 @@ For each item, using ONLY the provided title and snippet:
   other      = any other news about the person or firm.
   (Type and subject are independent: a firm-level funding announcement is
    signal_type=investment, subject=firm.)
-- relevance: 0 to 1, how related the item is to the founder's space.
+- relevance_level: core | logistics_non_software | adjacent | unrelated,
+  judged against the founder's target space only.
+  core                   = the item's subject (the funded company, the topic
+                           written or spoken about) is software squarely in the
+                           target space.
+  logistics_non_software = logistics or supply-chain business that is not
+                           software (e.g. carriers, 3PLs, warehousing, freight
+                           forwarding, packaging, logistics hardware).
+  adjacent               = related but outside the target space: other B2B or
+                           enterprise software, manufacturing or industrial tech,
+                           commerce enablement, generic fintech or AI tooling.
+  unrelated              = anything else (consumer, D2C, health, generic
+                           investing or startup advice, personal news).
 - possible_competitor: true only for an investment in a company that the
   title or snippet itself describes as selling substantially the same product
-  as the founder's company. If true, competitor_evidence must be the exact
+  as the founder's product. If true, competitor_evidence must be the exact
   words from the title or snippet (max 12 words) that describe that product.
   If the text doesn't describe the product, set false. Never use outside
   knowledge for this field.
@@ -56,7 +73,7 @@ export const responseSchema = {
           confidence: { type: Type.NUMBER },
           subject: { type: Type.STRING, enum: ['person', 'firm'] },
           signal_type: { type: Type.STRING, enum: [...SIGNAL_TYPES] },
-          relevance: { type: Type.NUMBER },
+          relevance_level: { type: Type.STRING, enum: [...RELEVANCE_LEVELS] },
           possible_competitor: { type: Type.BOOLEAN },
           competitor_evidence: { type: Type.STRING, nullable: true },
           funded_company: { type: Type.STRING, nullable: true },
@@ -64,7 +81,7 @@ export const responseSchema = {
           event_key: { type: Type.STRING },
           summary: { type: Type.STRING },
         },
-        required: ['item_id', 'about_this_vc', 'confidence', 'subject', 'signal_type', 'relevance', 'possible_competitor',
+        required: ['item_id', 'about_this_vc', 'confidence', 'subject', 'signal_type', 'relevance_level', 'possible_competitor',
           'competitor_evidence', 'funded_company', 'role_change_hint', 'event_key', 'summary'],
       },
     },
@@ -78,7 +95,7 @@ export const LabelItemZ = z.object({
   confidence: z.number().min(0).max(1),
   subject: z.enum(['person', 'firm']),
   signal_type: z.enum(SIGNAL_TYPES),
-  relevance: z.number().min(0).max(1),
+  relevance_level: z.enum(RELEVANCE_LEVELS),
   possible_competitor: z.boolean(),
   competitor_evidence: z.string().nullable(),
   funded_company: z.string().nullable(),
@@ -117,7 +134,7 @@ export const geminiGenerate: GenerateFn = async ({ apiKey, model, system, conten
 export type ClassifyOptions = {
   keys: string[];
   model: string;
-  companyProfile: string;
+  persona: Persona;
   generate?: GenerateFn;
   backoffMs?: number[];
   thresholds?: Thresholds;
@@ -148,11 +165,17 @@ export function acceptance(l: Labels, t: Thresholds = DEFAULT_THRESHOLDS): { sta
   return { status: 'accepted', reject_reason: null };
 }
 
-// SPEC §9.4 competitor guard, plus the same verbatim rule for funded_company.
-export function applyGuards(l: Labels, item: { title: string; snippet: string | null }): Labels {
+// Model output → stored labels: the relevance number is mapped in code from the fixed level.
+export function toLabels(raw: Omit<z.infer<typeof LabelItemZ>, 'item_id'>): Labels {
+  return { ...raw, relevance: RELEVANCE_VALUE[raw.relevance_level as RelevanceLevel] };
+}
+
+// SPEC §9.4 competitor guard, plus the same verbatim rule for funded_company. No product → never a competitor.
+export function applyGuards(l: Labels, item: { title: string; snippet: string | null }, myProduct = 'x'): Labels {
   const text = `${item.title} ${item.snippet ?? ''}`.toLowerCase();
   const inText = (s: string | null) => !!s && !!s.trim() && text.includes(s.trim().toLowerCase());
   const out = { ...l };
+  if (!myProduct.trim()) out.possible_competitor = false;
   if (out.possible_competitor && !inText(out.competitor_evidence)) { out.possible_competitor = false; out.competitor_evidence = null; }
   if (!out.possible_competitor) out.competitor_evidence = null;
   if (!inText(out.funded_company)) out.funded_company = null;
@@ -173,7 +196,7 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
   const generate = opts.generate ?? geminiGenerate;
   const backoffs = opts.backoffMs ?? [2000, 4000, 8000];
   const out: ClassifyResult = { updates: [], unclassified: [], failedVcIds: [], calls: 0, http429: 0, errors: [] };
-  const system = systemInstruction(opts.companyProfile);
+  const system = systemInstruction(opts.persona);
   let keyIndex = 0;
 
   for (let i = 0; i < items.length; i += CLASSIFY_CAP) {
@@ -224,7 +247,7 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
       if (!ids.has(l.item_id) || seen.has(l.item_id)) continue; // ignore unknown or repeated ids
       seen.add(l.item_id);
       const { item_id, ...raw } = l;
-      const labels = applyGuards(raw, byItem.get(item_id)!);
+      const labels = applyGuards(toLabels(raw), byItem.get(item_id)!, opts.persona.myProduct);
       out.updates.push({ id: item_id, ...labels, ...acceptance(labels, opts.thresholds) });
     }
     for (const c of chunk) if (!seen.has(c.item_id)) out.unclassified.push(c.item_id);

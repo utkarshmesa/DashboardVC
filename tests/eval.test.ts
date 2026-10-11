@@ -3,8 +3,8 @@ import { calibrate, evaluateLabels, splitIds, tuneThresholds, type GoldLabel } f
 import type { Labels } from '@/lib/types';
 
 const g = (item_id: number, about: boolean, type: GoldLabel['signal_type'] = 'investment'): GoldLabel =>
-  ({ item_id, about_this_vc: about, subject: 'firm', signal_type: type, relevant: true, competitor: false });
-const p = (o: Partial<Labels> = {}): Labels => ({ about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 0.5,
+  ({ item_id, about_this_vc: about, subject: 'firm', signal_type: type, relevance_level: 'core', competitor: false });
+const p = (o: Partial<Labels> = {}): Labels => ({ about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 1, relevance_level: 'core',
   possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', ...o });
 
 describe('eval maths', () => {
@@ -16,6 +16,9 @@ describe('eval maths', () => {
     expect(m.acceptance.precision).toBeCloseTo(2 / 3);
     expect(m.about.precision).toBeCloseTo(3 / 4);
     expect(m.typeAccuracy).toBeCloseTo(1 / 2);
+    expect(m.relevanceLevelAccuracy).toBe(1);
+    const m2 = evaluateLabels(gold, new Map([...pred].map(([k, v]) => [k, k === 1 ? { ...v, relevance_level: 'adjacent' as const } : v])), { minConfidence: 0.7, minRelevance: 0 });
+    expect(m2.relevanceLevelAccuracy).toBeCloseTo(2 / 3);
   });
 
   it('tunes toward the gate: a higher confidence bar removes the false positive', () => {

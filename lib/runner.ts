@@ -1,6 +1,6 @@
 // SPEC §9.1 batch runner. The unit of correctness is one VC; each step handles one batch end to end.
 import { decideAction, firmDedupe, meetsEvidenceFloor, type ActionResult, type DedupeRow } from './actions';
-import { classify, type ClassifyInput, type ClassifyOptions } from './classifier';
+import { classify, type ClassifyInput, type ClassifyOptions, type Persona } from './classifier';
 import { enrichHeadline, googleNews, rssFeed, tavily, type CollectResult, type Enrichment } from './collectors';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
 import { filterReason } from './filter';
@@ -19,7 +19,7 @@ export interface Store {
   claimBatch(run: RunInfo, n: number): Promise<string[]>;
   loadContexts(vcIds: string[]): Promise<VcContext[]>;
   tavilyCreditsThisMonth(): Promise<number>;
-  companyProfile(): Promise<string>;
+  persona(): Promise<Persona>;
   insertSignals(rows: NewSignal[]): Promise<number>;
   pendingSignals(vcIds: string[]): Promise<SignalRow[]>;
   saveLabels(updates: LabelUpdate[], unclassifiedIds: number[]): Promise<void>;
@@ -44,7 +44,7 @@ export type Collectors = {
 export type StepDeps = {
   store: Store;
   collectors?: Partial<Collectors>;
-  classifyOpts: Omit<ClassifyOptions, 'companyProfile'>;
+  classifyOpts: Omit<ClassifyOptions, 'persona'>;
   tavilyKey: string;
   tavilyBudget: number;
   enrichment?: boolean; // Phase 0 gate: on
@@ -112,8 +112,7 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   let tavilyUsed = 0;
   let geminiCalls = 0;
   const failed = new Set<string>();
-  const persona = await store.companyProfile();
-  const classifyOpts = { ...deps.classifyOpts, companyProfile: persona };
+  const classifyOpts = { ...deps.classifyOpts, persona: await store.persona() };
 
   // 3. collect (concurrency 3). Firm feeds are fetched once per step and shared by that firm's VCs.
   const firmFeeds = new Map<string, Promise<CollectResult>>();

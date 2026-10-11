@@ -1,6 +1,6 @@
 // SPEC §8 seed import: firms, persona, then vc_profile for existing vcs rows. Never writes vcs.
 import { readFileSync } from 'node:fs';
-import { DEFAULT_COMPANY_PROFILE } from '../lib/config';
+import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE } from '../lib/config';
 import { db } from '../lib/db';
 import { parseCsv } from './csv';
 
@@ -20,10 +20,12 @@ async function main() {
   if (fr.error) throw new Error(`firms: ${fr.error.message}`);
   console.log(`firms: ${firms.length} upserted`);
 
-  // 2. persona (kept if already edited)
-  const sr = await db().from('settings').upsert({ key: 'company_profile', value: DEFAULT_COMPANY_PROFILE }, { onConflict: 'key', ignoreDuplicates: true });
+  // 2. persona settings (kept if already edited)
+  const sr = await db().from('settings').upsert([
+    { key: 'target_space', value: DEFAULT_TARGET_SPACE }, { key: 'my_product', value: DEFAULT_MY_PRODUCT },
+  ], { onConflict: 'key', ignoreDuplicates: true });
   if (sr.error) throw new Error(`settings: ${sr.error.message}`);
-  console.log('settings: company_profile present');
+  console.log('settings: target_space and my_product present');
 
   // 3. the vcs import stays a separate action
   const vr = await db().from('vcs').select('id, name, firm');

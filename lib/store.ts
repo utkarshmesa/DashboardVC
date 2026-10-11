@@ -1,5 +1,5 @@
 import 'server-only';
-import { DEFAULT_COMPANY_PROFILE, LOCK_STALE_MINUTES } from './config';
+import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE, LOCK_STALE_MINUTES } from './config';
 import { db } from './db';
 import type { RunInfo, Store, StoredSignal, Trigger } from './runner';
 import type { FetchStatus, LabelUpdate, NewSignal, SignalRow, VcContext, VcRow } from './types';
@@ -11,7 +11,7 @@ function must<T>(r: { data: T | null; error: { message: string; code?: string } 
   return r.data as T;
 }
 
-const SIGNAL_COLS = 'id, vc_id, url, title, snippet, source, published_at, date_approx, status, reject_reason, subject, signal_type, about_this_vc, confidence, relevance, possible_competitor, competitor_evidence, funded_company, role_change_hint, event_key, summary, enriched_run';
+const SIGNAL_COLS = 'id, vc_id, url, title, snippet, source, published_at, date_approx, status, reject_reason, subject, signal_type, about_this_vc, confidence, relevance, relevance_level, possible_competitor, competitor_evidence, funded_company, role_change_hint, event_key, summary, enriched_run';
 
 export const supabaseStore: Store = {
   // SPEC §9.1 step 0: default vc_profile for any vcs row without one; firm_key matched by firm name or alias.
@@ -70,9 +70,8 @@ export const supabaseStore: Store = {
     return rows.reduce((s, r) => s + (r.tavily_credits ?? 0), 0);
   },
 
-  async companyProfile() {
-    const rows = must(await db().from('settings').select('value').eq('key', 'company_profile').limit(1), 'load persona') as { value: string }[];
-    return rows[0]?.value ?? DEFAULT_COMPANY_PROFILE;
+  async persona() {
+    return loadPersona();
   },
 
   async insertSignals(rows: NewSignal[]) {
@@ -161,12 +160,25 @@ export const supabaseStore: Store = {
   },
 };
 
-// SPEC §2: changing the persona resets every in-window signal that reached the classifier to pending,
-// so the next run reclassifies it against the new persona.
-export async function setCompanyProfile(value: string, windowDays: number): Promise<number> {
-  const text = value.trim();
-  if (!text) throw new Error('persona cannot be empty');
-  must(await db().from('settings').upsert({ key: 'company_profile', value: text, updated_at: new Date().toISOString() }, { onConflict: 'key' }), 'save persona');
+// SPEC §2 settings: target_space drives relevance, my_product drives possible_competitor (empty = never a competitor).
+export async function loadPersona(): Promise<{ targetSpace: string; myProduct: string }> {
+  const rows = must(await db().from('settings').select('key, value').in('key', ['target_space', 'my_product']), 'load settings') as { key: string; value: string }[];
+  const get = (k: string) => rows.find((r) => r.key === k)?.value;
+  return { targetSpace: get('target_space') ?? DEFAULT_TARGET_SPACE, myProduct: get('my_product') ?? DEFAULT_MY_PRODUCT };
+}
+
+// Saving either setting resets every in-window signal that reached the classifier to pending, so the next run
+// reclassifies it against the new settings. my_product may be empty; target_space may not.
+export async function setSettings(next: { targetSpace?: string; myProduct?: string }, windowDays: number): Promise<number> {
+  const rows: { key: string; value: string; updated_at: string }[] = [];
+  const now = new Date().toISOString();
+  if (next.targetSpace !== undefined) {
+    if (!next.targetSpace.trim()) throw new Error('target space cannot be empty');
+    rows.push({ key: 'target_space', value: next.targetSpace.trim(), updated_at: now });
+  }
+  if (next.myProduct !== undefined) rows.push({ key: 'my_product', value: next.myProduct.trim(), updated_at: now });
+  if (!rows.length) return 0;
+  must(await db().from('settings').upsert(rows, { onConflict: 'key' }), 'save settings');
   const since = new Date(Date.now() - windowDays * 86_400_000).toISOString();
   const r = await db().from('signals')
     .update({ status: 'pending', reject_reason: null }, { count: 'exact' })

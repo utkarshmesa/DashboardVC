@@ -24,11 +24,17 @@ His Supabase table is already updated when he opens it. The system writes only f
 
 ## 2. Vikram's company (the persona)
 
-Relevance and competitor checks depend on what Vikram sells. The default persona, stored in the `settings` table and editable on the dashboard:
+Relevance and competitor checks depend on two settings, stored in the `settings` table and editable on the dashboard:
+
+- **`target_space`** drives relevance only. Default:
+
+> B2B software for logistics and supply chain: transport and freight management, freight procurement, warehouse management, fleet and telematics, supply-chain visibility, last-mile and delivery software, cross-border and customs, procurement, logistics analytics and AI, and logistics fintech.
+
+- **`my_product`** drives `possible_competitor` only. If it is empty, `possible_competitor` is always false and the conflict action never fires. Default:
 
 > **Freight procurement and transport management (TMS) SaaS for mid-size Indian manufacturers and shippers.** Automates carrier sourcing, freight auctions, contract rates, shipment tracking and freight-bill audit. Early revenue, raising a USD 1–3M Seed. Relevant themes: freight, trucking, transport procurement, shipper/carrier software, supply-chain visibility, logistics SaaS for manufacturing. Direct competitors: other TMS / freight-procurement platforms for Indian shippers.
 
-Changing the persona resets every in-window signal that reached the classifier to `pending`, so the next run reclassifies them against the new persona (a few extra Gemini calls). Show the current persona in the dashboard header.
+Changing either setting resets every in-window signal that reached the classifier to `pending`, so the next run reclassifies them against the new settings (a few extra Gemini calls). Show both settings in the dashboard header. (The earlier single `company_profile` setting was migrated into `my_product`.)
 
 ## 3. Hard constraints
 
@@ -146,7 +152,8 @@ create table signals (
   signal_type text check (signal_type in ('investment','authored','speaking','press','other','irrelevant')),
   about_this_vc boolean,
   confidence numeric,
-  relevance numeric,
+  relevance numeric,                         -- mapped in code from relevance_level
+  relevance_level text,                      -- core | logistics_non_software | adjacent | unrelated
   possible_competitor boolean,
   competitor_evidence text,                  -- verbatim phrase from title/snippet describing the funded product
   role_change_hint text,
@@ -266,7 +273,7 @@ Vikram can still edit anything in the Supabase table editor (the `postgres` role
 ## 8. Seed import (`scripts/import-seed.ts`)
 
 1. Insert `firms_seed.csv` into `firms` (`firm_key` = slug of `firm`; split `firm_aliases` on `;`).
-2. Insert the persona from section 2 into `settings` as `company_profile`.
+2. Insert the two settings from section 2 into `settings` as `target_space` and `my_product` (kept if they already exist).
 3. If `vcs` is empty, print: "Import seed/vcs_import_master.csv via the Supabase table editor, then rerun." and exit. (Keeps the initial import a human action.)
 4. For each `vcs` row, match `vc_profile_seed.csv` by normalized name + firm and insert `vc_profile` (aliases, ambiguous_name, trust, tier, and the remaining research fields into `research` jsonb). Print unmatched rows; never guess.
 
@@ -335,7 +342,8 @@ Undated items pass to the classifier but are never scored; they show as "date un
 
 ```
 You classify web items about venture capital investors for a startup founder.
-Founder's company: {company_profile from settings}
+Founder's target space (judge relevance_level against this only): {target_space}
+Founder's product (judge possible_competitor against this only): {my_product, or "(none: always set possible_competitor to false)"}
 
 For each item, using ONLY the provided title and snippet:
 - about_this_vc: true only if the item is about this specific person or their
@@ -352,10 +360,22 @@ For each item, using ONLY the provided title and snippet:
   other      = any other news about the person or firm.
   (Type and subject are independent: a firm-level funding announcement is
    signal_type=investment, subject=firm.)
-- relevance: 0 to 1, how related the item is to the founder's space.
+- relevance_level: core | logistics_non_software | adjacent | unrelated,
+  judged against the founder's target space only.
+  core                   = the item's subject (the funded company, the topic
+                           written or spoken about) is software squarely in the
+                           target space.
+  logistics_non_software = logistics or supply-chain business that is not
+                           software (e.g. carriers, 3PLs, warehousing, freight
+                           forwarding, packaging, logistics hardware).
+  adjacent               = related but outside the target space: other B2B or
+                           enterprise software, manufacturing or industrial tech,
+                           commerce enablement, generic fintech or AI tooling.
+  unrelated              = anything else (consumer, D2C, health, generic
+                           investing or startup advice, personal news).
 - possible_competitor: true only for an investment in a company that the
   title or snippet itself describes as selling substantially the same product
-  as the founder's company. If true, competitor_evidence must be the exact
+  as the founder's product. If true, competitor_evidence must be the exact
   words from the title or snippet (max 12 words) that describe that product.
   If the text doesn't describe the product, set false. Never use outside
   knowledge for this field.
@@ -374,7 +394,11 @@ Never invent facts. Return every item_id exactly once.
 
 User content: JSON array of `{ item_id, vc_name, vc_firm, vc_aliases, firm_aliases, title, snippet, source }`.
 
-**Acceptance** (thresholds are constants, tuned in Phase 2 against the eval set): accept if `about_this_vc && confidence >= MIN_CONFIDENCE (0.7) && signal_type != 'irrelevant'`; otherwise reject.
+**Relevance (code):** `relevance` = `{ core: 1.0, logistics_non_software: 0.7, adjacent: 0.4, unrelated: 0.1 }[relevance_level]`; both are stored. The model never outputs a relevance number.
+
+**Acceptance** (thresholds are constants, tuned in Phase 2 against the eval set): accept if `about_this_vc && confidence >= MIN_CONFIDENCE (0.7) && signal_type != 'irrelevant' && relevance >= MIN_RELEVANCE (0)`; otherwise reject.
+
+**No product (code):** if `my_product` is empty, `possible_competitor` is set to false.
 
 **Competitor guard (code):** if `possible_competitor` is true but `competitor_evidence` is not a case-insensitive substring of title + snippet, set it to false.
 
@@ -437,17 +461,17 @@ Note on row 4: under the default TMS persona, several research leads (e.g. firms
 
 Designed backwards from Vikram's Monday morning: the decision first, the proof one click away.
 
-1. **Header:** current persona (one line, with an Edit link to `/settings`), last run time (IST) and status, next scheduled run, Tavily credits this month, **Run now**.
+1. **Header:** both settings (target space and my product, one line each, with an Edit link to `/settings`), last run time (IST) and status, next scheduled run, Tavily credits this month, **Run now**.
 2. **This week:** VCs with actions 5–8, sorted by score. Each row: action badge, score, name and firm, trust badge, `signal_summary`, newest source date and link.
 3. **Evidence drawer** (expand a row):
-   - Each accepted signal: type, date, title, link, contribution to score, and **the AI's labels** (about-this-VC, type, relevance, confidence) in a small muted line.
+   - Each accepted signal: type, date, title, link, contribution to score, and **the AI's labels** (about-this-VC, type, relevance level, confidence) in a small muted line.
    - The **hook**, with a Copy button, labelled "Suggested opener — edit before sending".
    - Thumbs up/down on each signal (writes `signal_feedback`). **A thumbs-down removes the signal from scoring** (including a wrong conflict flag) and immediately calls `rescore(vc_id)`: recompute score and action from stored signals, no fetching, written via `apply_signals`.
    - Rejected and undated items, collapsed, each with its reject reason.
 4. **Other sections, collapsed:** Check conflict, Same firm, Wait, Quiet — hold, Low priority, Data unavailable, Passed.
 5. **Inline edit** of status, last contact date, notes via `PATCH /api/vc/[id]` → `update_my_fields`. System columns read-only with an "auto" tag.
 6. **Badges** (display only): "Possible move — verify" when an accepted signal has a `role_change_hint`; "Re-verify role" when the research verification date is over 180 days old.
-7. **`/settings`:** edit the persona (writes `settings.company_profile`).
+7. **`/settings`:** edit both settings (`settings.target_space`, `settings.my_product`; my product may be empty). Saving either one triggers the reset in section 2.
 8. **`/quality`:** thumbs-based precision (up ÷ (up + down)) overall and by signal type, plus counts of accepted, rejected and undated items from the last run.
 
 ## 12. Quality: how we know it works
@@ -461,15 +485,15 @@ Real, sourced deals. Recall test (`tests/recall.test.ts`) runs against **frozen 
 
 ### 12.2 Precision — `/eval/labels.jsonl`
 
-Built in Phase 0 by hand: at least 60 real items from the spike, each labelled `{ about_this_vc, subject, signal_type, relevant, competitor }` by a human, with frozen title and snippet exactly as the classifier sees them. Include at least 10 namesake or wrong-person cases. Split once, at random, into `tune` (50%) and `test` (50%); tune thresholds on `tune`, report gate results on `test` only.
+Built in Phase 0 by hand: at least 60 real items from the spike, each labelled `{ about_this_vc, subject, signal_type, relevance_level, competitor }` by a human (relevance_level against `target_space`, competitor against `my_product`; guide in `eval/LABELING.md`), with frozen title and snippet exactly as the classifier sees them. Include at least 10 namesake or wrong-person cases. Split once, at random, into `tune` (50%) and `test` (50%); tune thresholds on `tune`, report gate results on `test` only.
 
-`npm run eval` reports precision and recall of acceptance and `about_this_vc`, and type accuracy.
+`npm run eval` reports precision and recall of acceptance and `about_this_vc`, type accuracy, and `relevance_level` accuracy.
 
 **Gate:** acceptance precision ≥ 0.80 and `about_this_vc` precision ≥ 0.90. Tune `MIN_CONFIDENCE` and the relevance threshold; record the chosen values and the scores in the README.
 
 ### 12.3 Ranking review — calibrating REACH, WARM and the half-life
 
-After the first full live run in Phase 2, export the 50 VCs with their evidence (no scores shown) to `/eval/ranking_review.csv`. A human marks each "would contact this week" or "would not". Choose `REACH`, `WARM` and `HALF_LIFE_DAYS` (grid: half-life 10/15/20/30; thresholds in steps of 5; `REACH` ≥ 25) to maximise agreement, record the agreement rate and chosen values in the README. Re-run the review after any persona change.
+After the first full live run in Phase 2, export the 50 VCs with their evidence (no scores shown) to `/eval/ranking_review.csv`. A human marks each "would contact this week" or "would not". Choose `REACH`, `WARM` and `HALF_LIFE_DAYS` (grid: half-life 10/15/20/30; thresholds in steps of 5; `REACH` ≥ 25) to maximise agreement, record the agreement rate and chosen values in the README. Re-run the review after any change to either setting.
 
 ### 12.4 Unit and integration tests
 
@@ -623,7 +647,7 @@ flowchart TB
 
 ## Appendix: 3-minute demo script
 
-1. **(0:00)** Live URL → login → header shows persona and last run. "Twice a week this runs on its own."
+1. **(0:00)** Live URL → login → header shows target space, my product and last run. "Twice a week this runs on its own."
 2. **(0:30)** "This week" list: top VC, why, source link, date.
 3. **(1:00)** Open the evidence drawer: the AI's labels on each item; the suggested opener with Copy; thumbs.
 4. **(1:40)** Scroll to Check conflict: "this VC backed a direct competitor, so the system holds back." Then Quiet: "where not to spend energy."

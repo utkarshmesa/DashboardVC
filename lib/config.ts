@@ -6,6 +6,9 @@ export const REACH = 50;
 export const WARM = 25;
 export const HALF_LIFE_DAYS = 20;
 export const LOW_RELEVANCE = 0.4;
+export const RELEVANCE_LEVELS = ['core', 'logistics_non_software', 'adjacent', 'unrelated'] as const;
+export type RelevanceLevel = (typeof RELEVANCE_LEVELS)[number];
+export const RELEVANCE_VALUE: Record<RelevanceLevel, number> = { core: 1.0, logistics_non_software: 0.7, adjacent: 0.4, unrelated: 0.1 };
 export const EVIDENCE_TYPES = ['investment', 'authored', 'speaking'] as const; // evidence floor for contact actions
 export const EVIDENCE_MIN_RELEVANCE = 0.6;
 export const MIN_CALIBRATED_REACH = 25;
@@ -29,8 +32,13 @@ export const TAVILY_EXCLUDE_DOMAINS = [
   'linkedin.com', 'x.com', 'twitter.com', 'tracxn.com', 'crunchbase.com', 'angellinx.com', 'cbinsights.com', 'pitchbook.com',
 ];
 
-// SPEC §2 default persona; the live value is settings.company_profile.
-export const DEFAULT_COMPANY_PROFILE =
+// SPEC §2 defaults. Live values: settings.target_space (drives relevance) and settings.my_product (drives
+// possible_competitor only; empty disables competitor flags).
+export const DEFAULT_TARGET_SPACE =
+  'B2B software for logistics and supply chain: transport and freight management, freight procurement, ' +
+  'warehouse management, fleet and telematics, supply-chain visibility, last-mile and delivery software, ' +
+  'cross-border and customs, procurement, logistics analytics and AI, and logistics fintech.';
+export const DEFAULT_MY_PRODUCT =
   'Freight procurement and transport management (TMS) SaaS for mid-size Indian manufacturers and shippers. ' +
   'Automates carrier sourcing, freight auctions, contract rates, shipment tracking and freight-bill audit. ' +
   'Early revenue, raising a USD 1–3M Seed. Relevant themes: freight, trucking, transport procurement, ' +

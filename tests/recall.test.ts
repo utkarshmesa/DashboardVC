@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { classify, geminiGenerate, responseSchema, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
-import { DEFAULT_COMPANY_PROFILE } from '@/lib/config';
+import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE } from '@/lib/config';
 import { recallWindowDays } from '@/lib/eval';
 import { filterReason } from '@/lib/filter';
 import type { LabelUpdate } from '@/lib/types';
@@ -33,7 +33,8 @@ const generate: GenerateFn = async (args) => {
   const k = requestKey(args.system, args.contents);
   if (mode === 'replay') {
     const text = recorded?.responses[k];
-    if (text === undefined) throw new Error('No recorded Gemini response for this request: the prompt, schema or fixtures changed. Re-record with npm run test:recall:record.');
+    // status 400: not retryable, so a stale recording fails fast instead of backing off
+    if (text === undefined) throw Object.assign(new Error('No recorded Gemini response for this request: the prompt, schema or fixtures changed. Re-record with npm run test:recall:record.'), { status: 400 });
     return text;
   }
   const text = await geminiGenerate(args);
@@ -74,7 +75,7 @@ describe(`recall on frozen golden fixtures (${mode})`, () => {
           firm_aliases: fx.firm_aliases, title: item.title, snippet: item.snippet, source: 'google_news' });
       }
     }
-    const opts = { keys: keys.length ? keys : ['replay'], model: model || recorded?.model || 'replay', companyProfile: DEFAULT_COMPANY_PROFILE, generate, backoffMs: [2000, 4000, 8000] };
+    const opts = { keys: keys.length ? keys : ['replay'], model: model || recorded?.model || 'replay', persona: { targetSpace: DEFAULT_TARGET_SPACE, myProduct: DEFAULT_MY_PRODUCT }, generate, backoffMs: [2000, 4000, 8000] };
     const first = await classify(inputs, opts);
     expect(first.failedVcIds, first.errors.join('; ')).toEqual([]);
     const labels = new Map(first.updates.map((u) => [u.id, u]));

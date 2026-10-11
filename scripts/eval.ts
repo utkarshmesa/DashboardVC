@@ -3,7 +3,7 @@
 // Predictions are cached in eval/predictions.json per model; pass --refresh to reclassify.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { classify, type ClassifyInput } from '../lib/classifier';
-import { DEFAULT_COMPANY_PROFILE, MIN_CONFIDENCE, MIN_RELEVANCE } from '../lib/config';
+import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE, MIN_CONFIDENCE, MIN_RELEVANCE } from '../lib/config';
 import { evaluateLabels, GATE, splitIds, tuneThresholds, type GoldLabel } from '../lib/eval';
 import type { Labels } from '../lib/types';
 
@@ -29,20 +29,23 @@ else { split = splitIds(gold.map((g) => g.item_id)); writeFileSync(path('split.j
 // Classify (cached per model).
 const model = process.env.GEMINI_MODEL ?? '';
 const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter((k): k is string => !!k);
+// Eval always uses the SPEC §2 default settings so results are comparable across runs.
+const persona = { targetSpace: DEFAULT_TARGET_SPACE, myProduct: DEFAULT_MY_PRODUCT };
+const personaKey = JSON.stringify(persona);
 type Cache = { model: string; persona: string; labels: Record<string, Labels> };
 let cache: Cache | null = existsSync(path('predictions.json')) ? JSON.parse(readFileSync(path('predictions.json'), 'utf8')) : null;
-const needed = gold.map((g) => g.item_id).filter((id) => !cache || cache.model !== model || cache.persona !== DEFAULT_COMPANY_PROFILE || !cache.labels[id] || process.argv.includes('--refresh'));
+const needed = gold.map((g) => g.item_id).filter((id) => !cache || cache.model !== model || cache.persona !== personaKey || !cache.labels[id] || process.argv.includes('--refresh'));
 if (needed.length) {
   if (!keys.length || !model) { console.error('Missing required env: GEMINI_API_KEY, GEMINI_MODEL'); process.exit(1); }
   const res = await classify(needed.map((id) => ({ ...items.get(id)!, item_id: id, vc_id: items.get(id)!.vc_name })),
-    { keys, model, companyProfile: DEFAULT_COMPANY_PROFILE, thresholds: { minConfidence: 0, minRelevance: 0 } });
+    { keys, model, persona, thresholds: { minConfidence: 0, minRelevance: 0 } });
   if (res.failedVcIds.length) { console.error(`Gemini failed: ${res.errors.join('; ')}`); process.exit(1); }
-  const fresh = cache && cache.model === model && cache.persona === DEFAULT_COMPANY_PROFILE ? cache.labels : {};
+  const fresh = cache && cache.model === model && cache.persona === personaKey ? cache.labels : {};
   for (const u of res.updates) {
     const { id, status: _s, reject_reason: _r, ...labels } = u;
     fresh[id] = labels;
   }
-  cache = { model, persona: DEFAULT_COMPANY_PROFILE, labels: fresh };
+  cache = { model, persona: personaKey, labels: fresh };
   writeFileSync(path('predictions.json'), JSON.stringify(cache, null, 2) + '\n');
   console.log(`classified ${needed.length} items with ${model} (${res.calls} calls)`);
 }
@@ -70,5 +73,5 @@ console.log(`\nTuned on ${tuneGold.length} items: MIN_CONFIDENCE=${best.t.minCon
 console.log(`Test (${testGold.length} items) at tuned thresholds:`);
 console.log(`  acceptance precision ${fmt(testAtBest.acceptance.precision)}  recall ${fmt(testAtBest.acceptance.recall)}  (gate ≥ ${GATE.acceptancePrecision})`);
 console.log(`  about_this_vc precision ${fmt(testAtBest.about.precision)}  recall ${fmt(testAtBest.about.recall)}  (gate ≥ ${GATE.aboutPrecision})`);
-console.log(`  type accuracy ${fmt(testAtBest.typeAccuracy)}`);
+console.log(`  type accuracy ${fmt(testAtBest.typeAccuracy)}  relevance_level accuracy ${fmt(testAtBest.relevanceLevelAccuracy)}`);
 console.log(`Gate on test: ${passes ? 'PASSED' : 'NOT MET'}. Report: eval/eval_report.json`);
