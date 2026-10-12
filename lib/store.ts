@@ -138,6 +138,11 @@ export const supabaseStore: Store = {
     must(await db().from('vc_profile').update({ last_processed_at: new Date().toISOString(), last_fetch_status: fetchStatus }).eq('vc_id', vcId), 'mark processed');
   },
 
+  async releaseClaims(runId, vcIds) {
+    if (!vcIds.length) return;
+    must(await db().from('vc_profile').update({ claimed_run: null, claimed_at: null }).in('vc_id', vcIds).eq('claimed_run', runId), 'release claims');
+  },
+
   async bumpRun(runId, d) {
     must(await db().rpc('bump_run', { p_run: runId, p_tavily: d.tavily, p_gemini: d.gemini, p_errors: d.errors, p_failed: d.failed, p_stats: d.stats }), 'bump_run');
   },

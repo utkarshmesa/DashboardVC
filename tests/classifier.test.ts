@@ -66,6 +66,18 @@ describe('classifier', () => {
     expect(used).toEqual(['bad', 'good']);
     expect(r.updates).toHaveLength(1);
   });
+  it('rotates to the fallback key when Gemini reports 400 API_KEY_INVALID', async () => {
+    const used: string[] = [];
+    const gen: GenerateFn = async ({ apiKey }) => {
+      used.push(apiKey);
+      if (apiKey === 'bad') throw Object.assign(new Error('{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}'), { status: 400 });
+      return JSON.stringify({ items: [label(1)] });
+    };
+    const r = await classify([input(1)], opts(gen, ['bad', 'good']));
+    expect(used).toEqual(['bad', 'good']);
+    expect(r.updates).toHaveLength(1);
+  });
+
   it('competitor guard clears flags whose evidence is not verbatim in the text', async () => {
     const it2 = (title: string): ClassifyInput => ({ ...input(1), title });
     const gen = (o: Record<string, unknown>): GenerateFn => async () => JSON.stringify({ items: [label(1, o)] });

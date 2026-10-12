@@ -28,6 +28,7 @@ export interface Store {
   enrichSignal(signalId: number, e: Enrichment & { url_hash: string; runId: string }): Promise<boolean>;
   applySignals(vcId: string, lastSignalDate: string | null, summary: string | null, score: number | null, action: string): Promise<void>;
   markProcessed(vcId: string, fetchStatus: FetchStatus): Promise<void>;
+  releaseClaims(runId: string, vcIds: string[]): Promise<void>;
   bumpRun(runId: string, d: { tavily: number; gemini: number; errors: string[]; failed: string[]; stats: Record<string, unknown> }): Promise<void>;
   remaining(run: RunInfo): Promise<number>;
   dedupeRows(): Promise<(DedupeRow & { last_signal_date: string | null; signal_summary: string | null })[]>;
@@ -186,6 +187,10 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
       errors.push(`${vc.name}: write failed: ${(e as Error).message}`);
     }
   }
+
+  // Release this step's claims: processed VCs stay excluded for the rest of the run by last_processed_at and failed
+  // ones by failed_vc_ids, so a later run (even within 10 minutes) can claim them again.
+  await store.releaseClaims(run.id, ids);
 
   // 8. heartbeat, counters, stats.
   await store.bumpRun(run.id, {

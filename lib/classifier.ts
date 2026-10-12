@@ -253,7 +253,9 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
         } catch (e) {
           const status = e instanceof ApiError ? e.status : ((e as { status?: number }).status ?? 0);
           out.errors.push(`gemini ${status || 'network'}: ${String((e as Error).message).slice(0, 200)}`);
-          if (status === 401 || status === 403) {
+          // An invalid key comes back as 400 API_KEY_INVALID (not 401), so treat it as an auth failure and rotate keys.
+          const badKey = status === 400 && /API_KEY_INVALID|API key not valid/i.test(String((e as Error).message));
+          if (status === 401 || status === 403 || badKey) {
             if (++authFailures >= opts.keys.length) throw new GeminiFailed(`all Gemini keys rejected (${status})`);
             keyIndex++;
             continue;

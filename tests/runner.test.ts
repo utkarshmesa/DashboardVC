@@ -66,6 +66,7 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
       Object.assign(vcs.find((v) => v.id === vcId)!, { last_signal_date: date, signal_summary: summary, follow_up_score: score, recommended_action: action });
     },
     async markProcessed(vcId) { profiles.get(vcId)!.processed = clock(); },
+    async releaseClaims(_runId, ids) { for (const id of ids) profiles.get(id)!.claimedAt = null; },
     async bumpRun(_id, d) { run!.failed_vc_ids = [...new Set([...run!.failed_vc_ids, ...d.failed])]; },
     async remaining(r) { return [...profiles.entries()].filter(([id, p]) => (p.processed === null || p.processed < Date.parse(r.started_at)) && !r.failed_vc_ids.includes(id)).length; },
     async dedupeRows() {
@@ -122,6 +123,13 @@ describe('runner', () => {
     expect(m.signals.every((s) => s.status === 'pending')).toBe(true);
     expect(m.getRun()!.failed_vc_ids.sort()).toEqual(['vc0', 'vc1', 'vc2']);
     expect(await step({ trigger: 'manual' }, deps(m.store, failingGen))).toMatchObject({ done: true, status: 'partial', processed: 0 });
+  });
+
+  it('claims are released after a step, so a new run right after can claim again', async () => {
+    const m = memoryStore(3);
+    await runAll(m.store, labeller());
+    const r = await step({ trigger: 'manual', force: true }, deps(m.store, labeller()));
+    expect(r.processed).toBe(3);
   });
 
   it('two concurrent steps never process the same VC', async () => {
