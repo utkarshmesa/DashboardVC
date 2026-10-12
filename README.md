@@ -48,6 +48,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `npm run eval` | Precision/recall on hand labels, with tune/test split |
 | `npm run ranking:export` / `ranking:calibrate` | §12.3 ranking review and threshold calibration |
 | `npm run diagnose` | Per-VC score diagnosis → `eval/score_diagnosis.md` |
+| `npm run linkedin:handles -- draft|apply` | Draft LinkedIn handles from search results into `seed/linkedin_handles.csv` for review, then apply rows marked ok |
 | `npm run openers` | (Re)generate research-grounded openers for this week's cards (also runs at the end of each run) |
 | `npm run rescore` (after a settings or constants change) | Recompute fit, actions and the weekly plan from stored data |
 | `node --env-file=.env.local scripts/stress-live.mjs` | Auth, input-fuzzing, concurrency and load checks against the deployed app |
@@ -90,7 +91,7 @@ The eval labels (60 items, 10 not about the VC) and the ranking-review answers w
 ## Data and terms of use
 
 - **Stored per item:** headline, a snippet of at most 300 characters (enforced by a database check), the link, the source's own date, and the AI's labels. Full articles are never fetched or stored. Enrichment uses a search API's own ≤300-character excerpt.
-- **Sources:** Google News RSS (no key; requests at least 300 ms apart), Tavily search (capped monthly; LinkedIn, X and investor-directory sites are excluded), and the VC's or firm's own RSS feed where one is listed. LinkedIn and X are never scraped.
+- **Sources:** Google News RSS (no key; requests at least 300 ms apart), Tavily search (capped monthly; X and investor-directory sites are excluded), the VC's or firm's own RSS feed where one is listed, and, weekly, **LinkedIn posts by the VC or their firm page found through Tavily search results** (handles in `seed/linkedin_handles.csv`). The app never visits or logs in to LinkedIn and never uses X.
 - **Scope:** only public, professional information about investors in their professional capacity. Data stays in the founder's own Supabase project. The dashboard is password-protected, and the database denies all access to anon and authenticated roles.
 
 ## Components Map

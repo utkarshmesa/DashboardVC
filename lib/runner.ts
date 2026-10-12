@@ -4,6 +4,7 @@ import { classify, type ClassifyInput, type ClassifyOptions, type Persona } from
 import { competitorTerms, fitScore, researchConflict, type Fit, type Research } from './fit';
 import { generateOpeners, openerHash, type OpenerInput } from './opener';
 import { enrichHeadline, googleNews, rssFeed, tavily, type CollectResult, type Enrichment } from './collectors';
+import { linkedinDue, linkedinPosts } from './linkedin';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
 import { filterReason } from './filter';
 import { lastSignalDate, scoreSignals, type ScoreResult, type ScorableSignal } from './scoring';
@@ -32,6 +33,7 @@ export interface Store {
   enrichSignal(signalId: number, e: Enrichment & { url_hash: string; runId: string }): Promise<boolean>;
   applySignals(vcId: string, lastSignalDate: string | null, summary: string | null, score: number | null, action: string): Promise<void>;
   markProcessed(vcId: string, fetchStatus: FetchStatus): Promise<void>;
+  markLinkedinChecked(vcId: string): Promise<void>;
   releaseClaims(runId: string, vcIds: string[]): Promise<void>;
   bumpRun(runId: string, d: { tavily: number; gemini: number; errors: string[]; failed: string[]; stats: Record<string, unknown> }): Promise<void>;
   remaining(run: RunInfo): Promise<number>;
@@ -46,6 +48,7 @@ export type Collectors = {
   tavily: (vc: VcContext, key: string) => Promise<CollectResult>;
   rss: (url: string, source: 'person_rss' | 'firm_rss') => Promise<CollectResult>;
   enrich: (title: string, key: string) => Promise<{ ok: boolean; match: Enrichment | null; error?: string }>;
+  linkedin: (vc: VcContext, key: string) => Promise<CollectResult>;
 };
 
 export type StepDeps = {
@@ -66,7 +69,7 @@ export type PlanSource = {
 
 export type StepResult = { runId: string; done: boolean; processed: number; failed: number; remaining: number; status?: 'done' | 'partial'; deduped?: number; openers?: number };
 
-const DEFAULT_COLLECTORS: Collectors = { googleNews, tavily, rss: rssFeed, enrich: enrichHeadline };
+const DEFAULT_COLLECTORS: Collectors = { googleNews, tavily, rss: rssFeed, enrich: enrichHeadline, linkedin: linkedinPosts };
 
 async function pool<T, R>(xs: T[], n: number, fn: (x: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(xs.length);
@@ -138,6 +141,12 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
     if (results[0].items.length < 2 && tavilyLeft > 0) {
       tavilyLeft--; tavilyUsed++; // 1 credit per call, counted on attempt
       results.push(await col.tavily(vc, deps.tavilyKey));
+    }
+    // LinkedIn posts by the VC or their firm page (weekly; 1 Tavily credit). Checked-at is set on attempt.
+    if (linkedinDue(vc, now()) && tavilyLeft > 0) {
+      tavilyLeft--; tavilyUsed++;
+      results.push(await col.linkedin(vc, deps.tavilyKey));
+      await store.markLinkedinChecked(vc.id);
     }
     if (vc.row.rss_url) results.push(await col.rss(vc.row.rss_url, 'person_rss'));
     if (vc.firmRss) {

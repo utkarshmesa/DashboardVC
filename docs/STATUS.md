@@ -23,6 +23,7 @@
 | 3 · Usefulness | A newcomer answers "who to email this week, with what opener" in under a minute | ✅ Built and walked through; ⏳ an independent human timing is recommended |
 | 4 · Reliability and submission | SPEC §15 all ticked | ⏳ 11/13; the last 2 are due Thu 15 Oct (see below) |
 | 5b · Drafts, digest, outcome log (review items 5, 6, 8) | Sendable drafts; funnel; digest | ✅ 23 openers live (guarded), Copy email draft on every outreach card, `/api/digest`, `/quality` funnel; 85 tests |
+| 5c · LinkedIn posts signal (owner request; X off) | Activity + relevance from posts | ✅ 77 handles reviewed; first run: 92 posts across 32/50 VCs, all dated; chip on cards; 96 tests |
 | 5 · Fit-first weekly plan (owner-approved, from `docs/REVIEW.md`) | Best-fit VCs reach This week; competitor firms flagged; follow-ups tracked | ✅ All 12 tier-1 VCs in outreach, queue, conflict check or same-firm route (was 1/12 in This week); 3 TMS-competitor partners flagged; 73 tests |
 
 ## Live system

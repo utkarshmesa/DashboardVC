@@ -71,12 +71,13 @@ export type VcView = {
   conflict: { evidence: string; dismissed: boolean } | null; // standing research conflict (firm-level)
   opener: string | null;     // research-grounded opener (AI, guarded against the research text)
   draft: { subject: string; body: string } | null; // code-assembled email draft (outreach or nudge)
+  linkedin: { own: number; firm: number; latestUrl: string } | null; // posts by the VC / firm page in 30 days (DECISIONS #45)
   accepted: SignalView[];
   others: SignalView[]; // rejected and undated, collapsed in the drawer
 };
 
 type Sig = ScorableSignal & {
-  vc_id: string; title: string; url: string; source_name: string | null; reject_reason: string | null; relevance_level: string | null;
+  vc_id: string; title: string; url: string; source: string; source_name: string | null; reject_reason: string | null; relevance_level: string | null;
   confidence: number | null; about_this_vc: boolean | null; hook: string | null; role_change_hint: string | null; created_at: string;
 };
 
@@ -90,7 +91,7 @@ export async function loadDashboard() {
   const [vcsR, profR, sigR, fbR] = await Promise.all([
     db().from('vcs').select('*'),
     db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener'),
-    db().from('signals').select('id, vc_id, title, url, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
+    db().from('signals').select('id, vc_id, title, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
   ]);
@@ -127,6 +128,7 @@ export async function loadDashboard() {
     const fit = fitScore({ tier: prof?.tier ?? null, trust: prof?.trust ?? null, thesis: v.thesis, research }, persona.targetSpace, now);
     const peers = allVcs.filter((x) => x.firm === v.firm).map((x) => ((profR.data ?? []).find((p) => p.vc_id === x.id)?.research ?? null) as Research | null);
     const standing = researchConflict(peers, terms);
+    const posts = mine.filter((s) => s.source === 'linkedin' && s.published_at && (now.getTime() - Date.parse(s.published_at)) / 86_400_000 <= 30);
     const approachText = research?.approach ? String(research.approach) : null;
     return {
       id: v.id, name: v.name, firm: v.firm, status: v.status, lastContactDate: v.last_contact_date, notes: v.notes,
@@ -146,6 +148,7 @@ export async function loadDashboard() {
       conflict: standing ? { evidence: standing.evidence, dismissed: !!prof?.conflict_dismissed_at } : null,
       opener: (prof?.opener as string | null) ?? null,
       draft: draftFor(v, action, (prof?.opener as string | null) ?? null, hookSignal?.hook ?? null, draftSettings),
+      linkedin: posts.length ? { own: posts.filter((s) => s.source_name === 'LinkedIn (own post)').length, firm: posts.filter((s) => s.source_name !== 'LinkedIn (own post)').length, latestUrl: posts[0].url } : null,
       accepted: accepted.map(view),
       others: mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).slice(0, 25).map(view),
     };

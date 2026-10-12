@@ -9,7 +9,8 @@ const NOW = new Date('2026-10-12T00:00:00Z');
 type Sig = SignalRow & { title_norm: string; url_hash: string };
 
 // In-memory Store with claim_batch semantics (no re-claim of rows claimed in the last 10 minutes).
-function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?: string } = {}) {
+function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?: string; linkedinCheckedAt?: string | null } = {}) {
+  const linkedinChecked: string[] = [];
   const vcs: VcRow[] = Array.from({ length: n }, (_, i) => ({
     id: `vc${i}`, name: `Person ${i}`, firm: opts.firmOf?.(i) ?? `Firm ${i}`, thesis: null, status: 'not_contacted', last_contact_date: null,
     notes: `note ${i}`, rss_url: null, last_signal_date: null, signal_summary: null, follow_up_score: null, recommended_action: null,
@@ -38,7 +39,8 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
     async loadContexts(ids) {
       return ids.map((id): VcContext => {
         const row = vcs.find((v) => v.id === id)!;
-        return { id, name: row.name, firm: row.firm, aliases: [], firmAliases: [], ambiguous: false, firmRss: opts.firmRss ?? null, row };
+        return { id, name: row.name, firm: row.firm, aliases: [], firmAliases: [], ambiguous: false, firmRss: opts.firmRss ?? null, row,
+          ...(opts.linkedinCheckedAt !== undefined ? { linkedinSlug: `person-${id}`, firmLinkedinSlug: null, linkedinCheckedAt: opts.linkedinCheckedAt } : {}) };
       });
     },
     async tavilyCreditsThisMonth() { return 0; },
@@ -66,6 +68,7 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
       Object.assign(vcs.find((v) => v.id === vcId)!, { last_signal_date: date, signal_summary: summary, follow_up_score: score, recommended_action: action });
     },
     async markProcessed(vcId) { profiles.get(vcId)!.processed = clock(); },
+    async markLinkedinChecked(vcId) { linkedinChecked.push(vcId); },
     async releaseClaims(_runId, ids) { for (const id of ids) profiles.get(id)!.claimedAt = null; },
     async bumpRun(_id, d) { run!.failed_vc_ids = [...new Set([...run!.failed_vc_ids, ...d.failed])]; },
     async remaining(r) { return [...profiles.entries()].filter(([id, p]) => (p.processed === null || p.processed < Date.parse(r.started_at)) && !r.failed_vc_ids.includes(id)).length; },
@@ -77,7 +80,7 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
     async saveOpener() {},
     async finishRun() { run!.status = run!.failed_vc_ids.length ? 'partial' : 'done'; return run!.status as 'done' | 'partial'; },
   };
-  return { store, vcs, signals, writes, getRun: () => run };
+  return { store, vcs, signals, writes, linkedinChecked, getRun: () => run };
 }
 
 const newsItem = (vc: VcContext, o: Partial<CollectResult['items'][number]> = {}) => ({
@@ -189,5 +192,29 @@ describe('runner', () => {
     await runAll(m.store, labeller({ subject: 'person' }), { collectors: { ...collectors, rss } });
     expect(m.signals.find((s) => s.source === 'firm_rss')).toMatchObject({ subject: 'firm', status: 'accepted' });
     expect(m.signals.find((s) => s.source === 'google_news')).toMatchObject({ subject: 'person' });
+  });
+});
+
+describe('runner: LinkedIn posts (DECISIONS #45)', () => {
+  const linkedin = async (vc: VcContext): Promise<CollectResult> => ({ ok: true, items: [{
+    url: `https://www.linkedin.com/posts/person-${vc.id}_x-activity-7505582179767193600-a`, title: `LinkedIn post by ${vc.name}: freight software`,
+    snippet: 'freight software', source: 'linkedin', source_name: 'LinkedIn (own post)', published_at: '2026-10-05T00:00:00Z', date_approx: false }] });
+
+  it('collects once per VC with a handle, stores the posts and marks the VC checked', async () => {
+    const m = memoryStore(2, { linkedinCheckedAt: null });
+    let calls = 0;
+    await runAll(m.store, labeller({ signal_type: 'authored' }), { collectors: { ...collectors, linkedin: async (vc: VcContext) => { calls++; return linkedin(vc); } } });
+    expect(calls).toBe(2);
+    expect(m.linkedinChecked.sort()).toEqual(['vc0', 'vc1']);
+    expect(m.signals.filter((s) => s.source === 'linkedin' && s.status === 'accepted')).toHaveLength(2);
+  });
+
+  it('skips VCs checked within the week, and VCs without a handle, and respects the Tavily budget', async () => {
+    let calls = 0;
+    const count = { ...collectors, linkedin: async (vc: VcContext) => { calls++; return linkedin(vc); } };
+    await runAll(memoryStore(2, { linkedinCheckedAt: '2026-10-10T00:00:00Z' }).store, labeller(), { collectors: count });
+    await runAll(memoryStore(2).store, labeller(), { collectors: count });
+    await runAll(memoryStore(2, { linkedinCheckedAt: null }).store, labeller(), { collectors: count, tavilyBudget: 0 });
+    expect(calls).toBe(0);
   });
 });

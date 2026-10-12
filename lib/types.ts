@@ -3,7 +3,7 @@ export type FetchStatus = 'ok' | 'partial' | 'failed';
 export type SignalType = 'investment' | 'authored' | 'speaking' | 'press' | 'other' | 'irrelevant';
 export type Subject = 'person' | 'firm';
 export type SignalStatus = 'pending' | 'accepted' | 'rejected' | 'unclassified';
-export type SignalSource = 'google_news' | 'tavily' | 'person_rss' | 'firm_rss';
+export type SignalSource = 'google_news' | 'tavily' | 'person_rss' | 'firm_rss' | 'linkedin';
 
 export type VcRow = {
   id: string;
@@ -37,6 +37,10 @@ export type VcContext = {
   peerResearch?: (Record<string, unknown> | null)[]; // other partners at the same firm
   snoozedUntil?: string | null;
   conflictDismissed?: boolean;
+  // LinkedIn handles (DECISIONS #45): posts count only when authored by the VC or their firm page.
+  linkedinSlug?: string | null;
+  firmLinkedinSlug?: string | null;
+  linkedinCheckedAt?: string | null;
 };
 
 export type RawItem = {

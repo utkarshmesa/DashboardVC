@@ -52,21 +52,22 @@ export const supabaseStore: Store = {
 
   async loadContexts(ids) {
     const rows = must(await db().from('vcs').select('*').in('id', ids), 'load vcs') as VcRow[];
-    const profiles = must(await db().from('vc_profile').select('vc_id, firm_key, aliases, ambiguous_name, tier, trust, research, snoozed_until, conflict_dismissed_at').in('vc_id', ids), 'load profiles') as
+    const profiles = must(await db().from('vc_profile').select('vc_id, firm_key, aliases, ambiguous_name, tier, trust, research, snoozed_until, conflict_dismissed_at, linkedin_slug, linkedin_checked_at').in('vc_id', ids), 'load profiles') as
       { vc_id: string; firm_key: string | null; aliases: string[] | null; ambiguous_name: boolean | null; tier: number | null; trust: string | null;
-        research: Record<string, unknown> | null; snoozed_until: string | null; conflict_dismissed_at: string | null }[];
+        research: Record<string, unknown> | null; snoozed_until: string | null; conflict_dismissed_at: string | null; linkedin_slug: string | null; linkedin_checked_at: string | null }[];
     // Partners at the same firm (by firm name) for firm-level standing conflicts.
     const firmNames = [...new Set(rows.map((r) => r.firm))];
     const peers = firmNames.length ? must(await db().from('vcs').select('id, firm').in('firm', firmNames), 'load firm peers') as { id: string; firm: string }[] : [];
     const peerProf = peers.length ? must(await db().from('vc_profile').select('vc_id, research').in('vc_id', peers.map((p) => p.id)), 'load peer research') as { vc_id: string; research: Record<string, unknown> | null }[] : [];
     const keys = [...new Set(profiles.map((p) => p.firm_key).filter((k): k is string => !!k))];
-    const firms = keys.length ? must(await db().from('firms').select('firm_key, aliases, firm_rss').in('firm_key', keys), 'load firms') as { firm_key: string; aliases: string[] | null; firm_rss: string | null }[] : [];
+    const firms = keys.length ? must(await db().from('firms').select('firm_key, aliases, firm_rss, linkedin_slug').in('firm_key', keys), 'load firms') as { firm_key: string; aliases: string[] | null; firm_rss: string | null; linkedin_slug: string | null }[] : [];
     return rows.map((row): VcContext => {
       const p = profiles.find((x) => x.vc_id === row.id);
       const f = firms.find((x) => x.firm_key === p?.firm_key);
       const peerResearch = peers.filter((x) => x.firm === row.firm && x.id !== row.id).map((x) => peerProf.find((y) => y.vc_id === x.id)?.research ?? null);
       return { id: row.id, name: row.name, firm: row.firm, aliases: p?.aliases ?? [], firmAliases: f?.aliases ?? [], ambiguous: !!p?.ambiguous_name, firmRss: f?.firm_rss ?? null, row,
-        tier: p?.tier ?? null, trust: p?.trust ?? null, research: p?.research ?? null, peerResearch, snoozedUntil: p?.snoozed_until ?? null, conflictDismissed: !!p?.conflict_dismissed_at };
+        tier: p?.tier ?? null, trust: p?.trust ?? null, research: p?.research ?? null, peerResearch, snoozedUntil: p?.snoozed_until ?? null, conflictDismissed: !!p?.conflict_dismissed_at,
+        linkedinSlug: p?.linkedin_slug ?? null, firmLinkedinSlug: f?.linkedin_slug ?? null, linkedinCheckedAt: p?.linkedin_checked_at ?? null };
     });
   },
 
@@ -143,6 +144,10 @@ export const supabaseStore: Store = {
 
   async markProcessed(vcId, fetchStatus: FetchStatus) {
     must(await db().from('vc_profile').update({ last_processed_at: new Date().toISOString(), last_fetch_status: fetchStatus }).eq('vc_id', vcId), 'mark processed');
+  },
+
+  async markLinkedinChecked(vcId) {
+    must(await db().from('vc_profile').update({ linkedin_checked_at: new Date().toISOString() }).eq('vc_id', vcId), 'mark linkedin checked');
   },
 
   async releaseClaims(runId, vcIds) {

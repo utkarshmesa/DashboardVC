@@ -35,8 +35,10 @@ export const SNIPPET_MAX = 300;
 export const SNIPPET_MIN_EXTRA_CHARS = 20;
 export const LOCK_STALE_MINUTES = 10;
 export const CRON_MAX_DURATION_S = 300; // Vercel Hobby maximum
+export const LINKEDIN_RECHECK_DAYS = 6; // LinkedIn search at most weekly per VC (Mon run; the Thu run skips)
 
-// docs/DECISIONS.md: LinkedIn/X are off-limits (SPEC §16); directory sites are profiles, not signals.
+// Excluded from the news fallback. X stays off-limits; LinkedIn posts have their own author-filtered collector
+// (lib/linkedin.ts, DECISIONS #45); directory sites are profiles, not signals.
 export const TAVILY_EXCLUDE_DOMAINS = [
   'linkedin.com', 'x.com', 'twitter.com', 'tracxn.com', 'crunchbase.com', 'angellinx.com', 'cbinsights.com', 'pitchbook.com',
 ];

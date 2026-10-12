@@ -160,6 +160,12 @@ export default function VcCard({ vc }: { vc: VcView }) {
         <h3 className="text-base font-semibold">{vc.name}</h3>
         <span className="text-sm text-neutral-600">{vc.firm}</span>
         <span className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ${FIT_TONE[vc.fit.label]}`} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`}>{vc.fit.label} fit {vc.fit.score}</span>
+        {vc.linkedin && (
+          <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-800 ring-1 ring-sky-200 hover:underline"
+            title="Posts found through search results in the last 30 days. Search sees only some posts, so this can under-count but never over-count.">
+            Active on LinkedIn: {[vc.linkedin.own && `${vc.linkedin.own} own post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm page`].filter(Boolean).join(', ')} in 30 days ↗
+          </a>
+        )}
         {vc.trust && <span className="rounded border border-neutral-300 px-1 text-[10px] text-neutral-600" title="Research trust level">trust {vc.trust}</span>}
         {vc.badges.map((b) => <span key={b} className="rounded bg-violet-50 px-1.5 py-0.5 text-[11px] text-violet-800">{b}</span>)}
       </div>

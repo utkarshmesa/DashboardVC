@@ -317,6 +317,7 @@ All: 10 s timeout; `url_hash = sha256(normalized url)`; snippet truncated to 300
 | Tavily, appearances | Monday runs only, the 20 tracked VCs with the best tier, if `appearance_checked_at` older than 6 days and budget allows | `"Name" podcast OR panel OR keynote OR summit` |
 | Person RSS | if `vcs.rss_url` set | items within 30 days |
 | Firm RSS | if `firms.firm_rss` set | items within 30 days; **firm-level source, not assumed to be about the person** |
+| LinkedIn posts (DECISIONS #45) | weekly per VC (`linkedin_checked_at` older than 6 days), if the VC or firm has a LinkedIn handle and budget allows | Tavily basic search restricted to linkedin.com, last month, `"Name" Firm`. Keep only `/posts/` URLs whose author is the VC (`vc_profile.linkedin_slug`) or the firm page (`firms.linkedin_slug`); date from the post id; title `LinkedIn post by <author>: …`. The app never requests a LinkedIn page. Feeds the classifier like any item; the card shows "Active on LinkedIn: N posts in 30 days" (positive only, never a penalty) |
 
 **Enrichment (enabled only if the Phase 0 gate says so):** after classification, for the at most 10 accepted items per run that would decide a contact action (rows 5–7 of 9.6) and have no snippet, run one Tavily basic search with the headline as the query, take the matching result's content (≤ 300 chars) and canonical URL, and reclassify those items. About 90 credits a month.
 
@@ -663,7 +664,7 @@ flowchart TB
 
 - Use `upsert` or `.update()` on `vcs` in app code.
 - Let the LLM produce URLs, dates, scores or actions.
-- Store full article text, or scrape LinkedIn or X.
+- Store full article text, scrape LinkedIn (visit, log in, or store profile data), or use X in any form. LinkedIn posts found through search-engine results, stored as title + 300-char snippet + link, are allowed (owner decision, DECISIONS #45).
 - Invent investor names or seed fake signals into production.
 - Read or build anything in `docs/later/` unless told.
 - Swallow errors; log them to `runs.errors`.
