@@ -120,11 +120,16 @@ export async function loadDashboard() {
 export async function loadHeader() {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
   const [runR, creditsR] = await Promise.all([
-    db().from('runs').select('id, status, trigger, started_at, finished_at').order('started_at', { ascending: false }).limit(1),
+    db().from('runs').select('id, status, trigger, started_at, finished_at, stats').order('started_at', { ascending: false }).limit(20),
     db().from('runs').select('tavily_credits').gte('started_at', monthStart),
   ]);
+  // Show the latest run that processed VCs (finisher/no-op runs that found nothing due would otherwise hide it).
+  type RunRow = { id: string; status: string; trigger: string; started_at: string; finished_at: string | null; stats: Record<string, { processed?: number }> | null };
+  const processed = (r: RunRow) => Object.values(r.stats ?? {}).reduce((n, st) => n + (st?.processed ?? 0), 0);
+  const runs = (runR.data ?? []) as RunRow[];
+  const real = runs.find((r) => processed(r) > 0) ?? runs[0] ?? null;
   return {
-    lastRun: runR.data?.[0] ?? null,
+    lastRun: real ? { ...real, processed: processed(real) } : null,
     credits: (creditsR.data ?? []).reduce((s, r) => s + (r.tavily_credits ?? 0), 0),
   };
 }

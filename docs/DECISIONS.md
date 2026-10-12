@@ -64,3 +64,4 @@ Phase 0 gate to the builder on 2026-10-12 ("do what works best"). Evidence: `spi
 ## Phase 4
 
 30. **Finisher gated in.** `.github/workflows/finisher.yml` runs at 07:00 and 08:00 IST on Mon/Thu, an hour after the Vercel Cron, and on demand. It calls `POST /api/run/step` with the `CRON_SECRET` repo secret until the run reports done (at most 12 steps). On days when the cron already finished, it creates one empty `done` run and exits.
+31. **Header "Last run"** shows the latest run that processed at least one VC, with its count. Finisher and Run-now invocations that find nothing due create empty `done` runs, and showing those hid the real last run.

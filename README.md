@@ -2,7 +2,7 @@
 
 **What it does.** Twice a week this collects public signals (deals, writing, talks, press) about the 50 VCs on a founder's list, has Gemini label each item, and lets plain code score every VC and pick an action. It writes four system columns of the founder's Supabase `vcs` table (last signal date, summary, follow-up score, recommended action) and never touches the founder's own columns. A password-protected dashboard shows who to contact this week, why, with a source link and a suggested opener, and the proof is one click away.
 
-Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SPEC.md` · Decisions where the spec was silent: `docs/DECISIONS.md` · Demo: `docs/DEMO.md` · Acceptance: `docs/ACCEPTANCE.md`
+Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SPEC.md` · Decisions where the spec was silent: `docs/DECISIONS.md` · Demo: `docs/DEMO.md` · Acceptance: `docs/ACCEPTANCE.md` · Build status: `docs/STATUS.md`
 
 ## Setup
 

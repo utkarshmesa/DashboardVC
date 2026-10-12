@@ -1,6 +1,6 @@
 # Acceptance checklist (SPEC §15), on the deployed URL
 
-Checked 2026-10-12 against https://vc-pipeline-zeta.vercel.app and the production Supabase project. ✅ = verified, ⏳ = needs time or a human.
+Checked 2026-10-12 against https://vc-pipeline-zeta.vercel.app and the production Supabase project. ✅ = verified, ⏳ = needs time or a human. Thursday's items are checked automatically by the scheduled task `vc-pipeline-thursday-acceptance` at 09:30 IST on 2026-10-15.
 
 | # | Item | Status | Evidence |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Checked 2026-10-12 against https://vc-pipeline-zeta.vercel.app and the productio
 | 9 | Every hook shown passes the guard; no hook on rejected items | ✅ | All 73 stored hooks re-checked with `hookSupported`: 0 failures; 0 hooks on non-accepted items. |
 | 10 | Service-role key absent from the client bundle (grep the build) | ✅ | Local `.next/static` (13 files) and the 7 production client chunks: no key, no `service_role`. |
 | 11 | No Anthropic SDK or API call anywhere in the codebase | ✅ | `grep` over app code, scripts, tests, `package.json` and the lockfile: none. |
-| 12 | README sections 1–7 present; demo script rehearsed | ✅ / ⏳ | README has all seven sections (what it does, setup and env, AI boundary with eval, data and terms, Components Map, limitations, tooling). `docs/DEMO.md` is written. ⏳ Rehearsal is a human step. |
+| 12 | README sections 1–7 present; demo script rehearsed | ✅ / ⏳ | README has all seven sections (what it does, setup and env, AI boundary with eval, data and terms, Components Map, limitations, tooling). `docs/DEMO.md` is written, and every step was dry-run on 2026-10-12 (header, This week, drawer opener, 👎 rescore, Same firm/Quiet sections, `/quality`, ownership test). ⏳ A spoken, timed rehearsal is a human step. |
 | 13 | A thumbs-down on a signal changes that VC's score and action immediately | ✅ | Live: Venkatesh Peddi went from 24 Warm to 0 Quiet 2.9 s after a 👎 on his only signal; removing the 👎 restored 24 Warm. |
 
 Also required by SPEC §13 Phase 4: **run the pipeline at least 3 times across different days.** Full runs so far: 2026-10-11 (cron endpoint, plus manual runs) and 2026-10-12 (manual). ⏳ The third day is the scheduled Thursday 2026-10-15 run.

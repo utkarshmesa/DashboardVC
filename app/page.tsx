@@ -24,7 +24,7 @@ export default async function Home() {
           </nav>
         </div>
         <p className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-neutral-600">
-          <span>Last run: {run ? `${ist(run.finished_at ?? run.started_at)} · ${run.status} (${run.trigger})` : 'never'}</span>
+          <span>Last run: {run ? `${ist(run.finished_at ?? run.started_at)} · ${run.status} (${run.trigger}) · ${run.processed} VCs` : 'never'}</span>
           <span>Next run: {ist(nextScheduledRun().toISOString())}</span>
           <span>Tavily credits this month: {header.credits}</span>
         </p>
