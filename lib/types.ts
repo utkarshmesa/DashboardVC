@@ -73,6 +73,7 @@ export type SignalRow = {
   role_change_hint: string | null;
   event_key: string | null;
   summary: string | null;
+  hook: string | null;
   enriched_run: string | null;
 };
 
@@ -89,6 +90,7 @@ export type Labels = {
   role_change_hint: string | null;
   event_key: string;
   summary: string;
+  hook: string | null;
 };
 
 export type LabelUpdate = Labels & { id: number; status: SignalStatus; reject_reason: string | null };

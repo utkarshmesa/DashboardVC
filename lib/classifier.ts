@@ -1,4 +1,4 @@
-// SPEC §9.4 classifier. The hook field and its guard arrive in Phase 3. funded_company is an addition
+// SPEC §9.4 classifier, including the hook and its code guard. funded_company is an addition
 // (docs/DECISIONS.md) so the conflict action can name the company; a code guard keeps it verbatim.
 // Relevance is judged against target_space only, as a fixed level that code maps to a number; possible_competitor is
 // judged against my_product only (never flagged when my_product is empty).
@@ -62,6 +62,10 @@ For each item, using ONLY the provided title and snippet:
 - event_key: a short lowercase slug for the underlying event, so different
   articles about the same event share it.
 - summary: at most 20 words, factual, only from the item text.
+- hook: if about_this_vc is true and signal_type is not irrelevant, ONE
+  sentence (max 25 words) the founder could open a cold email with,
+  referencing this item. Use only facts present in the title or snippet.
+  No flattery, no claims about the founder's company. Otherwise null.
 
 Never invent facts. Return every item_id exactly once.`;
 
@@ -87,9 +91,10 @@ export const responseSchema = {
           role_change_hint: { type: Type.STRING, nullable: true },
           event_key: { type: Type.STRING },
           summary: { type: Type.STRING },
+          hook: { type: Type.STRING, nullable: true },
         },
         required: ['item_id', 'about_this_vc', 'confidence', 'subject', 'signal_type', 'relevance_level', 'possible_competitor',
-          'competitor_evidence', 'funded_company', 'role_change_hint', 'event_key', 'summary'],
+          'competitor_evidence', 'funded_company', 'role_change_hint', 'event_key', 'summary', 'hook'],
       },
     },
   },
@@ -109,6 +114,7 @@ export const LabelItemZ = z.object({
   role_change_hint: z.string().nullable(),
   event_key: z.string(),
   summary: z.string(),
+  hook: z.string().nullable(),
 });
 export const ResponseZ = z.object({ items: z.array(LabelItemZ) });
 
@@ -172,13 +178,36 @@ export function acceptance(l: Labels, t: Thresholds = DEFAULT_THRESHOLDS): { sta
   return { status: 'accepted', reject_reason: null };
 }
 
+const HOOK_STOPLIST = new Set(['i', "i'm", 'i’m', 'your', 'congrats', 'saw', 'loved', 'read']);
+
+// SPEC §9.4 hook guard: every number and every capitalised word in the hook must appear (case-insensitive) in the
+// item's title, snippet, VC name, VC aliases or firm name; sentence-initial words and a small stoplist are exempt.
+export function hookSupported(hook: string, support: string): boolean {
+  const hay = support.toLowerCase();
+  const words = hook.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    const initial = i === 0 || /[.!?:]["'”’)]*$/.test(words[i - 1]);
+    const core = words[i].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    if (!core) continue;
+    if (/\d/.test(core)) {
+      const num = core.replace(/[^\d.]/g, '');
+      if (!hay.includes(core.toLowerCase()) && !hay.replace(/,/g, '').includes(num)) return false;
+      continue;
+    }
+    if (/^\p{Lu}/u.test(core) && !initial && !HOOK_STOPLIST.has(core.toLowerCase())) {
+      if (!hay.includes(core.replace(/['’]s$/i, '').toLowerCase())) return false;
+    }
+  }
+  return true;
+}
+
 // Model output → stored labels: the relevance number is mapped in code from the fixed level.
 export function toLabels(raw: Omit<z.infer<typeof LabelItemZ>, 'item_id'>): Labels {
   return { ...raw, relevance: RELEVANCE_VALUE[raw.relevance_level as RelevanceLevel] };
 }
 
 // SPEC §9.4 competitor guard, plus the same verbatim rule for funded_company. No product → never a competitor.
-export function applyGuards(l: Labels, item: { title: string; snippet: string | null }, myProduct = 'x'): Labels {
+export function applyGuards(l: Labels, item: { title: string; snippet: string | null; vc_name?: string; vc_aliases?: string[]; vc_firm?: string }, myProduct = 'x'): Labels {
   const text = `${item.title} ${item.snippet ?? ''}`.toLowerCase();
   const inText = (s: string | null) => !!s && !!s.trim() && text.includes(s.trim().toLowerCase());
   const out = { ...l };
@@ -186,6 +215,10 @@ export function applyGuards(l: Labels, item: { title: string; snippet: string | 
   if (out.possible_competitor && !inText(out.competitor_evidence)) { out.possible_competitor = false; out.competitor_evidence = null; }
   if (!out.possible_competitor) out.competitor_evidence = null;
   if (!inText(out.funded_company)) out.funded_company = null;
+  if (out.hook) {
+    const support = [item.title, item.snippet ?? '', item.vc_name ?? '', ...(item.vc_aliases ?? []), item.vc_firm ?? ''].join(' ');
+    if (!out.hook.trim() || !hookSupported(out.hook, support)) out.hook = null;
+  }
   return out;
 }
 
@@ -255,7 +288,8 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
       seen.add(l.item_id);
       const { item_id, ...raw } = l;
       const labels = applyGuards(toLabels(raw), byItem.get(item_id)!, opts.persona.myProduct);
-      out.updates.push({ id: item_id, ...labels, ...acceptance(labels, opts.thresholds) });
+      const verdict = acceptance(labels, opts.thresholds);
+      out.updates.push({ id: item_id, ...labels, hook: verdict.status === 'accepted' ? labels.hook : null, ...verdict });
     }
     for (const c of chunk) if (!seen.has(c.item_id)) out.unclassified.push(c.item_id);
   }

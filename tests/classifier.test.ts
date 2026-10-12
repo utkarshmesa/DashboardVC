@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applyGuards, classify, parseResponse, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
+import { applyGuards, classify, hookSupported, parseResponse, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
 
 const input = (item_id: number, vc_id = 'vc1'): ClassifyInput => ({
   item_id, vc_id, vc_name: 'A B', vc_firm: 'F', vc_aliases: [], firm_aliases: [], title: 't', snippet: null, source: 'google_news',
 });
 const label = (item_id: number, o: Record<string, unknown> = {}) => ({
   item_id, about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance_level: 'adjacent',
-  possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', ...o,
+  possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', hook: null, ...o,
 });
 const opts = (generate: GenerateFn, keys = ['k1'], myProduct = 'TMS SaaS') => ({ keys, model: 'm', persona: { targetSpace: 'logistics software', myProduct }, generate, backoffMs: [1, 1, 1] });
 
@@ -107,5 +107,23 @@ describe('classifier', () => {
     await classify([input(1)], opts(gen, ['k1'], ''));
     expect(system).toContain("Founder's target space (judge relevance_level against this only): logistics software");
     expect(system).toContain('(none: always set possible_competitor to false)');
+  });
+
+  it('hook guard: names and numbers must come from the item, VC name, aliases or firm', () => {
+    const support = 'Yantra Packs raises Rs 12 crore seed from Caret Capital Prajakt Raut';
+    expect(hookSupported('Saw that Caret Capital backed Yantra Packs in its Rs 12 crore seed round.', support)).toBe(true);
+    expect(hookSupported('Congrats on leading the Yantra Packs round, Prajakt.', support)).toBe(true);
+    expect(hookSupported('Saw that Caret Capital backed Delhivery last week.', support)).toBe(false); // unsupported name
+    expect(hookSupported('Congrats on the Rs 50 crore round.', support)).toBe(false);                 // unsupported number
+    expect(hookSupported('Read your take. Yantra Packs looks strong.', support)).toBe(true);          // sentence-initial exempt
+  });
+
+  it('drops unsupported hooks and never keeps a hook on a rejected item', async () => {
+    const it2: ClassifyInput = { ...input(1), title: 'Yantra Packs raises Rs 12 crore', vc_name: 'Prajakt Raut', vc_firm: 'Caret Capital' };
+    const run = async (o: Record<string, unknown>) => (await classify([it2], opts(async () => JSON.stringify({ items: [label(1, o)] })))).updates[0];
+    expect((await run({ hook: 'Saw Caret Capital backed Yantra Packs with Rs 12 crore.' })).hook).toBe('Saw Caret Capital backed Yantra Packs with Rs 12 crore.');
+    expect((await run({ hook: 'Saw Sequoia backed Yantra Packs.' })).hook).toBeNull();
+    expect((await run({ hook: 'Saw Caret Capital backed Yantra Packs.', about_this_vc: false })).hook).toBeNull();
+    expect((await run({ hook: 'Saw Caret Capital backed Yantra Packs.', confidence: 0.3 })).hook).toBeNull();
   });
 });

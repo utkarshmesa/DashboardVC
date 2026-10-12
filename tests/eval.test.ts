@@ -5,7 +5,7 @@ import type { Labels } from '@/lib/types';
 const g = (item_id: number, about: boolean, type: GoldLabel['signal_type'] = 'investment'): GoldLabel =>
   ({ item_id, about_this_vc: about, subject: 'firm', signal_type: type, relevance_level: 'core', competitor: false });
 const p = (o: Partial<Labels> = {}): Labels => ({ about_this_vc: true, confidence: 0.9, subject: 'firm', signal_type: 'investment', relevance: 1, relevance_level: 'core',
-  possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', ...o });
+  possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: 'e', summary: 's', hook: null, ...o });
 
 describe('eval maths', () => {
   it('computes acceptance and about precision/recall and type accuracy', () => {

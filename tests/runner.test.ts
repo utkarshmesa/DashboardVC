@@ -48,7 +48,7 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
       for (const r of rows) {
         if (signals.some((s) => s.vc_id === r.vc_id && (s.url_hash === r.url_hash || s.title_norm === r.title_norm))) continue;
         signals.push({ ...r, id: signals.length + 1, subject: null, signal_type: null, about_this_vc: null, confidence: null, relevance: null, relevance_level: null,
-          possible_competitor: null, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: null, summary: null, enriched_run: null });
+          possible_competitor: null, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: null, summary: null, hook: null, enriched_run: null });
         k++;
       }
       return k;
@@ -91,7 +91,7 @@ const collectors = {
 const labeller = (o: Record<string, unknown> = {}): GenerateFn => async ({ contents }) => {
   const items = JSON.parse(contents) as { item_id: number }[];
   return JSON.stringify({ items: items.map((i) => ({ item_id: i.item_id, about_this_vc: true, confidence: 0.9, subject: 'person', signal_type: 'investment',
-    relevance_level: 'core', possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: `e${i.item_id}`, summary: 'Backed a startup', ...o })) });
+    relevance_level: 'core', possible_competitor: false, competitor_evidence: null, funded_company: null, role_change_hint: null, event_key: `e${i.item_id}`, summary: 'Backed a startup', hook: null, ...o })) });
 };
 const failingGen: GenerateFn = async () => { throw Object.assign(new Error('overloaded'), { status: 503 }); };
 
