@@ -9,7 +9,7 @@ import { loadPersona } from '@/lib/store';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [{ vcs }, header, persona] = await Promise.all([loadDashboard(), loadHeader(), loadPersona()]);
+  const [{ vcs, runway }, header, persona] = await Promise.all([loadDashboard(), loadHeader(), loadPersona()]);
   const run = header.lastRun;
 
   return (
@@ -18,6 +18,7 @@ export default async function Home() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold">VC pipeline</h1>
           <nav className="flex items-center gap-4 text-sm">
+            <Link href="/investors" className="text-neutral-600 hover:underline">Add investors</Link>
             <Link href="/quality" className="text-neutral-600 hover:underline">Quality</Link>
             <Link href="/settings" className="text-neutral-600 hover:underline">Settings</Link>
             <RunNow />
@@ -49,6 +50,10 @@ export default async function Home() {
             {o.length} email{o.length === 1 ? '' : 's'} to send{o.length ? <> ({names(o)}{o.length > 6 ? ', …' : ''})</> : ''}
             {w > 0 && <>, plus {w} optional if you have capacity</>}
             {c.length > 0 && <> · {c.length} conflict{c.length === 1 ? '' : 's'} to check</>}
+            <span className={`mt-1 block text-xs ${runway.weeks < 4 ? 'text-amber-800' : 'text-neutral-600'}`}>
+              Runway: {runway.firms} good-fit firm{runway.firms === 1 ? '' : 's'} left to contact, about {runway.weeks} week{runway.weeks === 1 ? '' : 's'} at {runway.perWeek} a week.{' '}
+              <Link href="/investors" className="underline">Add investors</Link>
+            </span>
           </p>
         );
       })()}

@@ -70,12 +70,13 @@ export async function generateOpeners(items: OpenerInput[], opts: { keys: string
 
 // ---- Draft (code-assembled) ----
 
-export type DraftSettings = { pitch: string; senderName: string; ask: string };
+export type DraftSettings = { pitch: string; senderName: string; ask: string; deckUrl?: string };
 export const DEFAULT_ASK = 'Would you be open to a 20-minute call in the next two weeks?';
 
 export function assembleDraft(d: { vcName: string; opener: string | null; hook: string | null; settings: DraftSettings; nudgeSince?: string | null }): { subject: string; body: string } {
   const first = d.vcName.trim().split(/\s+/)[0];
   const subjectBase = d.settings.pitch.trim().split(/[.!?]/)[0].slice(0, 70) || 'Intro and seed round';
+  const deck = d.settings.deckUrl?.trim() ? `Deck: ${d.settings.deckUrl.trim()}` : null;
   if (d.nudgeSince !== undefined) {
     // Follow-up nudge: short, references the earlier email and any fresh hook; no new claims.
     const lines = [`Hi ${first},`, '', `Following up on my note${d.nudgeSince ? ` from ${d.nudgeSince}` : ''}.${d.hook ? ` ${d.hook}` : ''}`, '',
@@ -84,6 +85,6 @@ export function assembleDraft(d: { vcName: string; opener: string | null; hook: 
   }
   const pitch = d.settings.pitch.trim() || '[Add your one-line pitch in Settings]';
   const lines = [`Hi ${first},`, '', // One personal line: the fit-grounded opener; the news hook only when there is no opener.
-    d.opener ?? d.hook ?? '', '', pitch, '', d.settings.ask.trim() || DEFAULT_ASK, '', 'Best,', d.settings.senderName.trim() || '[Your name]'];
+    d.opener ?? d.hook ?? '', '', pitch, ...(deck ? ['', deck] : []), '', d.settings.ask.trim() || DEFAULT_ASK, '', 'Best,', d.settings.senderName.trim() || '[Your name]'];
   return { subject: subjectBase, body: lines.join('\n').replace(/\n{3,}/g, '\n\n') };
 }

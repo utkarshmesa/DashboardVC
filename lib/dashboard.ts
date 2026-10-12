@@ -1,9 +1,10 @@
 import 'server-only';
 import { daysSince } from './actions';
-import { REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
+import { OUTREACH_PER_WEEK, REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
 import { db } from './db';
 import { competitorTerms, fitScore, researchConflict, type Research } from './fit';
-import { assembleDraft } from './opener';
+import { assembleDraft, type DraftSettings } from './opener';
+import { formAnswers, gmailCompose, outreachRoute, type Route } from './route';
 import { loadDraftSettings, loadPersona } from './store';
 import { scoreSignals, signalAge, type ScorableSignal } from './scoring';
 import type { VcRow } from './types';
@@ -13,7 +14,7 @@ export const SECTIONS = [
   { key: 'followups', title: 'Follow-ups due', match: (a: string) => /^(Nudge due|Close the loop|Next step due|Nudge — reference)/.test(a), open: true },
   { key: 'thisWeek', title: 'New outreach this week', match: (a: string) => /^(Reach out|Warm)/.test(a), open: true },
   { key: 'conflict', title: 'Check conflict', match: (a: string) => a.startsWith('Check conflict') },
-  { key: 'queue', title: 'Next up — good fit', match: (a: string) => a.startsWith('Good fit') },
+  { key: 'queue', title: 'Next up — good fit', match: (a: string) => a.startsWith('Good fit') || a.startsWith('Added by you') },
   { key: 'sameFirm', title: 'Same firm', match: (a: string) => a.startsWith('Same firm') },
   { key: 'wait', title: 'Waiting / in conversation', match: (a: string) => a.startsWith('Wait') || a.startsWith('In conversation') || a.startsWith('Mention') },
   { key: 'snoozed', title: 'Snoozed', match: (a: string) => a.startsWith('Snoozed') },
@@ -71,6 +72,9 @@ export type VcView = {
   conflict: { evidence: string; dismissed: boolean } | null; // standing research conflict (firm-level)
   opener: string | null;     // research-grounded opener (AI, guarded against the research text)
   draft: { subject: string; body: string } | null; // code-assembled email draft (outreach or nudge)
+  route: Route;               // how to reach them, from the research approach note (REVIEW-2 item 3)
+  formAnswers: string | null; // copy-ready pitch-form answers when the route is a form
+  gmailUrl: string | null;    // Gmail compose with the draft filled in
   linkedin: { own: number; firm: number; latestUrl: string } | null; // posts by the VC / firm page in 30 days (DECISIONS #45)
   accepted: SignalView[];
   others: SignalView[]; // rejected and undated, collapsed in the drawer
@@ -90,7 +94,7 @@ export async function loadDashboard() {
   const now = new Date();
   const [vcsR, profR, sigR, fbR] = await Promise.all([
     db().from('vcs').select('*'),
-    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener'),
+    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener, linkedin_slug'),
     db().from('signals').select('id, vc_id, title, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
@@ -129,6 +133,8 @@ export async function loadDashboard() {
     const peers = allVcs.filter((x) => x.firm === v.firm).map((x) => ((profR.data ?? []).find((p) => p.vc_id === x.id)?.research ?? null) as Research | null);
     const standing = researchConflict(peers, terms);
     const posts = mine.filter((s) => s.source === 'linkedin' && s.published_at && (now.getTime() - Date.parse(s.published_at)) / 86_400_000 <= 30);
+    const draft = draftFor(v, action, (prof?.opener as string | null) ?? null, hookSignal?.hook ?? null, draftSettings);
+    const route = outreachRoute(research?.approach ? String(research.approach) : null, v.firm, (prof?.linkedin_slug as string | null) ?? null);
     const approachText = research?.approach ? String(research.approach) : null;
     return {
       id: v.id, name: v.name, firm: v.firm, status: v.status, lastContactDate: v.last_contact_date, notes: v.notes,
@@ -147,7 +153,10 @@ export async function loadDashboard() {
       snoozedUntil: prof?.snoozed_until ?? null,
       conflict: standing ? { evidence: standing.evidence, dismissed: !!prof?.conflict_dismissed_at } : null,
       opener: (prof?.opener as string | null) ?? null,
-      draft: draftFor(v, action, (prof?.opener as string | null) ?? null, hookSignal?.hook ?? null, draftSettings),
+      draft,
+      route,
+      formAnswers: draft && route.kind === 'form' && v.status === 'not_contacted' ? formAnswers(draftSettings) : null,
+      gmailUrl: draft ? gmailCompose(draft.subject, draft.body) : null,
       linkedin: posts.length ? { own: posts.filter((s) => s.source_name === 'LinkedIn (own post)').length, firm: posts.filter((s) => s.source_name !== 'LinkedIn (own post)').length, latestUrl: posts[0].url } : null,
       accepted: accepted.map(view),
       others: mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).slice(0, 25).map(view),
@@ -156,7 +165,10 @@ export async function loadDashboard() {
   // Follow-ups: longest-waiting first; everything else by priority (fit + 0.5 × recent-signal score).
   vcs.sort((a, b) => (a.section === 'followups' && b.section === 'followups' ? (b.daysSinceContact ?? 0) - (a.daysSinceContact ?? 0) : 0)
     || b.priority - a.priority || a.name.localeCompare(b.name));
-  return { vcs, generatedAt: now.toISOString() };
+  // Runway (REVIEW-2 item 2): firms still to contact with a fit-based outreach action, in weeks at the weekly cap.
+  const firmsLeft = new Set(vcs.filter((v) => v.status === 'not_contacted' && /^(Reach out|Warm|Good fit|Added by you)/.test(v.action)).map((v) => v.firm.toLowerCase())).size;
+  const runway = { firms: firmsLeft, weeks: Math.round((firmsLeft / OUTREACH_PER_WEEK) * 10) / 10, perWeek: OUTREACH_PER_WEEK };
+  return { vcs, runway, generatedAt: now.toISOString() };
 }
 
 export async function loadHeader() {
@@ -186,12 +198,12 @@ export function nextScheduledRun(now = new Date()): Date {
 }
 
 // Outreach draft for new-outreach / queued VCs, nudge draft for follow-ups; none for conflicts, passed or waiting.
-function draftFor(v: VcRow, action: string, opener: string | null, hook: string | null, settings: { pitch: string; senderName: string; ask: string }) {
+function draftFor(v: VcRow, action: string, opener: string | null, hook: string | null, settings: DraftSettings) {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   if (/^(Nudge|Close the loop)/.test(action)) {
     const since = v.last_contact_date ? `${Number(v.last_contact_date.slice(8, 10))} ${MONTHS[Number(v.last_contact_date.slice(5, 7)) - 1]}` : null;
     return assembleDraft({ vcName: v.name, opener: null, hook, settings: { ...settings, ask: settings.ask }, nudgeSince: since });
   }
-  if (/^(Reach out|Warm|Good fit)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
+  if (/^(Reach out|Warm|Good fit|Added by you)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
   return null;
 }

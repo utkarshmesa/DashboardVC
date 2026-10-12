@@ -6,7 +6,10 @@ import { db } from '@/lib/db';
 import { logEvent } from '@/lib/outcomes';
 import { rescoreVc } from '@/lib/pipeline';
 
-const Body = z.object({ action: z.enum(['emailed', 'replied', 'meeting', 'passed', 'snooze', 'unsnooze', 'dismiss_conflict', 'restore_conflict']) });
+const Body = z.object({
+  action: z.enum(['emailed', 'replied', 'meeting', 'passed', 'snooze', 'unsnooze', 'dismiss_conflict', 'restore_conflict']),
+  channel: z.enum(['email', 'form', 'linkedin', 'other']).optional(), // how the outreach went (REVIEW-2 item 3)
+});
 const SNOOZE_DAYS = 14;
 const istToday = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 
@@ -44,7 +47,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const before = cur.data.status;
   const event = a === 'emailed' ? (before === 'not_contacted' ? 'emailed' : 'nudged') : a === 'replied' ? 'replied' : a === 'meeting' ? 'meeting'
     : a === 'passed' ? 'passed' : a === 'snooze' ? 'snoozed' : a === 'unsnooze' ? 'unsnoozed' : null;
-  if (event) await logEvent(id, event, before, a === 'emailed' ? 'awaiting_response' : a === 'replied' || a === 'meeting' ? 'in_conversation' : a === 'passed' ? 'passed' : before);
+  if (event) await logEvent(id, event, before, a === 'emailed' ? 'awaiting_response' : a === 'replied' || a === 'meeting' ? 'in_conversation' : a === 'passed' ? 'passed' : before,
+    a === 'emailed' ? (parsed.data.channel ?? null) : null);
   await rescoreVc(id);
   const vc = await db().from('vcs').select('status, last_contact_date, follow_up_score, recommended_action').eq('id', id).single();
   return Response.json({ ok: true, vc: vc.data });

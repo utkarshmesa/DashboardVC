@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, decideAction, meetsEvidenceFloor, planPass, sameFirm, type ActionInput, type PlanRow } from '@/lib/actions';
+import { ACTIONS, decideAction, meetsEvidenceFloor, OUTREACH_ACTIONS, planPass, sameFirm, type ActionInput, type PlanRow } from '@/lib/actions';
 
 const NOW = new Date('2026-10-12T05:00:00Z');
 const base: ActionInput = {
@@ -90,5 +90,21 @@ describe('plan pass: firm routing and weekly capacity', () => {
   });
   it('leaves follow-ups, conflicts and quiet rows alone', () => {
     expect(planPass([row({ id: 'a', action: ACTIONS.closeLoop, status: 'awaiting_response' }), row({ id: 'b', action: 'Check conflict — backed X', firm: 'G' }), row({ id: 'c', action: ACTIONS.quiet, firm: 'H' })])).toEqual([]);
+  });
+});
+
+describe('O6: investors Vikram added himself (DECISIONS #47)', () => {
+  const weak = { label: 'weak' as const, flags: [] };
+  it('weak fit, no news: queued because he chose them; otherwise Quiet as before', () => {
+    expect(act({ fit: weak, score: 0, ownerAdded: true })).toMatchObject({ row: 'O6', action: ACTIONS.ownerAdded });
+    expect(act({ fit: weak, score: 0 })).toMatchObject({ row: 'Q' });
+  });
+  it('never past a deal-breaker or a conflict, and fit/news rows still win', () => {
+    expect(act({ fit: { label: 'weak', flags: ['usually invests after seed'] }, score: 0, ownerAdded: true }).row).toBe('Q');
+    expect(act({ fit: weak, score: 0, ownerAdded: true, conflictCompany: 'a TMS company' }).row).toBe('5');
+    expect(act({ fit: { label: 'strong', flags: [] }, score: 0, ownerAdded: true }).row).toBe('O2');
+  });
+  it('is an outreach action, so firm routing applies to it', () => {
+    expect(OUTREACH_ACTIONS).toContain(ACTIONS.ownerAdded);
   });
 });

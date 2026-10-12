@@ -41,6 +41,7 @@ export type VcContext = {
   linkedinSlug?: string | null;
   firmLinkedinSlug?: string | null;
   linkedinCheckedAt?: string | null;
+  ownerAdded?: boolean; // added by Vikram from the Add investors page (DECISIONS #47)
 };
 
 export type RawItem = {

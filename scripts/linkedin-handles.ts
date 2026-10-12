@@ -1,13 +1,16 @@
 // npm run linkedin:handles -- draft | apply
 // draft: one Tavily search per VC (plus one per firm still missing a page) restricted to linkedin.com, reading only
 //        search-result titles/URLs, never LinkedIn itself. Writes seed/linkedin_handles.csv for human review.
-// apply: writes the reviewed CSV (rows with confidence "ok") into vc_profile.linkedin_slug / firms.linkedin_slug.
+//        Only VCs and firms still missing a handle are searched. If the reviewed file already exists, the draft goes to
+//        seed/linkedin_handles_new.csv, so earlier reviews are never overwritten.
+// apply [file]: writes the reviewed CSV (rows with confidence "ok") into vc_profile.linkedin_slug / firms.linkedin_slug.
 // Credits used by draft are recorded as a finished manual run so the monthly Tavily budget stays accurate.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { db } from '../lib/db';
 import { parseCsv } from './csv';
 
 const FILE = 'seed/linkedin_handles.csv';
+const NEW_FILE = 'seed/linkedin_handles_new.csv';
 const mode = process.argv[2];
 const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const esc = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
@@ -27,12 +30,13 @@ const slugOf = (url: string, kind: 'in' | 'company') => url.match(new RegExp(`li
 
 async function draft() {
   const vcs = (await db().from('vcs').select('id, name, firm').order('name')).data ?? [];
-  const prof = (await db().from('vc_profile').select('vc_id, firm_key')).data ?? [];
-  const firms = (await db().from('firms').select('firm_key, display_name, aliases')).data ?? [];
+  const prof = (await db().from('vc_profile').select('vc_id, firm_key, linkedin_slug')).data ?? [];
+  const firms = (await db().from('firms').select('firm_key, display_name, aliases, linkedin_slug')).data ?? [];
   const rows: string[] = ['kind,key,name,firm,slug,confidence,evidence'];
   const firmFound = new Map<string, { slug: string; evidence: string }>();
   let credits = 0;
   for (const v of vcs) {
+    if (prof.find((p) => p.vc_id === v.id)?.linkedin_slug) continue; // already reviewed
     const fk = prof.find((p) => p.vc_id === v.id)?.firm_key ?? null;
     const f = firms.find((x) => x.firm_key === fk);
     const firmNames = [v.firm, f?.display_name, ...(f?.aliases ?? [])].filter(Boolean).map((s) => norm(s as string));
@@ -53,7 +57,7 @@ async function draft() {
     console.log(`${best ? best.conf.padEnd(7) : 'missing'} ${v.name} → ${best?.slug ?? '-'}`);
   }
   for (const f of firms) {
-    if (!prof.some((p) => p.firm_key === f.firm_key)) continue; // only firms with tracked VCs
+    if (!prof.some((p) => p.firm_key === f.firm_key) || f.linkedin_slug) continue; // tracked firms still missing a page
     if (!firmFound.has(f.firm_key)) {
       const res = await search(`"${f.display_name}" venture capital linkedin company page`); credits++;
       const names = [f.display_name, ...(f.aliases ?? [])].map(norm);
@@ -64,14 +68,15 @@ async function draft() {
     rows.push(['firm', f.firm_key, f.display_name, f.display_name, got?.slug ?? '', got ? 'ok' : 'missing', got?.evidence ?? ''].map(esc).join(','));
     console.log(`${got ? 'ok     ' : 'missing'} [firm] ${f.display_name} → ${got?.slug ?? '-'}`);
   }
-  writeFileSync(FILE, rows.join('\n') + '\n');
+  const out = existsSync(FILE) ? NEW_FILE : FILE;
+  writeFileSync(out, rows.join('\n') + '\n');
   const now = new Date().toISOString();
   await db().from('runs').insert({ trigger: 'manual', status: 'done', started_at: now, heartbeat_at: now, finished_at: now, tavily_credits: credits, stats: { note: 'linkedin handle draft' } });
-  console.log(`\nwrote ${FILE}; ${credits} Tavily credits recorded`);
+  console.log(`\nwrote ${out}; ${credits} Tavily credits recorded. Review it, then: npm run linkedin:handles -- apply ${out}`);
 }
 
 async function apply() {
-  const rows = parseCsv(readFileSync(FILE, 'utf8')).filter((r) => r.confidence === 'ok' && r.slug);
+  const rows = parseCsv(readFileSync(process.argv[3] ?? FILE, 'utf8')).filter((r) => r.confidence === 'ok' && r.slug);
   let n = 0;
   for (const r of rows) {
     const q = r.kind === 'vc'

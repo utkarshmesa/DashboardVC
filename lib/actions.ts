@@ -21,6 +21,7 @@ export const ACTIONS = {
   mention: 'Mention in next touchpoint',
   warm: 'Warm — reach out if capacity',
   goodFit: 'Good fit — queue for outreach',
+  ownerAdded: 'Added by you — queue for outreach',
   lowOutside: 'Low — activity outside your space',
   lowWeak: 'Low — weak or fading signal',
   quiet: 'Quiet — hold',
@@ -36,6 +37,7 @@ export type ActionInput = {
   hasEvidence: boolean;           // evidence floor (meetsEvidenceFloor)
   fit: Pick<Fit, 'label'> & { flags?: string[] }; // research-based fit (lib/fit.ts) and its deal-breaker flags
   snoozedUntil?: string | null;   // YYYY-MM-DD
+  ownerAdded?: boolean;           // Vikram added this investor himself (Add investors page)
   now: Date;
   reach?: number;
   warm?: number;
@@ -92,13 +94,15 @@ export function decideAction(i: ActionInput): ActionResult {
   if (i.fit.label === 'good') return i.score >= warm ? r('O3', ACTIONS.warm) : r('O4', ACTIONS.goodFit);
   // Weak fit: only in-space news (core / logistics) earns Warm, and never past a deal-breaker (e.g. invests after seed).
   if (i.score >= warm && (i.topRelevance ?? 0) >= WEAK_FIT_WARM_RELEVANCE && !(i.fit.flags?.length)) return r('O5', ACTIONS.warm);
+  // Weak fit but Vikram chose to add them: his judgement queues them (never past a deal-breaker).
+  if (i.ownerAdded && !(i.fit.flags?.length)) return r('O6', ACTIONS.ownerAdded);
   if (i.score >= 1) return low();
   return r('Q', ACTIONS.quiet);
 }
 
 // ---- Plan pass: firm routing and weekly capacity (end of every run and after every rescore) ----
 
-export const OUTREACH_ACTIONS: readonly string[] = [ACTIONS.strongFit, ACTIONS.reach, ACTIONS.warm, ACTIONS.goodFit];
+export const OUTREACH_ACTIONS: readonly string[] = [ACTIONS.strongFit, ACTIONS.reach, ACTIONS.warm, ACTIONS.goodFit, ACTIONS.ownerAdded];
 export const sameFirm = (name: string) => `Same firm — go via ${name}`;
 
 export type PlanRow = {

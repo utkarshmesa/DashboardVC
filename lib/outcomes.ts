@@ -6,7 +6,7 @@ import { loadPersona } from './store';
 
 // Records an outreach event with the context needed to learn from it later (fit label, whether a news hook existed,
 // the action shown at the time). Never throws: logging must not break the user's action.
-export async function logEvent(vcId: string, event: string, statusBefore: string | null, statusAfter: string | null) {
+export async function logEvent(vcId: string, event: string, statusBefore: string | null, statusAfter: string | null, channel: string | null = null) {
   try {
     const [vc, prof, hook, persona] = await Promise.all([
       db().from('vcs').select('thesis, recommended_action').eq('id', vcId).single(),
@@ -16,7 +16,7 @@ export async function logEvent(vcId: string, event: string, statusBefore: string
     ]);
     const fit = fitScore({ tier: prof.data?.tier ?? null, trust: prof.data?.trust ?? null, thesis: vc.data?.thesis ?? null, research: (prof.data?.research ?? null) as Research | null }, persona.targetSpace);
     await db().from('outreach_events').insert({
-      vc_id: vcId, event, status_before: statusBefore, status_after: statusAfter, fit_label: fit.label, had_hook: (hook.count ?? 0) > 0, action: vc.data?.recommended_action ?? null,
+      vc_id: vcId, event, status_before: statusBefore, status_after: statusAfter, fit_label: fit.label, had_hook: (hook.count ?? 0) > 0, action: vc.data?.recommended_action ?? null, channel,
     });
   } catch (e) {
     console.error('logEvent failed', e);

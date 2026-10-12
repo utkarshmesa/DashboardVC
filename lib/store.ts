@@ -52,9 +52,9 @@ export const supabaseStore: Store = {
 
   async loadContexts(ids) {
     const rows = must(await db().from('vcs').select('*').in('id', ids), 'load vcs') as VcRow[];
-    const profiles = must(await db().from('vc_profile').select('vc_id, firm_key, aliases, ambiguous_name, tier, trust, research, snoozed_until, conflict_dismissed_at, linkedin_slug, linkedin_checked_at').in('vc_id', ids), 'load profiles') as
+    const profiles = must(await db().from('vc_profile').select('vc_id, firm_key, aliases, ambiguous_name, tier, trust, research, snoozed_until, conflict_dismissed_at, linkedin_slug, linkedin_checked_at, owner_added_at').in('vc_id', ids), 'load profiles') as
       { vc_id: string; firm_key: string | null; aliases: string[] | null; ambiguous_name: boolean | null; tier: number | null; trust: string | null;
-        research: Record<string, unknown> | null; snoozed_until: string | null; conflict_dismissed_at: string | null; linkedin_slug: string | null; linkedin_checked_at: string | null }[];
+        research: Record<string, unknown> | null; snoozed_until: string | null; conflict_dismissed_at: string | null; linkedin_slug: string | null; linkedin_checked_at: string | null; owner_added_at: string | null }[];
     // Partners at the same firm (by firm name) for firm-level standing conflicts.
     const firmNames = [...new Set(rows.map((r) => r.firm))];
     const peers = firmNames.length ? must(await db().from('vcs').select('id, firm').in('firm', firmNames), 'load firm peers') as { id: string; firm: string }[] : [];
@@ -67,7 +67,7 @@ export const supabaseStore: Store = {
       const peerResearch = peers.filter((x) => x.firm === row.firm && x.id !== row.id).map((x) => peerProf.find((y) => y.vc_id === x.id)?.research ?? null);
       return { id: row.id, name: row.name, firm: row.firm, aliases: p?.aliases ?? [], firmAliases: f?.aliases ?? [], ambiguous: !!p?.ambiguous_name, firmRss: f?.firm_rss ?? null, row,
         tier: p?.tier ?? null, trust: p?.trust ?? null, research: p?.research ?? null, peerResearch, snoozedUntil: p?.snoozed_until ?? null, conflictDismissed: !!p?.conflict_dismissed_at,
-        linkedinSlug: p?.linkedin_slug ?? null, firmLinkedinSlug: f?.linkedin_slug ?? null, linkedinCheckedAt: p?.linkedin_checked_at ?? null };
+        linkedinSlug: p?.linkedin_slug ?? null, firmLinkedinSlug: f?.linkedin_slug ?? null, linkedinCheckedAt: p?.linkedin_checked_at ?? null, ownerAdded: !!p?.owner_added_at };
     });
   },
 
@@ -172,7 +172,7 @@ export const supabaseStore: Store = {
   // Openers (review item 5): VCs that may get a draft this week, with the research the opener is grounded in.
   async openerCandidates() {
     const vcs = must(await db().from('vcs').select('id, name, firm, thesis, recommended_action'), 'load vcs') as { id: string; name: string; firm: string; thesis: string | null; recommended_action: string | null }[];
-    const keep = vcs.filter((v) => /^(Reach out|Warm|Good fit|Nudge|Close the loop|Next step|Check conflict)/.test(v.recommended_action ?? ''));
+    const keep = vcs.filter((v) => /^(Reach out|Warm|Good fit|Added by you|Nudge|Close the loop|Next step|Check conflict)/.test(v.recommended_action ?? ''));
     if (!keep.length) return [];
     const prof = must(await db().from('vc_profile').select('vc_id, research, opener_hash').in('vc_id', keep.map((v) => v.id)), 'load profiles') as { vc_id: string; research: Record<string, unknown> | null; opener_hash: string | null }[];
     return keep.map((v) => {
@@ -227,15 +227,18 @@ export async function setSettings(next: { targetSpace?: string; myProduct?: stri
 }
 
 // Draft settings (review item 5): Vikram's own pitch line, sender name and ask. Changing them never reclassifies signals.
-export async function loadDraftSettings(): Promise<{ pitch: string; senderName: string; ask: string }> {
-  const rows = must(await db().from('settings').select('key, value').in('key', ['my_pitch', 'sender_name', 'outreach_ask']), 'load draft settings') as { key: string; value: string }[];
+export async function loadDraftSettings(): Promise<{ pitch: string; senderName: string; ask: string; deckUrl: string }> {
+  const rows = must(await db().from('settings').select('key, value').in('key', ['my_pitch', 'sender_name', 'outreach_ask', 'deck_url']), 'load draft settings') as { key: string; value: string }[];
   const get = (k: string) => rows.find((r) => r.key === k)?.value ?? '';
-  return { pitch: get('my_pitch'), senderName: get('sender_name'), ask: get('outreach_ask') };
+  return { pitch: get('my_pitch'), senderName: get('sender_name'), ask: get('outreach_ask'), deckUrl: get('deck_url') };
 }
 
-export async function saveDraftSettings(d: { pitch: string; senderName: string; ask: string }) {
+export async function saveDraftSettings(d: { pitch: string; senderName: string; ask: string; deckUrl?: string }) {
   const now = new Date().toISOString();
+  const deck = (d.deckUrl ?? '').trim();
   must(await db().from('settings').upsert([
     { key: 'my_pitch', value: d.pitch.trim().slice(0, 600), updated_at: now }, { key: 'sender_name', value: d.senderName.trim().slice(0, 80), updated_at: now }, { key: 'outreach_ask', value: d.ask.trim().slice(0, 300), updated_at: now },
+    // Deck link: http(s) only, so a pasted script or garbage never lands in a draft or form answer.
+    ...(d.deckUrl !== undefined ? [{ key: 'deck_url', value: /^https?:\/\/\S+$/i.test(deck) ? deck.slice(0, 500) : '', updated_at: now }] : []),
   ], { onConflict: 'key' }), 'save draft settings');
 }

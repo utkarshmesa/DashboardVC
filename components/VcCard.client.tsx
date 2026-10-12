@@ -96,24 +96,57 @@ function CopyButton({ text, label, className = 'rounded border border-neutral-30
   );
 }
 
+type Channel = 'email' | 'form' | 'linkedin' | 'other';
+const PRIMARY = 'rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900 hover:bg-emerald-100';
+
 function QuickActions({ vc }: { vc: VcView }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Quick | null>(null);
-  async function go(action: Quick) {
+  const [confirm, setConfirm] = useState<Channel | null>(null); // "Sent it?" after opening the form / Gmail / LinkedIn
+  async function go(action: Quick, channel?: Channel) {
     setBusy(action);
-    await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+    await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, channel }) });
     setBusy(null);
+    setConfirm(null);
     router.refresh();
   }
-  const b = (action: Quick, label: string, tone = 'border-neutral-300 hover:bg-neutral-50') => (
-    <button key={action} type="button" disabled={!!busy} onClick={() => go(action)}
+  const b = (action: Quick, label: string, tone = 'border-neutral-300 hover:bg-neutral-50', channel?: Channel) => (
+    <button key={action + label} type="button" disabled={!!busy} onClick={() => go(action, channel)}
       className={`rounded border px-2 py-0.5 text-xs disabled:opacity-50 ${tone}`}>{busy === action ? '…' : label}</button>
   );
+  const open = (key: string, href: string, label: string, channel: Channel) => (
+    <a key={key} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setConfirm(channel)} className={PRIMARY}>{label} ↗</a>
+  );
   const items: React.ReactNode[] = [];
-  if (vc.draft) items.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy email draft" className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900 hover:bg-emerald-100" />);
+  const canSend = vc.draft && (vc.status === 'not_contacted' || vc.status === 'awaiting_response');
+  // Route-aware main action (REVIEW-2 item 3): a form, a LinkedIn message, or Gmail with the draft filled in.
+  const defaultChannel: Channel = vc.status === 'not_contacted' && vc.route.kind === 'form' ? 'form' : vc.status === 'not_contacted' && vc.route.kind === 'linkedin' ? 'linkedin' : 'email';
+  if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'form') {
+    items.push(open('form', vc.route.url ?? vc.route.findUrl!, vc.route.label, 'form'));
+    if (vc.formAnswers) items.push(<CopyButton key="answers" text={vc.formAnswers} label="Copy form answers" />);
+  } else if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'linkedin' && vc.route.url) {
+    items.push(open('li', vc.route.url, vc.route.label, 'linkedin'));
+    items.push(<CopyButton key="draft" text={vc.draft!.body} label="Copy message" />);
+  } else if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'contact' && (vc.route.url || vc.route.findUrl)) {
+    items.push(open('contact', (vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'other'));
+  }
+  if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'email' && vc.route.findUrl) {
+    items.push(<a key="find-email" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className="rounded border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50">Find their email ↗</a>);
+  }
+  if (canSend && vc.gmailUrl) items.push(open('gmail', vc.gmailUrl, vc.status === 'awaiting_response' ? 'Open nudge in Gmail' : 'Open in Gmail', 'email'));
+  if (vc.draft) items.push(<CopyButton key="copy" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy email draft" />);
+  if (confirm) {
+    items.push(
+      <span key="confirm" className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-900 ring-1 ring-amber-200">
+        Sent it?
+        {b('emailed', vc.status === 'awaiting_response' ? 'Yes, log the nudge' : 'Yes, log as sent', 'border-amber-300 bg-white hover:bg-amber-100', confirm)}
+        <button type="button" onClick={() => setConfirm(null)} className="underline">Not yet</button>
+      </span>,
+    );
+  }
   if (vc.status !== 'passed') {
-    if (vc.status === 'not_contacted') items.push(b('emailed', 'Emailed today'));
-    if (vc.status === 'awaiting_response') items.push(b('emailed', 'Nudged today'), b('replied', 'They replied'));
+    if (vc.status === 'not_contacted') items.push(b('emailed', 'Sent today', undefined, defaultChannel));
+    if (vc.status === 'awaiting_response') items.push(b('emailed', 'Nudged today', undefined, 'email'), b('replied', 'They replied'));
     if (vc.status !== 'not_contacted') items.push(b('meeting', 'Meeting booked'));
     items.push(vc.snoozedUntil ? b('unsnooze', 'Unsnooze') : b('snooze', 'Snooze 2 weeks'));
     items.push(b('passed', 'Passed', 'border-neutral-300 text-neutral-500 hover:bg-neutral-50'));

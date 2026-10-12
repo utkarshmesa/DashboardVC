@@ -24,7 +24,7 @@ async function save(formData: FormData) {
 
 async function saveDraft(formData: FormData) {
   'use server';
-  await saveDraftSettings({ pitch: String(formData.get('my_pitch') ?? ''), senderName: String(formData.get('sender_name') ?? ''), ask: String(formData.get('outreach_ask') ?? '') });
+  await saveDraftSettings({ pitch: String(formData.get('my_pitch') ?? ''), senderName: String(formData.get('sender_name') ?? ''), ask: String(formData.get('outreach_ask') ?? ''), deckUrl: String(formData.get('deck_url') ?? '') });
   redirect('/settings?draft=1');
 }
 
@@ -69,6 +69,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <label className="block">
           <span className="block text-sm font-medium">Your ask</span>
           <input name="outreach_ask" defaultValue={draft.ask} maxLength={300} placeholder={DEFAULT_ASK} className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-medium">Deck link</span>
+          <span className="mb-1 block text-xs text-neutral-500">A view-only link (DocSend, Google Drive, Notion). Added to drafts and pitch-form answers. http(s) links only.</span>
+          <input name="deck_url" type="url" defaultValue={draft.deckUrl} maxLength={500} placeholder="https://" className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <label className="block">
           <span className="block text-sm font-medium">Sign-off name</span>

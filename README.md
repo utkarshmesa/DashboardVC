@@ -48,7 +48,8 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `npm run eval` | Precision/recall on hand labels, with tune/test split |
 | `npm run ranking:export` / `ranking:calibrate` | §12.3 ranking review and threshold calibration |
 | `npm run diagnose` | Per-VC score diagnosis → `eval/score_diagnosis.md` |
-| `npm run linkedin:handles -- draft` / `apply` | Draft LinkedIn handles from search results into `seed/linkedin_handles.csv` for review, then apply rows marked ok |
+| `npm run linkedin:handles -- draft` / `apply [file]` | Draft LinkedIn handles for VCs and firms still missing one (into `seed/linkedin_handles.csv`, or `_new.csv` once that exists) for review, then apply rows marked ok |
+| `npm run candidates:import` | Offer the researched-but-untracked investors from `seed/vc_profile_seed.csv` on the Add investors page |
 | `npm run openers` | (Re)generate research-grounded openers for this week's cards (also runs at the end of each run) |
 | `npm run rescore` (after a settings or constants change) | Recompute fit, actions and the weekly plan from stored data |
 | `node --env-file=.env.local scripts/stress-live.mjs` | Auth, input-fuzzing, concurrency and load checks against the deployed app |

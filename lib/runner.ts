@@ -259,6 +259,7 @@ export async function evaluate(store: Store, vc: VcContext, fetch: FetchStatus, 
     hasEvidence: meetsEvidenceFloor(result.counted.map((c) => c.signal)),
     fit,
     snoozedUntil: vc.snoozedUntil ?? null,
+    ownerAdded: !!vc.ownerAdded,
     now,
   });
   return { decision, result, signals, conflict, fit };

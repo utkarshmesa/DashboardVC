@@ -24,6 +24,7 @@ What remains:
 | 5 · Fit-first weekly plan (owner-approved, `docs/REVIEW.md`) | Best-fit VCs reach This week; competitor firms flagged; follow-ups tracked | ✅ All 12 tier-1 VCs are in outreach, the queue, a conflict check or a same-firm route (was 1 of 12). 3 TMS-competitor partners flagged. 92% agreement with the ranking review |
 | 5b · Drafts, digest, outcome log (review items 5, 6, 8) | Sendable drafts; outreach funnel; digest | ✅ Research-grounded openers (21 live, guarded); "Copy email draft" on outreach and follow-up cards; `/api/digest` with an optional webhook; funnel on `/quality` |
 | 5c · LinkedIn posts (owner request; X off) | Activity and relevance from posts, without scraping | ✅ 77 reviewed handles (46 VCs, 31 firm pages). 92 posts across 32 of 50 VCs, all dated. "Active on LinkedIn" chip on cards; hook guard |
+| 5d · Reaching out and runway (REVIEW-2 items 3, 2) | Route-aware outreach; pipeline never runs dry silently | ✅ Form / LinkedIn / contact / Gmail actions with "Sent it?" logging and channel; deck link; runway line; `/investors` with 49 researched candidates and manual add (row O6); 113 tests |
 | Deferred, with evidence | Deal discovery (item 7); automated research refresh (item 9) | ⏸ `docs/PLAN-NEXT.md`. Free sources didn't cover logistics deals; automated refresh risks overwriting curated research |
 
 ## Live system
