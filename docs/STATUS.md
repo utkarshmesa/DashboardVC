@@ -40,7 +40,7 @@
 
 - **Golden recall:** 6/6. SuperProcure is flagged as a competitor with verbatim evidence.
 - **Eval (test split, 30 items):** acceptance precision 0.95, recall 0.95; about-this-VC precision 1.00. Type accuracy 0.70; relevance-level accuracy 0.77.
-- **Calibration:** REACH 30, WARM 15, half-life 20; 98% agreement.
+- **Calibration (v2, fit-first):** REACH 30, WARM 15, half-life 20, FIT_STRONG 70, FIT_GOOD 50; 92% agreement with the ranking review.
 - **Caveats** (also in the README):
   - The labels and ranking answers came from the builder (Claude Code) at the owner's request, not from a human.
   - Calibration rests on 2 positive examples.
@@ -66,7 +66,6 @@
 |---|---|---|
 | Scheduled cron processes all 50 VCs on its own (§15.1) | Automatic; verified by the scheduled task `vc-pipeline-thursday-acceptance` | Thu 2026-10-15, cron 06:00 IST, finisher 07:00/08:00, check 09:30 (needs the Claude app open, or it runs at next launch) |
 | Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
-| Redo the ranking review under the fit-first model (current one: 2 positives, old model) | You | Before relying on REACH/WARM |
 | Demo rehearsal (§15.12) | You | Any time. `docs/DEMO.md`; a dry run of every step was done on 2026-10-12 |
 | Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only, and the README has the tooling disclosure |
 

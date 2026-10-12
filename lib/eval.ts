@@ -1,6 +1,8 @@
 // SPEC §12.2/§12.3 evaluation maths. Pure; used by scripts/eval.ts and scripts/calibrate.ts.
 import { acceptance, type Thresholds } from './classifier';
 import { MIN_CALIBRATED_REACH, MIN_CONFIDENCE, MIN_RELEVANCE } from './config';
+import { ACTIONS as A, decideAction as decide, planPass as plan } from './actions';
+import { FIT_GOOD as FG, FIT_STRONG as FS, HALF_LIFE_DAYS as HL, REACH as RC, WARM as WM, OUTREACH_PER_WEEK as CAP } from './config';
 import type { Labels } from './types';
 
 export type GoldLabel = {
@@ -106,4 +108,51 @@ export function recallWindowDays(approxDate: string, capturedAt: string): number
   const [y, m] = approxDate.split('-').map(Number);
   const start = Date.UTC(y, (m || 1) - 1, 1);
   return Math.ceil((Date.parse(capturedAt) - start) / 86_400_000) + 30;
+}
+
+// ---- §12.3 calibration v2 (Phase 5): agreement between "would contact this week" and the full decision ----
+// For every grid point, simulate decideAction + planPass and count a VC as "contact" when its final action is a
+// new-outreach action (Reach out this week, Reach out — strong fit, Warm). Ties prefer the current constants.
+
+export type PlanReviewRow = {
+  id: string; name: string; firm: string; trust: string | null; tier: number | null; fitScore: number; fitFlags?: string[]; conflict: boolean; would_contact: boolean;
+  byHalfLife: Record<number, { score: number; topRelevance: number | null; hasEvidence: boolean }>;
+};
+export type PlanGrid = { halfLife: number; reach: number; warm: number; fitStrong: number; fitGood: number };
+
+export function simulatePlan(rows: PlanReviewRow[], g: PlanGrid, now = new Date()): Map<string, string> {
+  const label = (s: number) => (s >= g.fitStrong ? 'strong' : s >= g.fitGood ? 'good' : 'weak') as 'strong' | 'good' | 'weak';
+  const computed = rows.map((r) => {
+    const h = r.byHalfLife[g.halfLife];
+    const action = decide({ status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: h.score, topRelevance: h.topRelevance,
+      conflictCompany: r.conflict ? 'x' : null, hasEvidence: h.hasEvidence, fit: { label: label(r.fitScore), flags: r.fitFlags }, now, reach: g.reach, warm: g.warm }).action;
+    return { id: r.id, name: r.name, firm: r.firm, status: 'not_contacted' as const, action, priority: r.fitScore + 0.5 * h.score, trust: r.trust, tier: r.tier };
+  });
+  const final = new Map(computed.map((c) => [c.id, c.action]));
+  for (const ch of plan(computed, CAP)) final.set(ch.id, ch.action);
+  return final;
+}
+
+const CONTACT = new Set<string>([A.reach, A.strongFit, A.warm]);
+
+export function calibratePlan(rows: PlanReviewRow[], now = new Date()) {
+  const current: PlanGrid = { halfLife: HL, reach: RC, warm: WM, fitStrong: FS, fitGood: FG };
+  const dist = (g: PlanGrid) => Math.abs(g.halfLife - current.halfLife) / 5 + Math.abs(g.reach - current.reach) / 5 + Math.abs(g.warm - current.warm) / 5
+    + Math.abs(g.fitStrong - current.fitStrong) / 5 + Math.abs(g.fitGood - current.fitGood) / 5;
+  let best: { g: PlanGrid; agreement: number; tp: number; fp: number; fn: number } | null = null;
+  for (const halfLife of [10, 15, 20, 30]) for (let reach = MIN_CALIBRATED_REACH; reach <= 60; reach += 5)
+    for (let warm = 10; warm < reach; warm += 5) for (let fitStrong = 55; fitStrong <= 85; fitStrong += 5)
+      for (let fitGood = fitStrong - 25; fitGood <= fitStrong - 10; fitGood += 5) {
+        const g = { halfLife, reach, warm, fitStrong, fitGood };
+        const final = simulatePlan(rows, g, now);
+        let tp = 0, fp = 0, fn = 0, agree = 0;
+        for (const r of rows) {
+          const yes = CONTACT.has(final.get(r.id) ?? '');
+          if (yes === r.would_contact) agree++;
+          if (yes && r.would_contact) tp++; else if (yes) fp++; else if (r.would_contact) fn++;
+        }
+        const agreement = agree / (rows.length || 1);
+        if (!best || agreement > best.agreement + 1e-9 || (Math.abs(agreement - best.agreement) < 1e-9 && dist(g) < dist(best.g))) best = { g, agreement, tp, fp, fn };
+      }
+  return { ...best!, current };
 }

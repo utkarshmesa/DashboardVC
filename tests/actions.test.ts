@@ -60,6 +60,9 @@ describe('action table (SPEC §9.6, amended in Phase 5)', () => {
       expect(act({ score: 10, topRelevance: 0.1 }).action).toBe(ACTIONS.lowOutside);
       expect(act({ score: 0 }).action).toBe(ACTIONS.quiet);
     });
+    it('a weak fit with a deal-breaker never gets Warm, even with in-space news', () => {
+      expect(act({ score: 30, topRelevance: 1.0, hasEvidence: false, fit: { label: 'weak', flags: ['usually invests after seed'] } }).action).toBe(ACTIONS.lowWeak);
+    });
   });
 
   it('evidence floor needs investment/authored/speaking with relevance ≥ 0.6', () => {

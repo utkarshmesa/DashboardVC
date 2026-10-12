@@ -80,8 +80,8 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `about_this_vc` precision on the test split (gate ≥ 0.90) | **1.00** (recall 1.00) |
 | Type accuracy / relevance-level accuracy (test) | 0.70 / 0.77 |
 | Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | **0.7 / 0.** Tuned on the tune split; 0.5–0.7 tie, so the default is kept |
-| Ranking-review agreement | **98%** (49/50). Only 2 of 50 VCs were "would contact this week", so the calibration is thin |
-| Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` | **30 / 15 / 20** (`eval/calibration.json`). Contact actions also need the evidence floor |
+| Ranking-review agreement (v2, fit-first model: full decision simulated per grid point) | **92%** (46/50); contact precision 0.88, recall 0.70. The 3 misses are queued as "Good fit" |
+| Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` / `FIT_STRONG` / `FIT_GOOD` | **30 / 15 / 20 / 70 / 50** (`eval/calibration.json`); the grid confirmed the current constants |
 
 The eval labels (60 items, 10 not about the VC) and the ranking-review answers were written by the builder (Claude Code) from first principles at the owner's request, not by a human. The classifier's definitions of "about this VC" and "irrelevant" were tightened after seeing errors from both splits, so the test split isn't fully blind to that change. See `docs/DECISIONS.md` #20–22.
 
@@ -142,7 +142,7 @@ flowchart TB
 - **Undated results:** about a third of Tavily results have no date; they're scored conservatively, as if 30 days old.
 - **Free-tier limits:** Vercel Hobby functions stop at 300 s, so a full run with heavy reclassification can need the GitHub finisher. Gemini free-tier latency (13–70 s per call) dominates run time. Tavily allows 1,000 credits a month (this app stops at 800).
 - **Google News RSS is unofficial** and could change or rate-limit without notice.
-- **Little target-space news right now:** few VCs have a recent core logistics signal, so outreach is mostly fit-driven ("Reach out — strong fit"), with the research fit reason as the talking point. The Phase 2 calibration rests on 2 positives answered under the old news-only model and should be redone.
+- **Little target-space news right now:** few VCs have a recent core logistics signal, so outreach is mostly fit-driven ("Reach out — strong fit"), with the research fit reason as the talking point.
 - **Fit comes from the seed research,** which is dated (`research_as_of`); stale roles show a "Re-verify role" badge, but fund status and theses can drift.
 - **Gemini output varies run to run,** even at temperature 0; a VC's score can move between runs on the same evidence.
 - **Eval labels and ranking answers came from the builder, not a human** (see above).

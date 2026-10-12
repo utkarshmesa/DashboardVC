@@ -34,7 +34,7 @@ export type ActionInput = {
   topRelevance: number | null;
   conflictCompany: string | null; // accepted competitor signal or standing research conflict, not dismissed
   hasEvidence: boolean;           // evidence floor (meetsEvidenceFloor)
-  fit: Pick<Fit, 'label'>;        // research-based fit (lib/fit.ts)
+  fit: Pick<Fit, 'label'> & { flags?: string[] }; // research-based fit (lib/fit.ts) and its deal-breaker flags
   snoozedUntil?: string | null;   // YYYY-MM-DD
   now: Date;
   reach?: number;
@@ -90,8 +90,8 @@ export function decideAction(i: ActionInput): ActionResult {
   if (newsContact) return r('O1', ACTIONS.reach);
   if (i.fit.label === 'strong') return r('O2', ACTIONS.strongFit);
   if (i.fit.label === 'good') return i.score >= warm ? r('O3', ACTIONS.warm) : r('O4', ACTIONS.goodFit);
-  // Weak fit: only in-space news (core / logistics) earns Warm; off-thesis news is noise for this founder.
-  if (i.score >= warm && (i.topRelevance ?? 0) >= WEAK_FIT_WARM_RELEVANCE) return r('O5', ACTIONS.warm);
+  // Weak fit: only in-space news (core / logistics) earns Warm, and never past a deal-breaker (e.g. invests after seed).
+  if (i.score >= warm && (i.topRelevance ?? 0) >= WEAK_FIT_WARM_RELEVANCE && !(i.fit.flags?.length)) return r('O5', ACTIONS.warm);
   if (i.score >= 1) return low();
   return r('Q', ACTIONS.quiet);
 }
