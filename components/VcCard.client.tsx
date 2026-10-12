@@ -234,6 +234,39 @@ function SignalLine({ s }: { s: SignalView }) {
   );
 }
 
+type Other = { id: number; title: string; url: string; status: string; rejectReason: string | null };
+// Rejected and undated items load only when opened, keeping them out of every page load.
+function OtherItems({ vcId, count }: { vcId: string; count: number }) {
+  const [items, setItems] = useState<Other[] | null>(null);
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+  async function load() {
+    if (items || state === 'loading') return;
+    setState('loading');
+    try {
+      const r = await fetch(`/api/vc/${vcId}/others`);
+      if (!r.ok) throw new Error(String(r.status));
+      setItems(((await r.json()) as { items: Other[] }).items); setState('idle');
+    } catch { setState('error'); }
+  }
+  return (
+    <details className="mt-3 rounded-xl bg-surface px-4 py-2.5 ring-1 ring-line" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) load(); }}>
+      <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-ink-2"><I.chevron width={14} height={14} />Rejected and undated items ({count})</summary>
+      {state === 'loading' && <p className="py-2 text-[12.5px] text-ink-3">Loading…</p>}
+      {state === 'error' && <p role="alert" className="py-2 text-[12.5px] text-danger">Couldn&apos;t load these. <button type="button" onClick={load} className="underline">Retry</button></p>}
+      {items && (
+        <ul className="mt-2 space-y-1.5 pb-1">
+          {items.map((s) => (
+            <li key={s.id} className="text-[12.5px] text-ink-3">
+              <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-line-2 underline-offset-2">{s.title}</a>
+              <span> — {s.status === 'accepted' ? 'date unknown, not scored' : (REASON_LABEL[s.rejectReason ?? ''] ?? s.rejectReason ?? s.status)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </details>
+  );
+}
+
 function TextBlock({ title, text, tone = 'neutral', copy, auto }: { title: string; text: string; tone?: 'accent' | 'info' | 'neutral'; copy?: boolean; auto?: boolean }) {
   return (
     <div className={`rounded-xl p-4 ${tone === 'neutral' ? 'bg-surface-2 ring-1 ring-line' : TONE[tone].soft}`}>
@@ -287,19 +320,7 @@ function Details({ vc }: { vc: VcView }) {
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-evidence`}>
           {vc.accepted.length ? <ul className="rounded-xl bg-surface px-4 ring-1 ring-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
             : <p className="rounded-xl bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 ring-1 ring-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
-          {vc.others.length > 0 && (
-            <details className="mt-3 rounded-xl bg-surface px-4 py-2.5 ring-1 ring-line">
-              <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-ink-2"><I.chevron width={14} height={14} />Rejected and undated items ({vc.others.length})</summary>
-              <ul className="mt-2 space-y-1.5 pb-1">
-                {vc.others.map((s) => (
-                  <li key={s.id} className="text-[12.5px] text-ink-3">
-                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-line-2 underline-offset-2">{s.title}</a>
-                    <span> — {s.status === 'accepted' ? 'date unknown, not scored' : (REASON_LABEL[s.rejectReason ?? ''] ?? s.rejectReason ?? s.status)}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
+          {vc.othersCount > 0 && <OtherItems vcId={vc.id} count={vc.othersCount} />}
         </div>
       )}
 

@@ -77,7 +77,7 @@ export type VcView = {
   gmailUrl: string | null;    // Gmail compose with the draft filled in
   linkedin: { own: number; firm: number; latestUrl: string } | null; // posts by the VC / firm page in 30 days (DECISIONS #45)
   accepted: SignalView[];
-  others: SignalView[]; // rejected and undated, collapsed in the drawer
+  othersCount: number; // rejected and undated items; the list itself loads on demand (GET /api/vc/[id]/others)
 };
 
 type Sig = ScorableSignal & {
@@ -159,7 +159,7 @@ export async function loadDashboard() {
       gmailUrl: draft ? gmailCompose(draft.subject, draft.body) : null,
       linkedin: posts.length ? { own: posts.filter((s) => s.source_name === 'LinkedIn (own post)').length, firm: posts.filter((s) => s.source_name !== 'LinkedIn (own post)').length, latestUrl: posts[0].url } : null,
       accepted: accepted.map(view),
-      others: mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).slice(0, 25).map(view),
+      othersCount: Math.min(25, mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).length),
     };
   });
   // Follow-ups: longest-waiting first; everything else by priority (fit + 0.5 × recent-signal score).
