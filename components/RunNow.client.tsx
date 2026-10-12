@@ -2,6 +2,7 @@
 // SPEC §11.1 Run now: confirmation with the estimated Tavily credits, then one step at a time with progress.
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { btn, I } from './ui';
 
 type Step = { done: boolean; processed: number; failed: number; remaining: number; status?: string; error?: string };
 
@@ -35,11 +36,16 @@ export default function RunNow() {
   }
 
   return (
-    <span className="inline-flex items-center gap-2">
-      <button onClick={run} disabled={busy} className="rounded bg-neutral-900 px-3 py-1 text-sm text-white disabled:opacity-50">
-        {busy ? 'Running…' : 'Run now'}
+    <span className="relative inline-flex shrink-0 items-center">
+      <button onClick={run} disabled={busy} className={btn('secondary')} title="Fetch fresh news and LinkedIn posts now">
+        <I.bolt width={14} height={14} className={busy ? 'animate-pulse' : ''} />{busy ? 'Running…' : 'Run now'}
       </button>
-      {msg && <span className="text-xs text-neutral-600" aria-live="polite">{msg}</span>}
+      {msg && (
+        <span aria-live="polite" className="fade-in absolute right-0 top-10 z-30 w-64 rounded-lg bg-surface p-2.5 text-[12.5px] text-ink-2 shadow-lift ring-1 ring-line">
+          {msg}
+          {!busy && <button type="button" onClick={() => setMsg(null)} className="ml-2 text-ink-3 underline">Dismiss</button>}
+        </span>
+      )}
     </span>
   );
 }

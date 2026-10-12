@@ -1,16 +1,41 @@
 'use client';
-// One VC: decision first (action, score, why, source), proof one click away (SPEC §11.2–11.6).
+// One VC: who, why, how to reach them, one clear next action; the proof and drafts one click away (SPEC §11.2–11.6).
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SignalView, VcView } from '@/lib/dashboard';
-import { actionTone, day, LEVEL_LABEL, REASON_LABEL } from './format';
+import { day, LEVEL_LABEL, REASON_LABEL } from './format';
+import { actionToneOf, Auto, Avatar, Badge, btn, FitMeter, I, inputCls, TONE } from './ui';
 
 const STATUSES = [
   ['not_contacted', 'Not contacted'], ['awaiting_response', 'Awaiting response'], ['in_conversation', 'In conversation'], ['passed', 'Passed'],
 ] as const;
 
-function Auto() {
-  return <span className="ml-1 rounded bg-neutral-100 px-1 text-[10px] uppercase tracking-wide text-neutral-500">auto</span>;
+type Quick = 'emailed' | 'replied' | 'meeting' | 'passed' | 'snooze' | 'unsnooze' | 'dismiss_conflict' | 'restore_conflict';
+type Channel = 'email' | 'form' | 'linkedin' | 'other';
+
+function useQuick(vc: VcView) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<Quick | null>(null);
+  async function go(action: Quick, channel?: Channel) {
+    setBusy(action);
+    await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, channel }) });
+    setBusy(null);
+    router.refresh();
+  }
+  return { busy, go };
+}
+
+function CopyButton({ text, label, variant = 'secondary' }: { text: string; label: string; variant?: 'secondary' | 'ghost' }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setState('copied'); } catch { setState('failed'); }
+    setTimeout(() => setState('idle'), 1800);
+  }
+  return (
+    <button type="button" className={btn(variant)} onClick={copy} aria-live="polite">
+      {state === 'copied' ? <><I.check width={14} height={14} />Copied</> : state === 'failed' ? 'Copy blocked: select the text in Details' : <><I.copy width={14} height={14} />{label}</>}
+    </button>
+  );
 }
 
 function Thumbs({ s }: { s: SignalView }) {
@@ -18,30 +43,21 @@ function Thumbs({ s }: { s: SignalView }) {
   const [busy, setBusy] = useState(false);
   async function vote(v: 'up' | 'down') {
     setBusy(true);
-    await fetch('/api/feedback', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signal_id: s.id, verdict: s.verdict === v ? null : v }),
-    });
+    await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal_id: s.id, verdict: s.verdict === v ? null : v }) });
     setBusy(false);
     router.refresh();
   }
-  const btn = (v: 'up' | 'down', label: string, glyph: string) => (
-    <button type="button" disabled={busy} onClick={() => vote(v)} aria-label={label} aria-pressed={s.verdict === v}
-      className={`rounded px-1.5 py-0.5 text-sm ${s.verdict === v ? (v === 'up' ? 'bg-emerald-100' : 'bg-rose-100') : 'hover:bg-neutral-100'} disabled:opacity-50`}>
-      {glyph}
-    </button>
-  );
-  return <span className="inline-flex gap-1">{btn('up', 'Useful signal', '👍')}{btn('down', 'Wrong or useless signal', '👎')}</span>;
-}
-
-function CopyHook({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button type="button" className="rounded border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50"
-      onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
+  const b = (v: 'up' | 'down', label: string) => {
+    const on = s.verdict === v;
+    const Icon = v === 'up' ? I.thumbUp : I.thumbDown;
+    return (
+      <button type="button" disabled={busy} onClick={() => vote(v)} aria-label={label} aria-pressed={on} title={label}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${on ? (v === 'up' ? 'bg-accent-soft text-accent-text' : 'bg-danger-soft text-danger') : 'text-ink-3 hover:bg-surface-2 hover:text-ink'}`}>
+        <Icon width={15} height={15} />
+      </button>
+    );
+  };
+  return <span className="inline-flex gap-0.5">{b('up', 'Useful signal')}{b('down', 'Wrong or useless signal (removes it from scoring)')}</span>;
 }
 
 function EditForm({ vc }: { vc: VcView }) {
@@ -50,230 +66,321 @@ function EditForm({ vc }: { vc: VcView }) {
   const [date, setDate] = useState(vc.lastContactDate ?? '');
   const [notes, setNotes] = useState(vc.notes ?? '');
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const dirty = <T,>(set: (v: T) => void) => (v: T) => { set(v); setState('idle'); }; // a new edit clears "Saved"
+  const dirty = <T,>(set: (v: T) => void) => (v: T) => { set(v); setState('idle'); };
+  const changed = status !== vc.status || date !== (vc.lastContactDate ?? '') || notes !== (vc.notes ?? '');
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setState('saving');
-    const r = await fetch(`/api/vc/${vc.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, last_contact_date: date || null, notes: notes || null }),
-    });
+    const r = await fetch(`/api/vc/${vc.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, last_contact_date: date || null, notes: notes || null }) });
     setState(r.ok ? 'saved' : 'error');
     router.refresh();
   }
   return (
-    <form onSubmit={save} className="grid gap-2 sm:grid-cols-[auto_auto_1fr_auto] sm:items-end">
-      <label className="text-xs text-neutral-600">Status
-        <select value={status} onChange={(e) => dirty(setStatus)(e.target.value as VcView['status'])} className="mt-1 block rounded border border-neutral-300 px-2 py-1 text-sm">
+    <form onSubmit={save} className="grid gap-3 sm:grid-cols-[180px_160px_1fr]">
+      <label className="text-[12.5px] font-medium text-ink-2">Status
+        <select value={status} onChange={(e) => dirty(setStatus)(e.target.value as VcView['status'])} className={`${inputCls} mt-1`}>
           {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </label>
-      <label className="text-xs text-neutral-600">Last contact
-        <input type="date" value={date} onChange={(e) => dirty(setDate)(e.target.value)} className="mt-1 block rounded border border-neutral-300 px-2 py-1 text-sm" />
+      <label className="text-[12.5px] font-medium text-ink-2">Last contact
+        <input type="date" value={date} onChange={(e) => dirty(setDate)(e.target.value)} className={`${inputCls} mt-1`} />
       </label>
-      <label className="text-xs text-neutral-600">Notes
-        <input value={notes} onChange={(e) => dirty(setNotes)(e.target.value)} maxLength={4000} className="mt-1 block w-full rounded border border-neutral-300 px-2 py-1 text-sm" />
+      <label className="text-[12.5px] font-medium text-ink-2">Notes
+        <input value={notes} onChange={(e) => dirty(setNotes)(e.target.value)} maxLength={4000} placeholder="Anything worth remembering" className={`${inputCls} mt-1`} />
       </label>
-      <span className="flex items-center gap-2">
-        <button type="submit" disabled={state === 'saving'} className="rounded bg-neutral-900 px-3 py-1 text-sm text-white disabled:opacity-50">Save</button>
-        {state === 'saved' && <span className="text-xs text-emerald-700">Saved</span>}
-        {state === 'idle' && (status !== vc.status || date !== (vc.lastContactDate ?? '') || notes !== (vc.notes ?? '')) && <span className="text-xs text-amber-700">Unsaved</span>}
-        {state === 'error' && <span className="text-xs text-rose-700">Failed</span>}
-      </span>
+      <div className="flex items-center gap-3 sm:col-span-3">
+        <button type="submit" disabled={state === 'saving' || !changed} className={btn('primary')}>{state === 'saving' ? 'Saving…' : 'Save'}</button>
+        {state === 'saved' && <span className="inline-flex items-center gap-1 text-[12.5px] text-accent-text"><I.check width={14} height={14} />Saved</span>}
+        {state === 'idle' && changed && <span className="text-[12.5px] text-warn">Unsaved changes</span>}
+        {state === 'error' && <span className="text-[12.5px] text-danger">Couldn&apos;t save. Try again.</span>}
+      </div>
     </form>
   );
 }
 
-type Quick = 'emailed' | 'replied' | 'meeting' | 'passed' | 'snooze' | 'unsnooze' | 'dismiss_conflict' | 'restore_conflict';
+const ROUTE_ICON = { form: I.form, linkedin: I.linkedin, email: I.mail, contact: I.globe, unknown: I.route } as const;
 
-function CopyButton({ text, label, className = 'rounded border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50' }: { text: string; label: string; className?: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button type="button" className={className}
-      onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
-      {copied ? 'Copied' : label}
+function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; open: boolean }) {
+  const { busy, go } = useQuick(vc);
+  const [confirm, setConfirm] = useState<Channel | null>(null);
+  const [more, setMore] = useState(false);
+  const menuRef = useRef<HTMLSpanElement>(null);
+  // The overflow menu closes on Escape or a click outside it.
+  useEffect(() => {
+    if (!more) return;
+    const onDown = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMore(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMore(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [more]);
+  const canSend = !!vc.draft && (vc.status === 'not_contacted' || vc.status === 'awaiting_response');
+  const fresh = vc.status === 'not_contacted';
+  const defaultChannel: Channel = fresh && vc.route.kind === 'form' ? 'form' : fresh && vc.route.kind === 'linkedin' ? 'linkedin' : 'email';
+  const link = (href: string, label: string, channel: Channel, variant: 'primary' | 'secondary' | 'ghost', Icon = I.external) => (
+    <a key={label} href={href} target="_blank" rel="noopener noreferrer" onClick={() => { setMore(false); setConfirm(channel); }} className={btn(variant)}>
+      <Icon width={14} height={14} />{label}
+    </a>
+  );
+  const quick = (action: Quick, label: string, variant: 'secondary' | 'ghost' | 'danger' = 'secondary', channel?: Channel) => (
+    <button key={action + label} type="button" disabled={!!busy} onClick={() => { setMore(false); go(action, channel); }} className={btn(variant)}>
+      {busy === action ? '…' : label}
     </button>
   );
-}
 
-type Channel = 'email' | 'form' | 'linkedin' | 'other';
-const PRIMARY = 'rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900 hover:bg-emerald-100';
+  const primary: React.ReactNode[] = [], secondary: React.ReactNode[] = [], overflow: React.ReactNode[] = [];
+  if (canSend && fresh && vc.route.kind === 'form') {
+    primary.push(link((vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'form', 'primary', I.form));
+    if (vc.formAnswers) secondary.push(<CopyButton key="answers" text={vc.formAnswers} label="Copy form answers" />);
+    if (vc.gmailUrl) overflow.push(link(vc.gmailUrl, 'Open in Gmail instead', 'email', 'ghost', I.mail));
+  } else if (canSend && fresh && vc.route.kind === 'linkedin' && vc.route.url) {
+    primary.push(link(vc.route.url, vc.route.label, 'linkedin', 'primary', I.linkedin));
+    secondary.push(<CopyButton key="msg" text={vc.draft!.body} label="Copy message" />);
+    if (vc.gmailUrl) overflow.push(link(vc.gmailUrl, 'Open in Gmail instead', 'email', 'ghost', I.mail));
+  } else if (canSend && vc.gmailUrl) {
+    primary.push(link(vc.gmailUrl, vc.status === 'awaiting_response' ? 'Open nudge in Gmail' : 'Open in Gmail', 'email', 'primary', I.mail));
+    if (fresh && vc.route.kind === 'contact' && (vc.route.url || vc.route.findUrl)) secondary.push(link((vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'other', 'secondary', I.globe));
+    if (fresh && vc.route.kind === 'email' && vc.route.findUrl) secondary.push(<a key="find" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className={btn('secondary')}><I.external width={14} height={14} />Find their email</a>);
+  }
+  if (vc.draft) secondary.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" variant={primary.length ? 'ghost' : 'secondary'} />);
 
-function QuickActions({ vc }: { vc: VcView }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState<Quick | null>(null);
-  const [confirm, setConfirm] = useState<Channel | null>(null); // "Sent it?" after opening the form / Gmail / LinkedIn
-  async function go(action: Quick, channel?: Channel) {
-    setBusy(action);
-    await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, channel }) });
-    setBusy(null);
-    setConfirm(null);
-    router.refresh();
-  }
-  const b = (action: Quick, label: string, tone = 'border-neutral-300 hover:bg-neutral-50', channel?: Channel) => (
-    <button key={action + label} type="button" disabled={!!busy} onClick={() => go(action, channel)}
-      className={`rounded border px-2 py-0.5 text-xs disabled:opacity-50 ${tone}`}>{busy === action ? '…' : label}</button>
-  );
-  const open = (key: string, href: string, label: string, channel: Channel) => (
-    <a key={key} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setConfirm(channel)} className={PRIMARY}>{label} ↗</a>
-  );
-  const items: React.ReactNode[] = [];
-  const canSend = vc.draft && (vc.status === 'not_contacted' || vc.status === 'awaiting_response');
-  // Route-aware main action (REVIEW-2 item 3): a form, a LinkedIn message, or Gmail with the draft filled in.
-  const defaultChannel: Channel = vc.status === 'not_contacted' && vc.route.kind === 'form' ? 'form' : vc.status === 'not_contacted' && vc.route.kind === 'linkedin' ? 'linkedin' : 'email';
-  if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'form') {
-    items.push(open('form', vc.route.url ?? vc.route.findUrl!, vc.route.label, 'form'));
-    if (vc.formAnswers) items.push(<CopyButton key="answers" text={vc.formAnswers} label="Copy form answers" />);
-  } else if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'linkedin' && vc.route.url) {
-    items.push(open('li', vc.route.url, vc.route.label, 'linkedin'));
-    items.push(<CopyButton key="draft" text={vc.draft!.body} label="Copy message" />);
-  } else if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'contact' && (vc.route.url || vc.route.findUrl)) {
-    items.push(open('contact', (vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'other'));
-  }
-  if (canSend && vc.status === 'not_contacted' && vc.route.kind === 'email' && vc.route.findUrl) {
-    items.push(<a key="find-email" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className="rounded border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50">Find their email ↗</a>);
-  }
-  if (canSend && vc.gmailUrl) items.push(open('gmail', vc.gmailUrl, vc.status === 'awaiting_response' ? 'Open nudge in Gmail' : 'Open in Gmail', 'email'));
-  if (vc.draft) items.push(<CopyButton key="copy" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy email draft" />);
-  if (confirm) {
-    items.push(
-      <span key="confirm" className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-900 ring-1 ring-amber-200">
-        Sent it?
-        {b('emailed', vc.status === 'awaiting_response' ? 'Yes, log the nudge' : 'Yes, log as sent', 'border-amber-300 bg-white hover:bg-amber-100', confirm)}
-        <button type="button" onClick={() => setConfirm(null)} className="underline">Not yet</button>
-      </span>,
-    );
-  }
   if (vc.status !== 'passed') {
-    if (vc.status === 'not_contacted') items.push(b('emailed', 'Sent today', undefined, defaultChannel));
-    if (vc.status === 'awaiting_response') items.push(b('emailed', 'Nudged today', undefined, 'email'), b('replied', 'They replied'));
-    if (vc.status !== 'not_contacted') items.push(b('meeting', 'Meeting booked'));
-    items.push(vc.snoozedUntil ? b('unsnooze', 'Unsnooze') : b('snooze', 'Snooze 2 weeks'));
-    items.push(b('passed', 'Passed', 'border-neutral-300 text-neutral-500 hover:bg-neutral-50'));
+    if (fresh) secondary.push(quick('emailed', 'Mark as sent', 'ghost', defaultChannel));
+    if (vc.status === 'awaiting_response') { secondary.push(quick('replied', 'They replied')); overflow.push(quick('emailed', 'Nudged today', 'ghost', 'email')); }
+    if (vc.status === 'in_conversation') secondary.push(quick('meeting', 'Meeting booked'));
+    if (vc.status === 'awaiting_response') overflow.push(quick('meeting', 'Meeting booked', 'ghost'));
+    overflow.push(vc.snoozedUntil ? quick('unsnooze', 'Unsnooze', 'ghost') : quick('snooze', 'Snooze 2 weeks', 'ghost'));
+    overflow.push(quick('passed', 'Mark as passed', 'ghost'));
   }
-  if (vc.conflict && !vc.conflict.dismissed) items.push(b('dismiss_conflict', 'Not a conflict', 'border-rose-300 text-rose-800 hover:bg-rose-50'));
-  if (vc.conflict?.dismissed) items.push(b('restore_conflict', 'Restore conflict flag', 'border-rose-200 text-rose-700 hover:bg-rose-50'));
-  return items.length ? <div className="mt-2 flex flex-wrap gap-1.5">{items}</div> : null;
-}
+  if (vc.conflict && !vc.conflict.dismissed) secondary.unshift(quick('dismiss_conflict', 'Not a conflict', 'danger')); // the first decision on a conflict card
+  if (vc.conflict?.dismissed) overflow.push(quick('restore_conflict', 'Restore conflict flag', 'ghost'));
 
-const FIT_TONE = { strong: 'bg-emerald-50 text-emerald-800 ring-emerald-200', good: 'bg-sky-50 text-sky-800 ring-sky-200', weak: 'bg-neutral-50 text-neutral-600 ring-neutral-200' };
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
+      {primary}{secondary}
+      {overflow.length > 0 && (
+        <span className="relative" ref={menuRef}>
+          <button type="button" aria-haspopup="menu" aria-expanded={more} aria-label="More actions" onClick={() => setMore((m) => !m)} className={btn('quiet')}><I.more width={16} height={16} /></button>
+          {more && (
+            <span role="menu" className="fade-in absolute left-0 top-9 z-30 flex min-w-48 flex-col items-stretch gap-0.5 rounded-xl bg-surface p-1.5 shadow-lift ring-1 ring-line [&>*]:justify-start">
+              {overflow}
+            </span>
+          )}
+        </span>
+      )}
+      <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ml-auto`}>
+        {open ? 'Hide details' : 'Details'}<I.chevron width={14} height={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {confirm && (
+        <div className="fade-in flex w-full flex-wrap items-center gap-2 rounded-xl bg-warn-soft px-3 py-2 text-[13px] text-warn" role="status">
+          <I.check width={15} height={15} />
+          <span className="font-medium">Sent it?</span>
+          <span className="text-ink-2">Logging it starts the follow-up timer.</span>
+          <span className="ml-auto flex gap-2">
+            <button type="button" disabled={!!busy} onClick={() => { go('emailed', confirm); setConfirm(null); }} className={btn('primary')}>
+              {vc.status === 'awaiting_response' ? 'Yes, log the nudge' : 'Yes, log as sent'}
+            </button>
+            <button type="button" onClick={() => setConfirm(null)} className={btn('ghost')}>Not yet</button>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SignalLine({ s }: { s: SignalView }) {
   return (
-    <li className="border-t border-neutral-100 py-2 first:border-t-0">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-sm">
-          <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 text-xs capitalize">{s.type ?? '—'}</span>
-          <span className="mr-2 text-xs text-neutral-500">{s.date ? day(s.date) : s.dateApprox ? 'date approx' : 'date unknown'}</span>
-          <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline decoration-neutral-300 hover:decoration-neutral-700">{s.title}</a>
-          {s.sourceName && <span className="ml-1 text-xs text-neutral-500">· {s.sourceName}</span>}
-        </span>
-        <span className="flex items-center gap-2">
-          {s.contribution !== null && <span className="text-xs tabular-nums text-neutral-600" title="Points this signal adds to the score">+{s.contribution} pts</span>}
-          <Thumbs s={s} />
-        </span>
+    <li className="flex gap-3 border-t border-line py-3 first:border-t-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-ink-3">
+          <Badge tone={s.type === 'investment' ? 'accent' : s.type === 'speaking' || s.type === 'authored' ? 'info' : 'neutral'} className="capitalize">{s.type ?? '—'}</Badge>
+          <span>{s.date ? day(s.date) : s.dateApprox ? 'date approx' : 'date unknown'}</span>
+          {s.sourceName && <span>· {s.sourceName}</span>}
+          {s.contribution !== null && <span className="font-mono tabular-nums text-ink-2" title="Points this signal adds to the activity score">+{s.contribution} pts</span>}
+        </div>
+        <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block text-[14px] leading-snug text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink">{s.title}</a>
+        <p className="mt-1 text-[11.5px] text-ink-3">
+          AI labels: {s.aboutThisVc ? 'about this VC' : 'not about this VC'} · {s.subject ?? '—'} · relevance {LEVEL_LABEL[s.relevanceLevel ?? ''] ?? '—'} · confidence {s.confidence ?? '—'}
+          {s.competitor && <span className="text-danger"> · possible competitor</span>}
+          {s.roleHint && <span className="text-violet"> · role: {s.roleHint}</span>}
+          {s.verdict === 'down' && <span className="text-danger"> · excluded by your thumbs-down</span>}
+        </p>
       </div>
-      <p className="mt-0.5 text-xs text-neutral-500">
-        AI labels: {s.aboutThisVc ? 'about this VC' : 'not about this VC'} · {s.subject ?? '—'} · {s.type ?? '—'} · relevance {LEVEL_LABEL[s.relevanceLevel ?? ''] ?? '—'} · confidence {s.confidence ?? '—'}
-        {s.competitor && <span className="ml-1 text-rose-700">· possible competitor</span>}
-        {s.roleHint && <span className="ml-1 text-violet-700">· role: {s.roleHint}</span>}
-        {s.verdict === 'down' && <span className="ml-1 text-rose-700">· excluded by your 👎</span>}
-      </p>
+      <Thumbs s={s} />
     </li>
   );
 }
 
-export default function VcCard({ vc }: { vc: VcView }) {
-  const [open, setOpen] = useState(false);
+function TextBlock({ title, text, tone = 'neutral', copy, auto }: { title: string; text: string; tone?: 'accent' | 'info' | 'neutral'; copy?: boolean; auto?: boolean }) {
   return (
-    <article id={`vc-${vc.id}`} className="scroll-mt-4 rounded-lg border border-neutral-200 bg-white px-4 py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${actionTone(vc.action)}`}>{vc.action}</span>
-        <span className="text-xs tabular-nums text-neutral-600" title="Recent-signal score (0–100): how strong this VC's public activity in the last 30 days is">news {vc.score ?? 0}<Auto /></span>
-        <h3 className="text-base font-semibold">{vc.name}</h3>
-        <span className="text-sm text-neutral-600">{vc.firm}</span>
-        <span className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ${FIT_TONE[vc.fit.label]}`} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`}>{vc.fit.label} fit {vc.fit.score}</span>
-        {vc.linkedin && (
-          <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] text-sky-800 ring-1 ring-sky-200 hover:underline"
-            title="Posts found through search results in the last 30 days. Search sees only some posts, so this can under-count but never over-count.">
-            Active on LinkedIn: {[vc.linkedin.own && `${vc.linkedin.own} own post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm page`].filter(Boolean).join(', ')} in 30 days ↗
-          </a>
-        )}
-        {vc.trust && <span className="rounded border border-neutral-300 px-1 text-[10px] text-neutral-600" title="Research trust level">trust {vc.trust}</span>}
-        {vc.badges.map((b) => <span key={b} className="rounded bg-violet-50 px-1.5 py-0.5 text-[11px] text-violet-800">{b}</span>)}
+    <div className={`rounded-xl p-4 ${tone === 'neutral' ? 'bg-surface-2 ring-1 ring-line' : TONE[tone].soft}`}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className={`text-[12px] font-semibold uppercase tracking-wider ${tone === 'neutral' ? 'text-ink-3' : TONE[tone].text}`}>{title}{auto && <Auto />}</span>
+        {copy && <CopyButton text={text} label="Copy" variant="ghost" />}
       </div>
-      <p className="mt-1 text-sm text-neutral-800">{vc.summary ?? 'No public activity found in 30 days.'}<Auto /></p>
-      {vc.whyFit && <p className="mt-1 text-xs text-neutral-700"><span className="font-medium text-neutral-500">Why fit:</span> {vc.whyFit}</p>}
-      {vc.conflict && !vc.conflict.dismissed && vc.action.startsWith('Check conflict') && (
-        <p className="mt-1 text-xs text-rose-800"><span className="font-medium">Research:</span> “{vc.conflict.evidence}” (applies to the whole firm)</p>
+      <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink">{text}</p>
+    </div>
+  );
+}
+
+function Details({ vc }: { vc: VcView }) {
+  const hasDraft = !!(vc.draft || vc.hook || vc.opener || vc.formAnswers);
+  const [tab, setTab] = useState<'draft' | 'evidence' | 'notes'>(hasDraft ? 'draft' : 'evidence');
+  const tabs = [
+    ...(hasDraft ? [['draft', 'Draft & opener'] as const] : []),
+    ['evidence', `Evidence (${vc.accepted.length})`] as const,
+    ['notes', 'Notes & status'] as const,
+  ];
+  const conflictCard = vc.action.startsWith('Check conflict');
+  return (
+    <div className="rounded-b-2xl border-t border-line bg-surface-2/60 px-5 pb-5 pt-3">
+      <div role="tablist" aria-label={`${vc.name} details`} className="mb-4 flex gap-1 overflow-x-auto">
+        {tabs.map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} type="button" onClick={() => setTab(k)}
+            className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${tab === k ? 'bg-surface text-ink shadow-card ring-1 ring-line' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'draft' && (
+        <div role="tabpanel" className="grid gap-3">
+          {/* Same order as the draft: the research opener leads; a news hook is the alternative. */}
+          {vc.opener && !conflictCard && <TextBlock title="Opener used in the draft · from verified research" text={vc.opener} tone="accent" copy auto />}
+          {vc.hook && <TextBlock title={`Suggested opener — edit before sending${vc.opener ? ' · from recent news' : ''}`} text={vc.hook.text} tone={vc.opener ? 'info' : 'accent'} copy auto />}
+          {!vc.hook && !vc.opener && vc.whyFit && !conflictCard && <TextBlock title="Talking point from verified research" text={vc.whyFit} tone="info" />}
+          {vc.draft && <TextBlock title="Email draft — edit before sending" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} copy />}
+          {vc.formAnswers && <TextBlock title="Pitch-form answers" text={vc.formAnswers} copy />}
+        </div>
       )}
-      <p className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-neutral-600">
-        {vc.approach && <span><span className="text-neutral-500">Reach via:</span> {vc.approach.url
-          ? <a href={vc.approach.url} target="_blank" rel="noopener noreferrer" className="underline">{vc.approach.text.replace(vc.approach.url, '').trim() || 'form'} ↗</a>
-          : vc.approach.text}</span>}
-        {vc.cheque && <span><span className="text-neutral-500">Cheque:</span> {vc.cheque}</span>}
-        {vc.stage && <span><span className="text-neutral-500">Stage:</span> {vc.stage}</span>}
-      </p>
-      {vc.fit.flags.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{vc.fit.flags.map((f) => <span key={f} className="rounded bg-rose-50 px-1.5 py-0.5 text-[11px] text-rose-800">⚠ {f}</span>)}</div>}
-      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-        {vc.newest && <a href={vc.newest.url} target="_blank" rel="noopener noreferrer" className="underline">Newest source: {day(vc.newest.date)}</a>}
-        <span>{vc.status.replace(/_/g, ' ')}{vc.lastContactDate ? ` · last contact ${day(vc.lastContactDate, true)}${vc.daysSinceContact !== null ? ` (${vc.daysSinceContact} day${vc.daysSinceContact === 1 ? '' : 's'} ago)` : ''}` : ''}</span>
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="font-medium text-neutral-700 hover:underline">
-          {open ? 'Hide evidence ▴' : `Evidence (${vc.accepted.length}) ▾`}
-        </button>
-      </div>
 
-      <QuickActions vc={vc} />
-
-      {open && (
-        <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
-          {vc.hook && (
-            <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-emerald-900">Suggested opener — edit before sending</span>
-                <CopyHook text={vc.hook.text} />
-              </div>
-              <p className="mt-1 text-sm text-emerald-950">{vc.hook.text}</p>
-            </div>
-          )}
-          {!vc.hook && (vc.opener || vc.whyFit) && !vc.action.startsWith('Check conflict') && (
-            <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-sky-900">{vc.opener ? 'Suggested opener from verified research — edit before sending' : 'No recent public hook: talking point from verified research'}</span>
-                {vc.opener && <CopyButton text={vc.opener} label="Copy" />}
-              </div>
-              <p className="mt-1 text-sm text-sky-950">{vc.opener ?? vc.whyFit}</p>
-            </div>
-          )}
-          {vc.draft && (
-            <div className="rounded border border-neutral-200 bg-white px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-neutral-700">Email draft — edit before sending</span>
-                <CopyButton text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" />
-              </div>
-              <p className="mt-1 text-xs text-neutral-500">Subject: {vc.draft.subject}</p>
-              <pre className="mt-1 whitespace-pre-wrap font-sans text-sm text-neutral-800">{vc.draft.body}</pre>
-            </div>
-          )}
-          {vc.accepted.length > 0 ? (
-            <ul>{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
-          ) : <p className="text-sm text-neutral-500">No accepted signals.</p>}
+      {tab === 'evidence' && (
+        <div role="tabpanel">
+          {vc.accepted.length ? <ul className="rounded-xl bg-surface px-4 ring-1 ring-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
+            : <p className="rounded-xl bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 ring-1 ring-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
           {vc.others.length > 0 && (
-            <details className="text-sm">
-              <summary className="cursor-pointer text-xs text-neutral-600">Rejected and undated items ({vc.others.length})</summary>
-              <ul className="mt-1 space-y-1">
+            <details className="mt-3 rounded-xl bg-surface px-4 py-2.5 ring-1 ring-line">
+              <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-ink-2"><I.chevron width={14} height={14} />Rejected and undated items ({vc.others.length})</summary>
+              <ul className="mt-2 space-y-1.5 pb-1">
                 {vc.others.map((s) => (
-                  <li key={s.id} className="text-xs text-neutral-600">
-                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline decoration-neutral-300">{s.title}</a>
-                    <span className="ml-1 text-neutral-500">— {s.status === 'accepted' ? 'date unknown, not scored' : (REASON_LABEL[s.rejectReason ?? ''] ?? s.rejectReason ?? s.status)}</span>
+                  <li key={s.id} className="text-[12.5px] text-ink-3">
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-ink-2 underline decoration-line-2 underline-offset-2">{s.title}</a>
+                    <span> — {s.status === 'accepted' ? 'date unknown, not scored' : (REASON_LABEL[s.rejectReason ?? ''] ?? s.rejectReason ?? s.status)}</span>
                   </li>
                 ))}
               </ul>
             </details>
           )}
-          <EditForm vc={vc} />
         </div>
       )}
+
+      {tab === 'notes' && (
+        <div role="tabpanel" className="grid gap-4">
+          <EditForm vc={vc} />
+          <dl className="grid gap-x-6 gap-y-2 rounded-xl bg-surface p-4 text-[13px] ring-1 ring-line sm:grid-cols-[140px_1fr]">
+            {vc.approach && <><dt className="text-ink-3">How to reach</dt><dd className="text-ink-2">{vc.approach.text}</dd></>}
+            {vc.conflict && <><dt className="text-ink-3">Research conflict</dt><dd className="text-danger">“{vc.conflict.evidence}” (applies to the whole firm){vc.conflict.dismissed && ' — dismissed by you'}</dd></>}
+            <dt className="text-ink-3">Activity score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strong this VC&apos;s public activity was in the last 30 days</dd>
+            {vc.trust && <><dt className="text-ink-3">Research trust</dt><dd className="text-ink-2">{vc.trust}</dd></>}
+            <dt className="text-ink-3">Recommended action</dt><dd className="text-ink-2">{vc.action} <Auto /></dd>
+          </dl>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Meta({ vc }: { vc: VcView }) {
+  const RouteIcon = ROUTE_ICON[vc.route.kind];
+  const routeText = { form: 'Application form', linkedin: 'LinkedIn', email: 'Email', contact: 'Contact page', unknown: 'Route not verified' }[vc.route.kind];
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-ink-2">
+      <span className="inline-flex items-center gap-1.5" title={vc.approach?.text}><RouteIcon width={14} height={14} className="text-ink-3" />{routeText}</span>
+      {vc.cheque && <span title="First cheque"><span className="text-ink-3">Cheque</span> {vc.cheque}</span>}
+      {vc.stage && <span title="Stage focus"><span className="text-ink-3">Stage</span> {vc.stage}</span>}
+      <span className="inline-flex items-center gap-1.5 text-ink-3">
+        <I.clock width={13} height={13} />
+        {vc.status === 'not_contacted' ? 'Not contacted yet' : `${vc.status.replace(/_/g, ' ')}${vc.lastContactDate ? ` · last contact ${day(vc.lastContactDate)}${vc.daysSinceContact !== null ? ` (${vc.daysSinceContact}d ago)` : ''}` : ''}`}
+      </span>
+    </div>
+  );
+}
+
+function FullCard({ vc, onCollapse }: { vc: VcView; onCollapse?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const tone = actionToneOf(vc.action);
+  const conflictCard = vc.action.startsWith('Check conflict');
+  return (
+    <article id={`vc-${vc.id}`} className={`group fade-in relative scroll-mt-28 rounded-2xl bg-surface has-[[role=menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
+      <div className="p-5">
+        <div className="flex gap-4">
+          <Avatar name={vc.name} fit={vc.fit.label} size={44} />
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              <Badge tone={tone} title="Recommended by the pipeline from fit, activity and your status"><span className={`h-1.5 w-1.5 rounded-full ${TONE[tone].dot}`} />{vc.action}</Badge>
+              {vc.badges.map((b) => <Badge key={b} tone="violet">{b}</Badge>)}
+              {vc.linkedin && (
+                <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" title="Posts found through search results in the last 30 days (can under-count, never over-count)"
+                  className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-[11.5px] font-medium text-info hover:underline">
+                  <I.linkedin width={12} height={12} />
+                  Active: {[vc.linkedin.own && `${vc.linkedin.own} own post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm`].filter(Boolean).join(', ')}
+                </a>
+              )}
+            </div>
+            <h3 className="text-[18px] font-semibold leading-tight tracking-tight text-ink">
+              {vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span>
+            </h3>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
+            <span className="text-[10.5px] font-medium uppercase tracking-wider text-ink-3">{vc.fit.label} fit</span>
+            {onCollapse && <button type="button" onClick={onCollapse} className="mt-1 text-[11.5px] text-ink-3 underline">Collapse</button>}
+          </div>
+        </div>
+        {vc.whyFit && <p className="mt-2 text-[14px] leading-relaxed text-ink-2 sm:pl-[60px]">{vc.whyFit}</p>}
+        {conflictCard && vc.conflict && !vc.conflict.dismissed && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger sm:ml-[60px]"><I.alert width={15} height={15} className="mt-0.5 shrink-0" />Research: “{vc.conflict.evidence}”. Applies to the whole firm; check before pitching.</p>
+        )}
+
+        <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[13.5px] ring-1 ring-line">
+          <I.sparkle width={14} height={14} className="mt-0.5 shrink-0 text-ink-3" />
+          <p className="min-w-0 flex-1 text-ink-2">
+            {vc.summary ?? 'No public activity found in the last 30 days.'}<Auto />
+            {vc.newest && <> · <a href={vc.newest.url} target="_blank" rel="noopener noreferrer" className="text-ink-3 underline decoration-line-2 underline-offset-2 hover:text-ink">source {day(vc.newest.date)}</a></>}
+          </p>
+          <span className="hidden shrink-0 font-mono text-[12px] tabular-nums text-ink-3 sm:inline" title="Activity score (0–100): how strong this VC's public activity is in the last 30 days">activity {vc.score ?? 0}</span>
+        </div>
+
+        <Meta vc={vc} />
+        {vc.fit.flags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">{vc.fit.flags.map((f) => <Badge key={f} tone="warn"><I.alert width={12} height={12} />{f}</Badge>)}</div>
+        )}
+      </div>
+      <Actions vc={vc} open={open} onDetails={() => setOpen((o) => !o)} />
+      <div className="reveal" data-open={open}>
+        <div>{open && <Details vc={vc} />}</div>
+      </div>
     </article>
   );
+}
+
+// Compact row for the rest of the pipeline; expands into the full card.
+function CompactRow({ vc }: { vc: VcView }) {
+  const [open, setOpen] = useState(false);
+  if (open) return <FullCard vc={vc} onCollapse={() => setOpen(false)} />;
+  const tone = actionToneOf(vc.action);
+  return (
+    <button type="button" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
+      className="group flex w-full scroll-mt-28 items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left ring-1 ring-line transition-all hover:shadow-card hover:ring-line-2">
+      <Avatar name={vc.name} fit={vc.fit.label} size={32} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-medium text-ink">{vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span></span>
+        <span className={`block truncate text-[12.5px] ${TONE[tone].text}`}>{vc.action}</span>
+      </span>
+      <span className="hidden font-mono text-[12px] tabular-nums text-ink-3 sm:inline" title="Fit score">fit {vc.fit.score}</span>
+      <I.chevron width={16} height={16} className="text-ink-3 transition-transform group-hover:translate-y-0.5" />
+    </button>
+  );
+}
+
+export default function VcCard({ vc, compact = false }: { vc: VcView; compact?: boolean }) {
+  return compact ? <CompactRow vc={vc} /> : <FullCard vc={vc} />;
 }

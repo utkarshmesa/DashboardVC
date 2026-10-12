@@ -11,16 +11,6 @@ export function day(iso: string | null, withYear = false): string {
 export const ist = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' IST' : '—';
 
-export function actionTone(action: string): string {
-  if (action.startsWith('Reach out')) return 'bg-emerald-100 text-emerald-900 ring-emerald-300';
-  if (action.startsWith('Nudge') || action.startsWith('Mention')) return 'bg-sky-100 text-sky-900 ring-sky-300';
-  if (action.startsWith('Warm')) return 'bg-amber-100 text-amber-900 ring-amber-300';
-  if (action.startsWith('Check conflict')) return 'bg-rose-100 text-rose-900 ring-rose-300';
-  if (action.startsWith('Same firm')) return 'bg-violet-100 text-violet-900 ring-violet-300';
-  if (action.startsWith('Data unavailable')) return 'bg-orange-100 text-orange-900 ring-orange-300';
-  return 'bg-neutral-100 text-neutral-700 ring-neutral-300';
-}
-
 export const LEVEL_LABEL: Record<string, string> = {
   core: 'core', logistics_non_software: 'logistics (non-software)', adjacent: 'adjacent', unrelated: 'unrelated',
 };

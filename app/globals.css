@@ -1,1 +1,110 @@
 @import "tailwindcss";
+
+/* Design tokens. Warm "paper" surfaces, ink text, one deep-green accent; semantic tones for attention / conflict /
+   info / same-firm. Every colour in the UI comes from here, so dark mode is a token swap. */
+:root {
+  --paper: #f6f4ef;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --ink: #15171c;
+  --ink-2: #4a4f59;
+  --ink-3: #676d77;
+  --line: #e7e3da;
+  --line-2: #d8d2c6;
+  --accent: #14532d;
+  --accent-ink: #ffffff;
+  --accent-2: #1d6b3d;
+  --accent-soft: #e6f1e9;
+  --accent-text: #166534;
+  --warn: #9a4b05;
+  --warn-soft: #fbf0dc;
+  --danger: #9f1239;
+  --danger-soft: #fbe9ed;
+  --info: #0b4f75;
+  --info-soft: #e5f0f7;
+  --violet: #5b2bb5;
+  --violet-soft: #efeafb;
+  --shadow: 0 1px 2px rgb(21 23 28 / 0.05), 0 2px 8px rgb(21 23 28 / 0.04);
+  --shadow-lift: 0 2px 4px rgb(21 23 28 / 0.06), 0 10px 24px rgb(21 23 28 / 0.08);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1013;
+    --surface: #16191e;
+    --surface-2: #1b1f25;
+    --ink: #eceef1;
+    --ink-2: #b6bcc6;
+    --ink-3: #868d98;
+    --line: #262a31;
+    --line-2: #333842;
+    --accent: #3fae6a;
+    --accent-ink: #07130b;
+    --accent-2: #52c07c;
+    --accent-soft: #15281c;
+    --accent-text: #6fd396;
+    --warn: #f0b45e;
+    --warn-soft: #2b2112;
+    --danger: #f28aa0;
+    --danger-soft: #2d161c;
+    --info: #79bfe6;
+    --info-soft: #132530;
+    --violet: #b9a2f2;
+    --violet-soft: #221b33;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-lift: 0 4px 18px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --shadow-card: var(--shadow);
+  --shadow-lift: var(--shadow-lift);
+}
+
+html { background: var(--paper); }
+body { font-feature-settings: "ss01", "cv11"; }
+::selection { background: var(--accent-soft); color: var(--ink); }
+
+/* Keyboard focus is always visible; mouse clicks don't flash rings. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Smooth open/close for card details without layout jank. */
+.reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms ease; }
+.reveal[data-open="true"] { grid-template-rows: 1fr; }
+.reveal > * { overflow: hidden; }
+
+.fade-in { animation: fade-in 260ms ease both; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
