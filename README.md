@@ -97,6 +97,10 @@ The eval labels (60 items, 10 not about the VC) and the ranking-review answers w
 
 ## Components Map
 
+![MVP Components Map: actors and tools by trigger, input, context, processing, AI and output, tagged by the root cause each part addresses](docs/components-map.png)
+
+Swimlane view ([SVG](docs/components-map.svg); regenerate with `node scripts/components-map.cjs docs/components-map.svg`). Tags: **RC1** no fit filter, **RC2** no reason to write now, **RC3** no follow-through, **GUARD** the AI never decides or writes facts. The flowchart below shows the same system as a data flow.
+
 ```mermaid
 flowchart TB
   subgraph Triggers
