@@ -105,7 +105,7 @@ flowchart TB
     RUNNOW[Dashboard Run now]
   end
   subgraph Vercel["Next.js app on Vercel (bom1)"]
-    DASH[Dashboard<br/>password · sections · evidence drawer<br/>thumbs · inline edit · /settings · /quality]
+    DASH[Dashboard<br/>password · week plan · cards with route actions<br/>details: draft · evidence + thumbs · notes<br/>/investors · /settings · /quality]
     RUN[Batch runner<br/>10 VCs end to end · lock · claim]
     COL[Collectors<br/>Google News · Tavily · RSS] --> FIL[Filter<br/>window · names · ambiguous] --> CLS[Classifier<br/>labels · guards · opener] --> SCO[Score · actions · firm dedupe<br/>code only]
     ENR[Enrichment<br/>≤10 decisive items/run]
