@@ -108,7 +108,7 @@ What remains:
 
 - `README.md`: setup, commands, AI boundary, eval, Components Map, limitations, tooling.
 - `docs/SPEC.md`: amended where the owner decided (§9.2/§16 LinkedIn, §9.6 row O6, §11 drafts, routes, Add investors).
-- `docs/DECISIONS.md`: #1–50.
+- `docs/DECISIONS.md`: #1–51.
 - Reviews and plans: `docs/REVIEW.md`, `docs/PLAN-NEXT.md`, `docs/REVIEW-2.md`.
 - Acceptance and demo: `docs/ACCEPTANCE.md`, `docs/DEMO.md`; spike report in `spike/REPORT.md`.
 - `eval/`: labels, predictions, eval report, calibration, ranking review.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBrief, dealFromUrl, fundStatus, headline } from '@/lib/brief';
+import { buildBrief, chequeMaxUsd, chequeNoteFrom, dealFromUrl, fundStatus, headline } from '@/lib/brief';
 
 const NOW = new Date('2026-10-12T00:00:00Z');
 
@@ -74,5 +74,70 @@ describe('buildBrief', () => {
   it('an investor with no research still gets an empty, safe brief', () => {
     const e = buildBrief({ research: null, thesis: null, trust: null, linkedinSlug: null, firmFund: null, fitFlags: [], verifiedDeals: [] }, NOW);
     expect(e).toMatchObject({ deals: [], dealCount: 0, fund: null, fundStatus: null, competitorDeals: [], sourceCount: 0 });
+  });
+});
+
+describe('stress: fund notes with several clauses (real notes)', () => {
+  const s = (n: string) => fundStatus(n, NOW)?.label ?? null;
+  it('a later fund that is only a target reads as raising, not fresh', () => {
+    expect(s('Fund III INR 500 crore closed in 2023. Fund IV INR 1,100 crore launched January 2026 is a target, not a verified close.')).toBe('Raising a new fund · Jan 2026');
+    expect(s('Fund III launch in February 2026 targets INR 400 crore including INR 150 crore greenshoe')).toBe('Raising a new fund · Feb 2026');
+    expect(s('Fund IV closed USD 200 million May 2023. IFC September 2026 disclosure: Fund V target USD 225 million')).toBe('Raising a new fund · Sep 2026');
+  });
+  it('a recent close wins over a newer target; second closes and ISO dates are read', () => {
+    expect(s('December 2025 reporting describes an approximately INR 700 crore debut-fund close; current site reports INR 723 crore. Fund II announced July 2026 targeting INR 1,500 crore')).toBe('Fresh fund · Dec 2025');
+    expect(s('USD 150M second close of Fund V reported September 2025; not verified final fund total.')).toBe('Fresh fund · Sep 2025 (second close)');
+    expect(s('Fund V first close USD 175M announced 2025-10-29; target USD 250–275M, not verified final close.')).toBe('Fresh fund · Oct 2025 (first close)');
+  });
+  it('follow-on-only funds warn; a dated portfolio deal is not fund news; missing spaces are tolerated', () => {
+    expect(fundStatus('Titan Capital Winners Fund final close INR 333 crore October 21, 2024; follow-on-only mandate for existing portfolio', NOW)).toEqual({ label: 'Follow-on-only fund · Oct 2024', tone: 'warn' });
+    expect(s("Fund III is described as USD 75 million. Exact vintage and final close not independently established. Fund I winding up does not mean firm inactivity; CargoFL's 2025 seed qualifies.")).toBeNull();
+    expect(s('Fund III anchor commitment INR1,000 crore approved May2025; USD180–200M target reported June2025, not verified final close')).toBe('Raising a new fund · Jun 2025');
+  });
+});
+
+describe('stress: deal noise and duplicates (real headlines)', () => {
+  it('rejects fund raises, LP investments, weekly roundups, criteria pages and generic pieces', () => {
+    for (const u of [
+      'https://www.accel.com/noteworthies/accel-raises-650m-for-ninth-india-fund-doubles-down-on-ai',
+      'https://yourstory.com/2023/06/yara-growth-ventures-invests-in-omnivores-third-fund',
+      'https://inc42.com/buzz/from-emotorad-to-phicommerce-indian-startups-raised-this-week/',
+      'https://blume.vc/blume-s-investment-criteria-be604cba9ebd4d8ea1d9334f9eb2deef',
+      'https://example.com/venture-capital-firm-speciale-invest-back-indian-startups-with-rs-100-cr-by-2025',
+    ]) expect(dealFromUrl(u)).toBeNull();
+  });
+  it('merges the same company across differently worded headlines within one investor', () => {
+    const b = buildBrief({ research: { source_urls: [
+      'https://a.com/quick-commerce-enabler-inamo-secures-seed-funding-to-expand-dark-store-network',
+      'https://b.com/q-com-start-up-inamo-raises-series-a-round-led-by-prime-venture-partners',
+      'https://c.com/trupeerai-raises-seed-round', 'https://d.com/trupeer-ai-raises-seed-round-led-by-rtp-global',
+      'https://e.com/wootzwork-raises-6-6m-to-bring-predictability', 'https://f.com/wootz-work-raises-3-5m-led-by-matrix',
+      'https://g.com/zango-raises-4-8-million-nexus-south-park', 'https://h.com/bengaluru-ai-regulatory-compliance-startup-zango-funding-nexus',
+      'https://i.com/superprocure-a-unified-tms-platform-secures-investment-led-by-pentathlon',
+    ].join('; ') }, thesis: null, trust: null, linkedinSlug: null, firmFund: null, fitFlags: [], verifiedDeals: [{ company: 'SuperProcure', round: 'investment', date: '2026-02', url: null }] }, NOW);
+    expect(b.dealCount).toBe(5); // Inamo, Trupeer, Wootzwork, Zango, SuperProcure
+    expect(b.deals.find((d) => /inamo/i.test(d.label))?.round).toBe('Seed, Series A');
+  });
+  it('in-space from research prose is clause-bounded; cross-border trade counts', () => {
+    const b = buildBrief({ research: { fit_reason: 'Official partnerships include Wootzwork and Zango; industrial procurement seed exposure.', source_urls: 'https://g.com/zango-raises-4-8-million-nexus-south-park' }, thesis: null, trust: null, linkedinSlug: null, firmFund: null, fitFlags: [], verifiedDeals: [] }, NOW);
+    expect(b.deals[0].inSpace).toBe(false);
+    expect(dealFromUrl('https://x.com/saas-startup-trezix-bags-rs-10-cr-to-streamline-import-and-export-solutions')?.inSpace).toBe(true);
+  });
+});
+
+describe('stress: cheque size against a USD 1–3M round', () => {
+  it('reads the top of USD and INR-crore ranges', () => {
+    expect(chequeMaxUsd('USD 250,000–600,000 initial investment')).toBe(600_000);
+    expect(chequeMaxUsd('Seed USD 0.5–3M; Series A USD 3.5–10M.')).toBe(10_000_000);
+    expect(chequeMaxUsd('USD500k–5M average')).toBe(5_000_000);
+    expect(Math.round(chequeMaxUsd('Average Rs 4-8 Cr (~USD 0.5-1M)')!)).toBe(1_000_000);
+    expect(Math.round(chequeMaxUsd('INR 6–8 crore for announced Fund III')! / 1000)).toBe(964);
+    expect(chequeMaxUsd('Typical seed cheque not public')).toBeNull();
+  });
+  it('notes "likely a co-investor" only when the cheque tops out below USD 1M', () => {
+    expect(chequeNoteFrom('USD 250,000–600,000 initial investment')).toBe('Cheques up to about $600K: likely a co-investor, not your lead');
+    expect(chequeNoteFrom('USD 500k–1M; firm prefers to lead or co-lead.')).toBeNull();
+    expect(chequeNoteFrom('USD 1–2 million initial investment')).toBeNull();
+    expect(chequeNoteFrom(null)).toBeNull();
   });
 });

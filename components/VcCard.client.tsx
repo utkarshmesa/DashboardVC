@@ -292,7 +292,7 @@ function Profile({ vc }: { vc: VcView }) {
   const head = 'mb-3 text-[12px] font-semibold uppercase tracking-wider text-ink-3';
   return (
     <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-profile`} className="grid gap-3">
-      <section className={box} aria-label="Cheque and fund">
+      <section className={box} aria-label={`${vc.name}: cheque and fund`}>
         <h4 className={head}>Can they write your cheque?</h4>
         <dl className="grid gap-2.5">
           {row('First cheque', b.cheque ?? <span className="text-ink-3">Not public</span>)}
@@ -302,7 +302,7 @@ function Profile({ vc }: { vc: VcView }) {
         </dl>
       </section>
 
-      <section className={box} aria-label="Track record">
+      <section className={box} aria-label={`${vc.name}: track record`}>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h4 className="text-[12px] font-semibold uppercase tracking-wider text-ink-3">Have they backed companies like yours?</h4>
           <span className="text-[12px] text-ink-3">
@@ -332,7 +332,7 @@ function Profile({ vc }: { vc: VcView }) {
         <p className="mt-3 text-[11.5px] text-ink-3">Headlines come from the source articles; amounts are left out because they can&apos;t be read reliably from links.</p>
       </section>
 
-      <section className={box} aria-label="The person">
+      <section className={box} aria-label={`${vc.name}: who they are`}>
         <h4 className={head}>Who they are</h4>
         <dl className="grid gap-2.5">
           {row('Role', <>{b.title ?? <span className="text-ink-3">Not verified</span>}{b.titleVerified && <span className="text-ink-3"> · verified {b.titleVerified}</span>}</>)}
@@ -344,7 +344,7 @@ function Profile({ vc }: { vc: VcView }) {
       </section>
 
       {b.caveats && (
-        <section className="rounded-xl bg-warn-soft p-4" aria-label="Before you write">
+        <section className="rounded-xl bg-warn-soft p-4" aria-label={`${vc.name}: before you write`}>
           <h4 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-warn"><I.alert width={13} height={13} />Before you write</h4>
           <p className="text-[13.5px] leading-relaxed text-ink">{b.caveats}</p>
         </section>
