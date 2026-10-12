@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ACTIONS, decideAction, firmDedupe, meetsEvidenceFloor, sameFirm, type ActionInput, type DedupeRow } from '@/lib/actions';
 
 const NOW = new Date('2026-10-12T05:00:00Z');
-const base: ActionInput = { status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: 0, topRelevance: null, conflictCompany: null, hasEvidence: true, now: NOW };
+const base: ActionInput = { status: 'not_contacted', lastContactDate: null, fetchStatus: 'ok', score: 0, topRelevance: null, conflictCompany: null, hasEvidence: true, now: NOW, reach: 50, warm: 25 }; // fixed so tests don't move with calibration
 const act = (o: Partial<ActionInput>) => decideAction({ ...base, ...o });
 
 describe('action table (SPEC §9.6)', () => {

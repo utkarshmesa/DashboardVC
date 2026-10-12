@@ -2,9 +2,9 @@
 export const SIGNAL_WINDOW_DAYS = 30;
 export const MIN_CONFIDENCE = 0.7;
 export const MIN_RELEVANCE = 0; // acceptance relevance floor; tuned in Phase 2 on the eval tune split
-export const REACH = 50;
-export const WARM = 25;
-export const HALF_LIFE_DAYS = 20;
+export const REACH = 30;  // calibrated 2026-10-12 (eval/calibration.json; was 50)
+export const WARM = 15;   // calibrated 2026-10-12 (was 25)
+export const HALF_LIFE_DAYS = 20; // calibrated 2026-10-12 (unchanged)
 export const LOW_RELEVANCE = 0.4;
 export const RELEVANCE_LEVELS = ['core', 'logistics_non_software', 'adjacent', 'unrelated'] as const;
 export type RelevanceLevel = (typeof RELEVANCE_LEVELS)[number];

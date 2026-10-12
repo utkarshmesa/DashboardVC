@@ -240,3 +240,11 @@ export async function applyFirmDedupe(store: Store): Promise<number> {
   }
   return changes.length;
 }
+
+// Recompute every VC's score and action from stored signals (no fetching, no classification), then firm dedupe.
+// Used after a calibration change; Phase 3's per-VC rescore after a thumbs-down uses scoreAndWrite the same way.
+export async function rescoreAll(store: Store, vcIds: string[], fetchStatusOf: (id: string) => FetchStatus, now = new Date()) {
+  const contexts = await store.loadContexts(vcIds);
+  for (const vc of contexts) await scoreAndWrite(store, vc, fetchStatusOf(vc.id), now);
+  return { rescored: contexts.length, deduped: await applyFirmDedupe(store) };
+}

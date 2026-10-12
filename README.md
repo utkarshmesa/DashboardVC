@@ -19,10 +19,10 @@ Twice a week this collects public signals (deals, writing, talks, press) about t
 | `about_this_vc` precision on the test split (gate ≥ 0.90) | **1.00** (recall 1.00) |
 | Type accuracy / relevance-level accuracy (test) | 0.70 / 0.77 |
 | Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | **0.7 / 0.** Tuned on the tune split; 0.5–0.7 tie, so the default is kept |
-| Ranking review agreement | *pending:* fill `eval/ranking_review.csv`, then `npm run ranking:calibrate` |
-| Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` | 50 / 25 / 20 (defaults until calibrated) |
+| Ranking review agreement | **98%** (49/50). Only 2 of 50 VCs were "would contact this week", so this calibration is thin; redo it as evidence accumulates |
+| Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` | **30 / 15 / 20** (`eval/calibration.json`). Contact actions also need the evidence floor, which no VC meets yet |
 
-Labels (`eval/labels.jsonl`, 60 items, 10 not about the VC) were written by the builder (Claude Code) from first principles at the owner's request, not by a human; see `docs/DECISIONS.md` #20–21 for this and for the prompt definitions tightened during tuning.
+Labels (`eval/labels.jsonl`, 60 items, 10 not about the VC) and the ranking-review answers were written by the builder (Claude Code) from first principles at the owner's request, not by a human; see `docs/DECISIONS.md` #20–22 for this and for the prompt definitions tightened during tuning.
 
 ## Commands
 
@@ -37,6 +37,7 @@ Labels (`eval/labels.jsonl`, 60 items, 10 not about the VC) were written by the 
 | `npm run settings -- --target-space "…" --my-product "…"` | Change either setting and queue in-window signals for reclassification (also on `/settings`) |
 | `npm run eval` | Precision/recall on hand labels, with tune/test split |
 | `npm run ranking:export` / `ranking:calibrate` | §12.3 ranking review |
+| `npm run rescore` | Recompute all scores and actions from stored signals (after a constants change); no fetching |
 
 ## Setup, data and terms of use, Components Map, known limitations, tooling disclosure
 
