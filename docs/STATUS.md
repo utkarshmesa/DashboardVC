@@ -31,12 +31,12 @@ What remains:
 
 | Part | State |
 |---|---|
-| Vercel project `vc-pipeline` | Next.js 16, region bom1, GitHub-connected (every push deploys) |
+| Vercel project `vc-pipeline` | Next.js 16, region bom1, GitHub-connected. On 2026-10-12 three pushes in a row got no Vercel deployment (no status, no error); `6633e83` was deployed from GitHub by API. If the live app lags `main`, check the commit status and redeploy |
 | Vercel Cron | `/api/cron`, Mon/Thu 06:00 IST. Fired on its own on Mon 12 Oct |
 | GitHub finisher | Mon/Thu 07:00 and 08:00 IST plus manual dispatch. If a cron run overflows the 300 s limit, the finisher completes it and posts the digest (once per run) |
 | LinkedIn search | Weekly per VC (Monday run; the Thursday run skips it). Last checked Mon 12 Oct, so next due Mon 19 Oct |
-| CI | Lint, typecheck, 104 unit tests and the recall replay (6/6) on every push; no secrets needed. All recent runs green |
-| Supabase `vc-pipeline` (ap-south-1) | Migrations 001–008; 50 VCs, 57 firms, 50 profiles. RLS denies anon/authenticated; the pipeline writes `vcs` only through `apply_signals` |
+| CI | Lint, typecheck, 113 unit tests and the recall replay (6/6) on every push; no secrets needed. All recent runs green |
+| Supabase `vc-pipeline` (ap-south-1) | Migrations 001–010; 50 VCs, 57 firms, 50 profiles. RLS denies anon/authenticated; the pipeline writes `vcs` only through `apply_signals` |
 | Data | 155 accepted signals (72 from LinkedIn), 21 openers, 0 logged outreach events (nothing sent yet) |
 | Weekly plan now | 5 Reach out (strong fit), 1 Reach out this week (Alok Goyal, from his own LinkedIn post on logistics), 6 Warm, 3 Check conflict, 9 Good fit (queued), 8 Same firm, 15 Low, 3 Quiet |
 | Email draft settings | Filled from persona facts only: product, early revenue, USD 1–3M seed. Sign-off "Vikram". No company name or traction numbers, because none are known |
