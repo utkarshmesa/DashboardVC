@@ -66,8 +66,11 @@
 | Scheduled cron processes all 50 VCs on its own (§15.1) | Automatic; verified by the scheduled task `vc-pipeline-thursday-acceptance` | Thu 2026-10-15, cron 06:00 IST, finisher 07:00/08:00, check 09:30 (needs the Claude app open, or it runs at next launch) |
 | Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
 | Demo rehearsal (§15.12) | You | Any time. `docs/DEMO.md`; a dry run of every step was done on 2026-10-12 |
-| Rotate the Gemini, Tavily and Supabase service-role keys (pasted into chat earlier) | You. Tell me afterwards and I'll update `.env.local`, Vercel and the GitHub secret | Before submission |
 | Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only, and the README has the tooling disclosure |
+
+## Product review
+
+`docs/REVIEW.md` (2026-10-12): the dashboard ranks by recent news, not investor fit. Only 1 of 12 best-fit (tier-1) VCs is in "This week", and two firms that backed TMS competitors (Pentathlon/SuperProcure, Aeravti/FreightFox) show no conflict. A prioritized "Phase 5: fit-first weekly plan" is proposed and awaits the owner's decision.
 
 ## Where to look
 
