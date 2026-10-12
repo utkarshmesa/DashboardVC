@@ -65,7 +65,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <AppHeader active="/investors" />
-      <main className="mx-auto max-w-4xl px-4 pb-24 pt-8 sm:px-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-4xl px-4 pb-24 pt-8 outline-none sm:px-6">
         <PageTitle eyebrow="Investors" title={<>Keep the pipeline <em className="text-accent-text">full</em>.</>}
           sub="Researched investors you don't track yet, plus anyone you want to add. Adding one puts them in your queue with a draft ready." />
         <Card className={`mb-8 flex flex-wrap items-center gap-4 p-5 ${low ? 'ring-warn/30' : ''}`}>

@@ -16,13 +16,20 @@ type Channel = 'email' | 'form' | 'linkedin' | 'other';
 function useQuick(vc: VcView) {
   const router = useRouter();
   const [busy, setBusy] = useState<Quick | null>(null);
-  async function go(action: Quick, channel?: Channel) {
-    setBusy(action);
-    await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, channel }) });
+  const [failed, setFailed] = useState(false);
+  // Never leave a button on "Saving…": a network or server failure says so, and nothing is assumed saved.
+  async function go(action: Quick, channel?: Channel): Promise<boolean> {
+    setBusy(action); setFailed(false);
+    let ok = false;
+    try {
+      const r = await fetch(`/api/vc/${vc.id}/quick`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, channel }) });
+      ok = r.ok;
+    } catch { ok = false; }
     setBusy(null);
-    router.refresh();
+    if (ok) router.refresh(); else setFailed(true);
+    return ok;
   }
-  return { busy, go };
+  return { busy, go, failed, clearFailed: () => setFailed(false) };
 }
 
 function CopyButton({ text, label, variant = 'secondary' }: { text: string; label: string; variant?: 'secondary' | 'ghost' }) {
@@ -41,11 +48,14 @@ function CopyButton({ text, label, variant = 'secondary' }: { text: string; labe
 function Thumbs({ s }: { s: SignalView }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   async function vote(v: 'up' | 'down') {
-    setBusy(true);
-    await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal_id: s.id, verdict: s.verdict === v ? null : v }) });
-    setBusy(false);
-    router.refresh();
+    setBusy(true); setFailed(false);
+    try {
+      const r = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signal_id: s.id, verdict: s.verdict === v ? null : v }) });
+      if (!r.ok) throw new Error(String(r.status));
+      router.refresh();
+    } catch { setFailed(true); } finally { setBusy(false); }
   }
   const b = (v: 'up' | 'down', label: string) => {
     const on = s.verdict === v;
@@ -57,7 +67,12 @@ function Thumbs({ s }: { s: SignalView }) {
       </button>
     );
   };
-  return <span className="inline-flex gap-0.5">{b('up', 'Useful signal')}{b('down', 'Wrong or useless signal (removes it from scoring)')}</span>;
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {failed && <span role="alert" className="mr-1 text-[11.5px] text-danger">Not saved</span>}
+      {b('up', 'Useful signal')}{b('down', 'Wrong or useless signal (removes it from scoring)')}
+    </span>
+  );
 }
 
 function EditForm({ vc }: { vc: VcView }) {
@@ -71,9 +86,11 @@ function EditForm({ vc }: { vc: VcView }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setState('saving');
-    const r = await fetch(`/api/vc/${vc.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, last_contact_date: date || null, notes: notes || null }) });
-    setState(r.ok ? 'saved' : 'error');
-    router.refresh();
+    try {
+      const r = await fetch(`/api/vc/${vc.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, last_contact_date: date || null, notes: notes || null }) });
+      setState(r.ok ? 'saved' : 'error');
+      if (r.ok) router.refresh();
+    } catch { setState('error'); } // offline: say so instead of hanging on "Saving…"
   }
   return (
     <form onSubmit={save} className="grid gap-3 sm:grid-cols-[180px_160px_1fr]">
@@ -101,7 +118,7 @@ function EditForm({ vc }: { vc: VcView }) {
 const ROUTE_ICON = { form: I.form, linkedin: I.linkedin, email: I.mail, contact: I.globe, unknown: I.route } as const;
 
 function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; open: boolean }) {
-  const { busy, go } = useQuick(vc);
+  const { busy, go, failed, clearFailed } = useQuick(vc);
   const [confirm, setConfirm] = useState<Channel | null>(null);
   const [more, setMore] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
@@ -124,7 +141,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
   );
   const quick = (action: Quick, label: string, variant: 'secondary' | 'ghost' | 'danger' = 'secondary', channel?: Channel) => (
     <button key={action + label} type="button" disabled={!!busy} onClick={() => { setMore(false); go(action, channel); }} className={btn(variant)}>
-      {busy === action ? '…' : label}
+      {busy === action ? 'Saving…' : label}
     </button>
   );
 
@@ -160,9 +177,9 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
       {primary}{secondary}
       {overflow.length > 0 && (
         <span className="relative" ref={menuRef}>
-          <button type="button" aria-haspopup="menu" aria-expanded={more} aria-label="More actions" onClick={() => setMore((m) => !m)} className={btn('quiet')}><I.more width={16} height={16} /></button>
+          <button type="button" aria-expanded={more} aria-label="More actions" onClick={() => setMore((m) => !m)} className={btn('quiet')}><I.more width={16} height={16} /></button>
           {more && (
-            <span role="menu" className="fade-in absolute left-0 top-9 z-30 flex min-w-48 flex-col items-stretch gap-0.5 rounded-xl bg-surface p-1.5 shadow-lift ring-1 ring-line [&>*]:justify-start">
+            <span data-menu="" className="fade-in absolute left-0 top-9 z-30 flex min-w-48 flex-col items-stretch gap-0.5 rounded-xl bg-surface p-1.5 shadow-lift ring-1 ring-line [&>*]:justify-start">
               {overflow}
             </span>
           )}
@@ -171,13 +188,19 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
       <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ml-auto`}>
         {open ? 'Hide details' : 'Details'}<I.chevron width={14} height={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
+      {failed && (
+        <div role="alert" className="fade-in flex w-full items-center gap-2 rounded-xl bg-danger-soft px-3 py-2 text-[13px] text-danger">
+          <I.alert width={15} height={15} />Couldn&apos;t save that. Check your connection and try again; nothing was changed.
+          <button type="button" onClick={clearFailed} className="ml-auto underline">Dismiss</button>
+        </div>
+      )}
       {confirm && (
         <div className="fade-in flex w-full flex-wrap items-center gap-2 rounded-xl bg-warn-soft px-3 py-2 text-[13px] text-warn" role="status">
           <I.check width={15} height={15} />
           <span className="font-medium">Sent it?</span>
           <span className="text-ink-2">Logging it starts the follow-up timer.</span>
           <span className="ml-auto flex gap-2">
-            <button type="button" disabled={!!busy} onClick={() => { go('emailed', confirm); setConfirm(null); }} className={btn('primary')}>
+            <button type="button" disabled={!!busy} onClick={async () => { if (await go('emailed', confirm)) setConfirm(null); }} className={btn('primary')}>
               {vc.status === 'awaiting_response' ? 'Yes, log the nudge' : 'Yes, log as sent'}
             </button>
             <button type="button" onClick={() => setConfirm(null)} className={btn('ghost')}>Not yet</button>
@@ -234,15 +257,23 @@ function Details({ vc }: { vc: VcView }) {
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
     <div className="rounded-b-2xl border-t border-line bg-surface-2/60 px-5 pb-5 pt-3">
-      <div role="tablist" aria-label={`${vc.name} details`} className="mb-4 flex gap-1 overflow-x-auto">
+      <div role="tablist" aria-label={`${vc.name} details`} className="mb-4 flex gap-1 overflow-x-auto"
+        onKeyDown={(e) => {
+          // WAI-ARIA tabs: arrow keys move between tabs, Home/End jump to the ends.
+          const keys = tabs.map(([k]) => k), i = keys.indexOf(tab);
+          const next = e.key === 'ArrowRight' ? keys[(i + 1) % keys.length] : e.key === 'ArrowLeft' ? keys[(i - 1 + keys.length) % keys.length] : e.key === 'Home' ? keys[0] : e.key === 'End' ? keys[keys.length - 1] : null;
+          if (!next) return;
+          e.preventDefault(); setTab(next);
+          (e.currentTarget.querySelector(`[data-tab="${next}"]`) as HTMLElement | null)?.focus();
+        }}>
         {tabs.map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} type="button" onClick={() => setTab(k)}
+          <button key={k} role="tab" data-tab={k} id={`tab-${vc.id}-${k}`} aria-controls={`panel-${vc.id}`} tabIndex={tab === k ? 0 : -1} aria-selected={tab === k} type="button" onClick={() => setTab(k)}
             className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${tab === k ? 'bg-surface text-ink shadow-card ring-1 ring-line' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
         ))}
       </div>
 
       {tab === 'draft' && (
-        <div role="tabpanel" className="grid gap-3">
+        <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-draft`} className="grid gap-3">
           {/* Same order as the draft: the research opener leads; a news hook is the alternative. */}
           {vc.opener && !conflictCard && <TextBlock title="Opener used in the draft · from verified research" text={vc.opener} tone="accent" copy auto />}
           {vc.hook && <TextBlock title={`Suggested opener — edit before sending${vc.opener ? ' · from recent news' : ''}`} text={vc.hook.text} tone={vc.opener ? 'info' : 'accent'} copy auto />}
@@ -253,7 +284,7 @@ function Details({ vc }: { vc: VcView }) {
       )}
 
       {tab === 'evidence' && (
-        <div role="tabpanel">
+        <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-evidence`}>
           {vc.accepted.length ? <ul className="rounded-xl bg-surface px-4 ring-1 ring-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
             : <p className="rounded-xl bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 ring-1 ring-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
           {vc.others.length > 0 && (
@@ -273,7 +304,7 @@ function Details({ vc }: { vc: VcView }) {
       )}
 
       {tab === 'notes' && (
-        <div role="tabpanel" className="grid gap-4">
+        <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-notes`} className="grid gap-4">
           <EditForm vc={vc} />
           <dl className="grid gap-x-6 gap-y-2 rounded-xl bg-surface p-4 text-[13px] ring-1 ring-line sm:grid-cols-[140px_1fr]">
             {vc.approach && <><dt className="text-ink-3">How to reach</dt><dd className="text-ink-2">{vc.approach.text}</dd></>}
@@ -304,12 +335,14 @@ function Meta({ vc }: { vc: VcView }) {
   );
 }
 
-function FullCard({ vc, onCollapse }: { vc: VcView; onCollapse?: () => void }) {
+function FullCard({ vc, onCollapse, autoFocus }: { vc: VcView; onCollapse?: () => void; autoFocus?: boolean }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => { if (autoFocus) ref.current?.focus({ preventScroll: true }); }, [autoFocus]); // keep keyboard users in place after expanding a row
   const tone = actionToneOf(vc.action);
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
-    <article id={`vc-${vc.id}`} className={`group fade-in relative scroll-mt-28 rounded-2xl bg-surface has-[[role=menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
+    <article ref={ref} tabIndex={autoFocus ? -1 : undefined} aria-label={`${vc.name}, ${vc.firm}`} id={`vc-${vc.id}`} className={`group fade-in relative scroll-mt-28 rounded-2xl bg-surface has-[[data-menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
       <div className="p-5">
         <div className="flex gap-4">
           <Avatar name={vc.name} fit={vc.fit.label} size={44} />
@@ -319,7 +352,7 @@ function FullCard({ vc, onCollapse }: { vc: VcView; onCollapse?: () => void }) {
               {vc.badges.map((b) => <Badge key={b} tone="violet">{b}</Badge>)}
               {vc.linkedin && (
                 <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" title="Posts found through search results in the last 30 days (can under-count, never over-count)"
-                  className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-[11.5px] font-medium text-info hover:underline">
+                  className="inline-flex min-h-6 items-center gap-1 rounded-full bg-info-soft px-2 py-1 text-[11.5px] font-medium text-info hover:underline">
                   <I.linkedin width={12} height={12} />
                   Active: {[vc.linkedin.own && `${vc.linkedin.own} own post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm`].filter(Boolean).join(', ')}
                 </a>
@@ -332,7 +365,7 @@ function FullCard({ vc, onCollapse }: { vc: VcView; onCollapse?: () => void }) {
           <div className="flex flex-col items-center gap-1">
             <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
             <span className="text-[10.5px] font-medium uppercase tracking-wider text-ink-3">{vc.fit.label} fit</span>
-            {onCollapse && <button type="button" onClick={onCollapse} className="mt-1 text-[11.5px] text-ink-3 underline">Collapse</button>}
+            {onCollapse && <button type="button" onClick={onCollapse} className="mt-1 inline-flex min-h-6 items-center px-1 text-[11.5px] text-ink-3 underline">Collapse</button>}
           </div>
         </div>
         {vc.whyFit && <p className="mt-2 text-[14px] leading-relaxed text-ink-2 sm:pl-[60px]">{vc.whyFit}</p>}
@@ -365,7 +398,7 @@ function FullCard({ vc, onCollapse }: { vc: VcView; onCollapse?: () => void }) {
 // Compact row for the rest of the pipeline; expands into the full card.
 function CompactRow({ vc }: { vc: VcView }) {
   const [open, setOpen] = useState(false);
-  if (open) return <FullCard vc={vc} onCollapse={() => setOpen(false)} />;
+  if (open) return <FullCard vc={vc} onCollapse={() => setOpen(false)} autoFocus />;
   const tone = actionToneOf(vc.action);
   return (
     <button type="button" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}

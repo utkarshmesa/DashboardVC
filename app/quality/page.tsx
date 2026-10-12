@@ -57,7 +57,7 @@ export default async function QualityPage() {
   return (
     <>
       <AppHeader active="/quality" />
-      <main className="mx-auto max-w-4xl px-4 pb-24 pt-8 sm:px-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-4xl px-4 pb-24 pt-8 outline-none sm:px-6">
         <PageTitle eyebrow="Quality" title="Is it working?" sub="Replies to your outreach, how often the signals are right by your own judgement, and what the last run collected." />
 
         <section className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -101,7 +101,7 @@ export default async function QualityPage() {
           <SectionTitle hint="Undated items aren't scored, except Tavily results marked date approx (scored as 30 days old)">Items collected</SectionTitle>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead><tr className="border-b border-line"><th className={th}></th><th className={th}>Accepted</th><th className={th}>Rejected</th><th className={th}>Undated</th><th className={th}>Pending</th></tr></thead>
+              <thead><tr className="border-b border-line"><th className={th}><span className="sr-only">Scope</span></th><th className={th}>Accepted</th><th className={th}>Rejected</th><th className={th}>Undated</th><th className={th}>Pending</th></tr></thead>
               <tbody>
                 {lastRun && (
                   <tr className="border-b border-line"><td className="py-2.5 pr-3 text-[13.5px] text-ink">Last run <span className="block text-[12px] text-ink-3">{ist(run!.started_at)} · {run!.trigger}</span></td>

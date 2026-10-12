@@ -18,6 +18,8 @@ export default function AppHeader({ active, run, nextRun, credits }: {
   credits?: number;
 }) {
   return (
+    <>
+    <a href="#main" className="sr-only fixed left-3 top-3 z-50 rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-accent-ink focus:not-sr-only">Skip to content</a>
     <header className="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:flex-nowrap sm:px-6">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Pipeline home">
@@ -47,5 +49,6 @@ export default function AppHeader({ active, run, nextRun, credits }: {
         </div>
       )}
     </header>
+    </>
   );
 }

@@ -29,7 +29,7 @@ function Faces({ vcs }: { vcs: VcView[] }) {
     <span className="flex items-center gap-2">
       <span className="flex -space-x-2">
         {vcs.slice(0, 5).map((v) => (
-          <a key={v.id} href={`#vc-${v.id}`} title={`${v.name} · ${v.firm}`} className="rounded-full ring-2 ring-surface transition-transform hover:-translate-y-0.5">
+          <a key={v.id} href={`#vc-${v.id}`} title={`${v.name} · ${v.firm}`} aria-label={`Jump to ${v.name}, ${v.firm}`} className="rounded-full ring-2 ring-surface transition-transform hover:-translate-y-0.5">
             <Avatar name={v.name} fit={v.fit.label} size={26} />
           </a>
         ))}
@@ -58,7 +58,7 @@ export default async function Home() {
   return (
     <>
       <AppHeader active="/" run={header.lastRun} nextRun={nextScheduledRun().toISOString()} credits={header.credits} />
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-24 pt-8 outline-none sm:px-6">
         {/* Hero: the answer to "what do I do this week?" in one line. */}
         <section className="fade-in mb-8">
           <p className="mb-3 text-[12px] font-medium uppercase tracking-[0.14em] text-ink-3">{today} · Seed round, USD 1–3M</p>
@@ -111,25 +111,25 @@ export default async function Home() {
           <div className="mt-3 grid gap-1 border-t border-line pt-3 text-[12px] text-ink-3 sm:grid-cols-[1fr_1fr_auto] sm:gap-4">
             <p className="truncate" title={persona.targetSpace}><span className="font-medium text-ink-2">Target space</span> · {persona.targetSpace}</p>
             <p className="truncate" title={persona.myProduct || 'Not set'}><span className="font-medium text-ink-2">My product</span> · {persona.myProduct || 'not set (competitor flags off)'}</p>
-            <Link href="/settings" className="font-medium text-accent-text hover:underline">Edit</Link>
+            <Link href="/settings" className="-my-1 inline-flex min-h-6 items-center font-medium text-accent-text hover:underline">Edit</Link>
           </div>
         </Card>
 
         {followups.length > 0 && (
           <section className="mb-12">
             <SectionTitle count={followups.length} tone="info" hint="Longest waiting first">Follow-ups due</SectionTitle>
-            <div className="grid gap-4">{followups.map((v) => <VcCard key={v.id} vc={v} />)}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4">{followups.map((v) => <VcCard key={v.id} vc={v} />)}</div>
           </section>
         )}
 
         <section className="mb-12">
           <SectionTitle count={committed.length} tone="accent" hint="Best fit first · at most 7 new a week">Reach out this week</SectionTitle>
-          {committed.length ? <div className="grid gap-4">{committed.map((v) => <VcCard key={v.id} vc={v} />)}</div>
+          {committed.length ? <div className="grid grid-cols-[minmax(0,1fr)] gap-4">{committed.map((v) => <VcCard key={v.id} vc={v} />)}</div>
             : <Card className="p-8 text-center text-[14px] text-ink-3">No new outreach suggested this week. <Link href="/investors" className="text-accent-text underline">Add investors</Link> to refill the pipeline.</Card>}
           {optional.length > 0 && (
             <div className="mt-8">
               <SectionTitle count={optional.length} tone="warn" hint="Good fit or recent in-space activity; reach out if you have capacity">If you have time</SectionTitle>
-              <div className="grid gap-4">{optional.map((v) => <VcCard key={v.id} vc={v} />)}</div>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4">{optional.map((v) => <VcCard key={v.id} vc={v} />)}</div>
             </div>
           )}
         </section>
@@ -137,7 +137,7 @@ export default async function Home() {
         {conflicts.length > 0 && (
           <section className="mb-12">
             <SectionTitle count={conflicts.length} tone="danger" hint="Their firm backed a company like yours. Open a card to see the evidence.">Check before pitching</SectionTitle>
-            <div className="grid gap-2">{conflicts.map((v) => <VcCard key={v.id} vc={v} compact />)}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-2">{conflicts.map((v) => <VcCard key={v.id} vc={v} compact />)}</div>
           </section>
         )}
 
@@ -146,14 +146,14 @@ export default async function Home() {
             <SectionTitle count={rest.reduce((n, s) => n + s.list.length, 0)} hint="Queued, routed through a partner, or on hold">Rest of the pipeline</SectionTitle>
             <Link href="/investors" className={btn('secondary')}><I.plus width={14} height={14} />Add investors</Link>
           </div>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
             {rest.map((s) => (
               <details key={s.key} open={s.key === 'queue'} className="group rounded-2xl bg-surface-2/70 ring-1 ring-line">
                 <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-[14px] font-medium text-ink">
                   <I.chevron width={16} height={16} className="text-ink-3 transition-transform group-open:rotate-180" />
                   {s.title}<span className="font-mono text-[12px] text-ink-3">{s.list.length}</span>
                 </summary>
-                <div className="grid gap-2 px-3 pb-3">{s.list.map((v) => <VcCard key={v.id} vc={v} compact />)}</div>
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-2 px-3 pb-3">{s.list.map((v) => <VcCard key={v.id} vc={v} compact />)}</div>
               </details>
             ))}
           </div>

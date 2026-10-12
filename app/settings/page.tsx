@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <AppHeader active="/settings" />
-      <main className="mx-auto max-w-3xl px-4 pb-24 pt-8 sm:px-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 pb-24 pt-8 outline-none sm:px-6">
         <PageTitle eyebrow="Settings" title="Tune it to your round." sub="Your company and pitch shape what the pipeline looks for and what your drafts say. Nothing here is written by AI." />
 
         <Card className="mb-8 p-6">
