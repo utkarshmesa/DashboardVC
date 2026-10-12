@@ -2,7 +2,7 @@
 
 *As of 2026-10-12. The live app is at https://vc-pipeline-zeta.vercel.app.*
 
-**Summary.** Phases 0–4 are built, deployed and verified.
+**Summary.** Phases 0–4 are built, deployed and verified. **Phase 5 (fit-first weekly plan)** is built and live: fit score, standing conflicts, follow-up engine with one-click logging, and how-to-reach/deal-breakers on every card.
 
 - 11 of the 13 acceptance items (SPEC §15) are verified on production.
 - The other 2 wait on the calendar:
@@ -22,6 +22,7 @@
 | 2 · Correctness | CI green; eval gate met on the test split; ranking agreement recorded; values in README | ✅ Precision 0.95 / about-precision 1.00; recall 6/6; agreement 98% |
 | 3 · Usefulness | A newcomer answers "who to email this week, with what opener" in under a minute | ✅ Built and walked through; ⏳ an independent human timing is recommended |
 | 4 · Reliability and submission | SPEC §15 all ticked | ⏳ 11/13; the last 2 are due Thu 15 Oct (see below) |
+| 5 · Fit-first weekly plan (owner-approved, from `docs/REVIEW.md`) | Best-fit VCs reach This week; competitor firms flagged; follow-ups tracked | ✅ All 12 tier-1 VCs in outreach, queue, conflict check or same-firm route (was 1/12 in This week); 3 TMS-competitor partners flagged; 73 tests |
 
 ## Live system
 
@@ -32,7 +33,7 @@
 | GitHub finisher | Mon/Thu 07:00 and 08:00 IST plus manual dispatch; tested by dispatch ✅ |
 | CI | Lint, typecheck, 63 unit tests plus recall 6/6 (replayed) on every push; no secrets needed. Recent runs green |
 | Supabase `vc-pipeline` (ap-south-1) | Migrations 001–005; 50 VCs, 57 firms, 50 profiles; RLS deny-all for anon/authenticated |
-| Data | 81 accepted signals, 73 openers (all pass the guard), 0 pending; 10 Warm, 23 Low, 16 Quiet, 1 Same firm |
+| Data | 81 accepted signals, 73 openers (all pass the guard). Actions: 5 Reach out — strong fit, 4 Warm, 3 Check conflict, 12 Good fit queued, 8 Same firm, 13 Low, 5 Quiet |
 | Tavily | 198 credits this month by app runs (about 254 including Phase 0 scripts) of the 800 budget |
 
 ## Quality numbers
@@ -65,12 +66,13 @@
 |---|---|---|
 | Scheduled cron processes all 50 VCs on its own (§15.1) | Automatic; verified by the scheduled task `vc-pipeline-thursday-acceptance` | Thu 2026-10-15, cron 06:00 IST, finisher 07:00/08:00, check 09:30 (needs the Claude app open, or it runs at next launch) |
 | Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
+| Redo the ranking review under the fit-first model (current one: 2 positives, old model) | You | Before relying on REACH/WARM |
 | Demo rehearsal (§15.12) | You | Any time. `docs/DEMO.md`; a dry run of every step was done on 2026-10-12 |
 | Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only, and the README has the tooling disclosure |
 
 ## Product review
 
-`docs/REVIEW.md` (2026-10-12): the dashboard ranks by recent news, not investor fit. Only 1 of 12 best-fit (tier-1) VCs is in "This week", and two firms that backed TMS competitors (Pentathlon/SuperProcure, Aeravti/FreightFox) show no conflict. A prioritized "Phase 5: fit-first weekly plan" is proposed and awaits the owner's decision.
+`docs/REVIEW.md` (2026-10-12) found the dashboard ranked by recent news, not fit; items 1–4 were built as Phase 5 (above). Items 5–9 (sendable drafts, Monday digest, logistics deal discovery, outcome learning, research refresh) remain proposed.
 
 ## Where to look
 

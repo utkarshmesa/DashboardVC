@@ -1,13 +1,16 @@
 // SPEC §9.1 batch runner. The unit of correctness is one VC; each step handles one batch end to end.
-import { decideAction, firmDedupe, meetsEvidenceFloor, type ActionResult, type DedupeRow } from './actions';
+import { decideAction, meetsEvidenceFloor, planPass, type ActionResult } from './actions';
 import { classify, type ClassifyInput, type ClassifyOptions, type Persona } from './classifier';
+import { competitorTerms, fitScore, researchConflict, type Fit, type Research } from './fit';
 import { enrichHeadline, googleNews, rssFeed, tavily, type CollectResult, type Enrichment } from './collectors';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
 import { filterReason } from './filter';
-import { lastSignalDate, scoreSignals, signalAge, type ScoreResult, type ScorableSignal } from './scoring';
+import { lastSignalDate, scoreSignals, type ScoreResult, type ScorableSignal } from './scoring';
 import { summaryText } from './summary';
 import { normTitle, urlHash } from './text';
 import type { FetchStatus, LabelUpdate, NewSignal, SignalRow, VcContext } from './types';
+
+const ENRICH_ROWS = ['O1', 'O2', 'O3', 'O5', 'F2'];
 
 export type Trigger = 'cron' | 'github' | 'manual';
 export type RunInfo = { id: string; started_at: string; force: boolean; failed_vc_ids: string[] };
@@ -31,7 +34,7 @@ export interface Store {
   releaseClaims(runId: string, vcIds: string[]): Promise<void>;
   bumpRun(runId: string, d: { tavily: number; gemini: number; errors: string[]; failed: string[]; stats: Record<string, unknown> }): Promise<void>;
   remaining(run: RunInfo): Promise<number>;
-  dedupeRows(): Promise<(DedupeRow & { last_signal_date: string | null; signal_summary: string | null })[]>;
+  planRows(): Promise<PlanSource[]>;
   finishRun(runId: string): Promise<'done' | 'partial'>;
 }
 
@@ -51,6 +54,11 @@ export type StepDeps = {
   enrichment?: boolean; // Phase 0 gate: on
   now?: () => Date;
   windowDays?: number;
+};
+
+export type PlanSource = {
+  id: string; name: string; firm: string; thesis: string | null; status: VcContext['row']['status']; score: number | null; action: string | null;
+  trust: string | null; tier: number | null; research: Record<string, unknown> | null; last_signal_date: string | null; signal_summary: string | null;
 };
 
 export type StepResult = { runId: string; done: boolean; processed: number; failed: number; remaining: number; status?: 'done' | 'partial'; deduped?: number };
@@ -101,7 +109,7 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   const run = await store.acquireRun(opts.trigger, !!opts.force);  // 1. lock
   const ids = await store.claimBatch(run, BATCH_SIZE);             // 2. claim
   if (!ids.length) {
-    const deduped = await applyFirmDedupe(store);
+    const deduped = await applyPlanPass(store, await store.persona());
     const status = await store.finishRun(run.id);
     return { runId: run.id, done: true, processed: 0, failed: 0, remaining: 0, status, deduped };
   }
@@ -113,7 +121,8 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   let tavilyUsed = 0;
   let geminiCalls = 0;
   const failed = new Set<string>();
-  const classifyOpts = { ...deps.classifyOpts, persona: await store.persona() };
+  const persona = await store.persona();
+  const classifyOpts = { ...deps.classifyOpts, persona };
 
   // 3. collect (concurrency 3). Firm feeds are fetched once per step and shared by that firm's VCs.
   const firmFeeds = new Map<string, Promise<CollectResult>>();
@@ -149,15 +158,16 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   };
   await runClassify(pending.map((s) => toInput(s, byId.get(s.vc_id)!)));
 
-  // 6a. enrichment (SPEC §9.2): ≤ ENRICH_PER_RUN accepted, snippet-less items that would decide a contact action.
+  // 6a. enrichment (SPEC §9.2): ≤ ENRICH_PER_RUN accepted, snippet-less items that would decide a contact action
+  // (Phase 5: reach out on news or fit, warm, or a nudge that references news).
   let enriched = 0;
   if (deps.enrichment !== false) {
     let budget = Math.max(0, ENRICH_PER_RUN - (await store.enrichedCount(run.id)));
     const toReclassify: ClassifyInput[] = [];
     for (const vc of contexts) {
       if (failed.has(vc.id) || budget <= 0) continue;
-      const { decision, result } = await evaluate(store, vc, fetchStatus.get(vc.id) ?? 'failed', now(), windowDays);
-      if (!['5', '6', '7'].includes(decision.row)) continue;
+      const { decision, result } = await evaluate(store, vc, fetchStatus.get(vc.id) ?? 'failed', now(), windowDays, persona);
+      if (!ENRICH_ROWS.includes(decision.row)) continue;
       for (const g of result.groups) {
         const s = g.signal as StoredSignal;
         if (budget <= 0 || tavilyLeft <= 0 || s.snippet || s.enriched_run) continue;
@@ -179,7 +189,7 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   for (const vc of contexts) {
     if (failed.has(vc.id)) continue;
     try {
-      await scoreAndWrite(store, vc, fetchStatus.get(vc.id) ?? 'failed', now(), windowDays);
+      await scoreAndWrite(store, vc, fetchStatus.get(vc.id) ?? 'failed', now(), windowDays, persona);
       await store.markProcessed(vc.id, fetchStatus.get(vc.id) ?? 'failed');
       processed++;
     } catch (e) {
@@ -201,15 +211,27 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   return { runId: run.id, done: false, processed, failed: failed.size, remaining };
 }
 
-type Evaluation = { decision: ActionResult; result: ScoreResult; signals: StoredSignal[]; conflict: { company: string; date: string | null } | null };
+type Conflict = { company: string; date: string | null; evidence?: string };
+type Evaluation = { decision: ActionResult; result: ScoreResult; signals: StoredSignal[]; conflict: Conflict | null; fit: Fit };
 
-export async function evaluate(store: Store, vc: VcContext, fetch: FetchStatus, now: Date, windowDays = SIGNAL_WINDOW_DAYS): Promise<Evaluation> {
+const DEFAULT_PERSONA: Persona = { targetSpace: '', myProduct: '' };
+
+// Conflicts (SPEC §9.6, amended): any accepted competitor signal (any age, no thumbs-down), else a standing research
+// conflict for this VC or a partner at the same firm, unless Vikram dismissed it.
+export function findConflict(vc: VcContext, signals: StoredSignal[], persona: Persona): Conflict | null {
+  if (vc.conflictDismissed) return null;
+  const c = signals.filter((s) => s.status === 'accepted' && s.possible_competitor === true && !s.thumbs_down)
+    .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))[0];
+  if (c) return { company: c.funded_company ?? c.competitor_evidence ?? 'a likely competitor', date: c.published_at };
+  const standing = researchConflict([(vc.research ?? null) as Research | null, ...((vc.peerResearch ?? []) as (Research | null)[])], competitorTerms(persona.myProduct));
+  return standing ? { company: `a ${standing.term} company`, date: null, evidence: standing.evidence } : null;
+}
+
+export async function evaluate(store: Store, vc: VcContext, fetch: FetchStatus, now: Date, windowDays = SIGNAL_WINDOW_DAYS, persona: Persona = DEFAULT_PERSONA): Promise<Evaluation> {
   const signals = await store.scoringSignals(vc.id);
   const result = scoreSignals(signals, now, { windowDays });
-  const c = signals
-    .filter((s) => s.status === 'accepted' && s.possible_competitor === true && !s.thumbs_down && signalAge(s, now, windowDays) !== null)
-    .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))[0];
-  const conflict = c ? { company: c.funded_company ?? c.competitor_evidence ?? 'a likely competitor', date: c.published_at } : null;
+  const conflict = findConflict(vc, signals, persona);
+  const fit = fitScore({ tier: vc.tier ?? null, trust: vc.trust ?? null, thesis: vc.row.thesis, research: (vc.research ?? null) as Research | null }, persona.targetSpace, now);
   const decision = decideAction({
     status: vc.row.status,
     lastContactDate: vc.row.last_contact_date,
@@ -218,13 +240,15 @@ export async function evaluate(store: Store, vc: VcContext, fetch: FetchStatus, 
     topRelevance: result.top?.signal.relevance ?? null,
     conflictCompany: conflict?.company ?? null,
     hasEvidence: meetsEvidenceFloor(result.counted.map((c) => c.signal)),
+    fit,
+    snoozedUntil: vc.snoozedUntil ?? null,
     now,
   });
-  return { decision, result, signals, conflict };
+  return { decision, result, signals, conflict, fit };
 }
 
-export async function scoreAndWrite(store: Store, vc: VcContext, fetch: FetchStatus, now: Date, windowDays = SIGNAL_WINDOW_DAYS) {
-  const { decision, result, signals, conflict } = await evaluate(store, vc, fetch, now, windowDays);
+export async function scoreAndWrite(store: Store, vc: VcContext, fetch: FetchStatus, now: Date, windowDays = SIGNAL_WINDOW_DAYS, persona: Persona = DEFAULT_PERSONA) {
+  const { decision, result, signals, conflict } = await evaluate(store, vc, fetch, now, windowDays, persona);
   if (decision.keepOtherColumns) {
     // Row 3: only the action changes; the other three system columns keep their previous values.
     await store.applySignals(vc.id, vc.row.last_signal_date, vc.row.signal_summary, vc.row.follow_up_score, decision.action);
@@ -235,13 +259,17 @@ export async function scoreAndWrite(store: Store, vc: VcContext, fetch: FetchSta
   return decision;
 }
 
-// Final pass when a run finishes (including partial runs): one contact action per firm.
-export async function applyFirmDedupe(store: Store): Promise<number> {
-  const rows = await store.dedupeRows();
-  const changes = firmDedupe(rows);
+// Plan pass when a run finishes (including partial runs) and after every rescore: firm routing and weekly capacity.
+export async function applyPlanPass(store: Store, persona: Persona, now = new Date()): Promise<number> {
+  const src = await store.planRows();
+  const rows = src.map((s) => ({
+    ...s,
+    priority: fitScore({ tier: s.tier, trust: s.trust, thesis: s.thesis, research: s.research as Research | null }, persona.targetSpace, now).score + 0.5 * (s.score ?? 0),
+  }));
+  const changes = planPass(rows);
   for (const ch of changes) {
-    const r = rows.find((x) => x.id === ch.id)!;
-    await store.applySignals(r.id, r.last_signal_date, r.signal_summary, r.score, ch.action);
+    const row = src.find((x) => x.id === ch.id)!;
+    await store.applySignals(row.id, row.last_signal_date, row.signal_summary, row.score, ch.action);
   }
   return changes.length;
 }
@@ -249,7 +277,8 @@ export async function applyFirmDedupe(store: Store): Promise<number> {
 // Recompute every VC's score and action from stored signals (no fetching, no classification), then firm dedupe.
 // Used after a calibration change; Phase 3's per-VC rescore after a thumbs-down uses scoreAndWrite the same way.
 export async function rescoreAll(store: Store, vcIds: string[], fetchStatusOf: (id: string) => FetchStatus, now = new Date()) {
+  const persona = await store.persona();
   const contexts = await store.loadContexts(vcIds);
-  for (const vc of contexts) await scoreAndWrite(store, vc, fetchStatusOf(vc.id), now);
-  return { rescored: contexts.length, deduped: await applyFirmDedupe(store) };
+  for (const vc of contexts) await scoreAndWrite(store, vc, fetchStatusOf(vc.id), now, SIGNAL_WINDOW_DAYS, persona);
+  return { rescored: contexts.length, deduped: await applyPlanPass(store, persona, now) };
 }

@@ -41,6 +41,10 @@ SPEC §1 asks for (2) and for knowing whom to skip. The system builds (2) well, 
 | **8** | **Outcome learning.** Record reply and meeting outcomes per VC, plus which hook and opener were used; recalibrate on outcomes instead of the builder's 2-positive ranking review. | Replaces guesswork with Vikram's own response data | M |
 | **9** | **Research freshness.** Quarterly re-verification of roles and funds (badge exists); a fund-close or partner-move signal bumps fit and timing. | Fit data decays; partners move | S–M |
 
+### Status (2026-10-12)
+
+Items **1–4 are built** (Phase 5; SPEC §9.6 amended; `docs/DECISIONS.md` #32–37). After a rescore, all 12 tier-1 VCs are in outreach, the queue, a conflict check or a same-firm route, and the three TMS-competitor partners show "Check conflict". Items 5–9 remain proposed.
+
 ### Recommendation
 
 Build **1 + 2 + 3 + 4** together as a "Phase 5: fit-first weekly plan". They share the same data, fix the root cause and the safety gap, and change the answer to "who should Vikram email this week" from *the people in the news* to *the right investors, with a reason, a route and a reminder*. Then **5 and 6** (sendable drafts, digest), then **7 and 8**.

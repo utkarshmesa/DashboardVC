@@ -1,6 +1,6 @@
 # VC Fundraising Pipeline Intelligence
 
-**What it does.** Twice a week this collects public signals (deals, writing, talks, press) about the 50 VCs on a founder's list, has Gemini label each item, and lets plain code score every VC and pick an action. It writes four system columns of the founder's Supabase `vcs` table (last signal date, summary, follow-up score, recommended action) and never touches the founder's own columns. A password-protected dashboard shows who to contact this week, why, with a source link and a suggested opener, and the proof is one click away.
+**What it does.** It ranks the founder's 50 VCs by **fit** (from verified research) and, twice a week, collects public signals (deals, writing, talks, press) about the 50 VCs on a founder's list, has Gemini label each item, and lets plain code score every VC and pick an action. It writes four system columns of the founder's Supabase `vcs` table (last signal date, summary, follow-up score, recommended action) and never touches the founder's own columns. A password-protected dashboard shows who to contact this week, why, with a source link and a suggested opener, and the proof is one click away.
 
 Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SPEC.md` · Decisions where the spec was silent: `docs/DECISIONS.md` · Demo: `docs/DEMO.md` · Acceptance: `docs/ACCEPTANCE.md` · Build status: `docs/STATUS.md`
 
@@ -47,6 +47,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `npm run eval` | Precision/recall on hand labels, with tune/test split |
 | `npm run ranking:export` / `ranking:calibrate` | §12.3 ranking review and threshold calibration |
 | `npm run diagnose` | Per-VC score diagnosis → `eval/score_diagnosis.md` |
+| `npm run rescore` (after a settings or constants change) | Recompute fit, actions and the weekly plan from stored data |
 | `node --env-file=.env.local scripts/stress-live.mjs` | Auth, input-fuzzing, concurrency and load checks against the deployed app |
 
 ## Where AI is used, and where it deliberately isn't
@@ -60,6 +61,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 
   It also writes a 20-word summary and a one-sentence suggested opener.
 - **Code owns everything that must be verifiable and repeatable:**
+  - investor **fit** (research tier, thesis and deal relevance to the target space, deal recency, trust, deal-breakers for a USD 1–3M seed) and **standing conflicts** from the research (`lib/fit.ts`);
   - dates (source metadata only) and URLs (collectors only);
   - the window and name filters;
   - the mapping from relevance level to a number;
@@ -140,7 +142,8 @@ flowchart TB
 - **Undated results:** about a third of Tavily results have no date; they're scored conservatively, as if 30 days old.
 - **Free-tier limits:** Vercel Hobby functions stop at 300 s, so a full run with heavy reclassification can need the GitHub finisher. Gemini free-tier latency (13–70 s per call) dominates run time. Tavily allows 1,000 credits a month (this app stops at 800).
 - **Google News RSS is unofficial** and could change or rate-limit without notice.
-- **Little target-space activity on this list right now:** no VC has a recent core logistics or supply-chain signal, so no "Reach out" action fires; the evidence floor holds them at Warm. Calibration rests on 2 positive examples and should be redone as data accumulates.
+- **Little target-space news right now:** few VCs have a recent core logistics signal, so outreach is mostly fit-driven ("Reach out — strong fit"), with the research fit reason as the talking point. The Phase 2 calibration rests on 2 positives answered under the old news-only model and should be redone.
+- **Fit comes from the seed research,** which is dated (`research_as_of`); stale roles show a "Re-verify role" badge, but fund status and theses can drift.
 - **Gemini output varies run to run,** even at temperature 0; a VC's score can move between runs on the same evidence.
 - **Eval labels and ranking answers came from the builder, not a human** (see above).
 

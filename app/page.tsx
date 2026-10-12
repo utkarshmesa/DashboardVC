@@ -39,18 +39,20 @@ export default async function Home() {
 
       {SECTIONS.map((sec) => {
         const list = vcs.filter((v) => v.section === sec.key);
-        if (sec.key === 'thisWeek') {
+        if (sec.key === 'followups' || sec.key === 'thisWeek') {
+          if (sec.key === 'followups' && !list.length) return null;
           return (
             <section key={sec.key} className="mb-6">
-              <h2 className="mb-2 text-lg font-semibold">This week <span className="text-sm font-normal text-neutral-500">({list.length}, by score)</span></h2>
+              <h2 className="mb-2 text-lg font-semibold">{sec.title} <span className="text-sm font-normal text-neutral-500">
+                ({list.length}{sec.key === 'thisWeek' ? ', best fit first' : ', longest waiting first'})</span></h2>
               {list.length ? <div className="space-y-2">{list.map((v) => <VcCard key={v.id} vc={v} />)}</div>
-                : <p className="rounded border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-600">No VC has a strong enough recent signal this week.</p>}
+                : <p className="rounded border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-600">No new outreach suggested this week.</p>}
             </section>
           );
         }
         if (!list.length) return null;
         return (
-          <details key={sec.key} className="mb-3 rounded-lg border border-neutral-200 bg-neutral-50/60">
+          <details key={sec.key} className={`mb-3 rounded-lg border ${sec.key === 'conflict' ? 'border-rose-200 bg-rose-50/40' : 'border-neutral-200 bg-neutral-50/60'}`}>
             <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{sec.title} <span className="font-normal text-neutral-500">({list.length})</span></summary>
             <div className="space-y-2 px-3 pb-3">{list.map((v) => <VcCard key={v.id} vc={v} />)}</div>
           </details>

@@ -7,8 +7,9 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function summaryText(
   r: ScoreResult,
-  opts: { conflict?: { company: string; date: string | null } | null; lastSignalDate: string | null },
+  opts: { conflict?: { company: string; date: string | null; evidence?: string } | null; lastSignalDate: string | null },
 ): string {
+  if (opts.conflict?.evidence) return `Research: "${opts.conflict.evidence}". Check for a conflict before pitching.`;
   if (opts.conflict) {
     const when = opts.conflict.date ? ` (${fmtDay(opts.conflict.date)})` : '';
     return `Backed ${opts.conflict.company}${when}, a likely competitor.`;

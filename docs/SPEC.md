@@ -429,29 +429,45 @@ score = min(100, round(100 × (top + 0.25 × sum(other groups))))
 
 `last_signal_date` = newest accepted signal ever stored for the VC (may be older than 30 days).
 
-### 9.6 Actions (`lib/actions.ts`, pure, evaluated top-down)
+### 9.6 Actions (`lib/actions.ts`, pure, evaluated top-down; amended in Phase 5, see docs/REVIEW.md)
+
+Phase 5 replaced "news decides everything" with **fit decides whether to reach out, news is the hook and a boost, and Vikram's own pipeline state drives follow-ups.**
+
+**Fit (`lib/fit.ts`, code only).** A 0–100 score from the verified research in `vc_profile`: research tier (1 → 50, 2 → 30), thesis and `fit_reason` words matching `target_space`, a relevant deal in the last 12 / 24 months, and trust. Deal-breakers for a USD 1–3M seed cost points and are shown as flags: cheques too small to lead, wants PMF first, usually invests after seed, thesis may not cover workflow SaaS, past deals larger than this round. Labels: **strong** ≥ `FIT_STRONG` (70), **good** ≥ `FIT_GOOD` (50), else weak.
+
+**Standing conflicts.** A conflict is an accepted `possible_competitor` signal of **any age** (no thumbs-down), **or** a research note (`fit_reason` / `latest_relevant_deal`) for this VC **or any partner at the same firm** naming a competitor category taken from `my_product` (e.g. "TMS", "freight procurement"). Vikram can dismiss it per VC ("Not a conflict"). An empty `my_product` never produces a conflict.
 
 | # | Condition | Action |
 |---|---|---|
 | 1 | `status = 'passed'` | `Passed — no action` |
-| 2 | `last_contact_date` within 7 days | `Wait — contacted recently` |
-| 3 | `last_fetch_status = 'failed'` | `Data unavailable — retry` (other three columns unchanged) |
-| 4 | an accepted in-window signal has `possible_competitor = true` | `Check conflict — backed {company}` |
-| 5 | score ≥ REACH (50), evidence floor met, and `not_contacted` | `Reach out this week` |
-| 6 | score ≥ REACH, evidence floor met, and `awaiting_response` | `Nudge — reference recent activity` |
-| 7 | score ≥ REACH, evidence floor met, and `in_conversation` | `Mention in next touchpoint` |
-| 8 | WARM (25) ≤ score (and rows 5–7 did not apply) | `Warm — reach out if capacity` |
-| 9a | 1 ≤ score < WARM and top signal relevance < 0.4 | `Low — activity outside your space` |
-| 9b | 1 ≤ score < WARM otherwise | `Low — weak or fading signal` |
-| 10 | no qualifying signal | `Quiet — hold` |
+| 2 | snoozed until a future date | `Snoozed until {DD Mon}` |
+| 3 | `last_contact_date` within 7 days | `Wait — contacted recently` |
+| 4 | `last_fetch_status = 'failed'` | `Data unavailable — retry` (other three columns unchanged) |
+| 5 | a conflict (above), not dismissed | `Check conflict — backed {company}` ({company} = funded company, or "a {category} company" for research conflicts) |
+| F1 | `awaiting_response`, last contact ≥ 21 days | `Close the loop — no reply in 3 weeks` |
+| F2 | `awaiting_response`, last contact ≥ 8 days (or unknown) | `Nudge — reference recent activity` if score ≥ REACH and evidence floor met, else `Nudge due — follow up on your email` |
+| F3 | `in_conversation`, last contact ≥ 10 days (or unknown) | `Next step due — keep the conversation moving` |
+| F4 | `in_conversation` otherwise | `Mention in next touchpoint` if score ≥ WARM, else `In conversation — nothing due` |
+| O1 | `not_contacted`, score ≥ REACH, evidence floor met | `Reach out this week` |
+| O2 | `not_contacted`, strong fit | `Reach out — strong fit` |
+| O3 | `not_contacted`, good fit, score ≥ WARM | `Warm — reach out if capacity` |
+| O4 | `not_contacted`, good fit | `Good fit — queue for outreach` |
+| O5 | weak fit, score ≥ WARM and top signal relevance ≥ 0.7 (core / logistics news) | `Warm — reach out if capacity` |
+| L | 1 ≤ score otherwise | `Low — activity outside your space` (top relevance < 0.4) or `Low — weak or fading signal` |
+| Q | no qualifying signal, weak fit | `Quiet — hold` |
 
-**Evidence floor (rows 5–7):** a contact action needs at least one accepted, in-window signal (dated within the window, or `date_approx`; not a possible competitor; no thumbs-down) of type `investment`, `authored` or `speaking` with relevance ≥ 0.6, regardless of score. Without it, evaluation falls through to rows 8–10 (Warm / Low / Quiet).
+**Evidence floor:** a news-driven contact action (O1, the news variant of F2) needs at least one accepted, in-window signal (dated within the window, or `date_approx`; not a possible competitor; no thumbs-down) of type `investment`, `authored` or `speaking` with relevance ≥ 0.6, regardless of score.
 
-**Firm dedupe (final pass when a run finishes, including partial runs):** read every VC's current `follow_up_score` and action from `vcs`. Within one firm, only the highest-scoring VC keeps an action from rows 5–8; others get `Same firm — go via {name}`. Ties go to the higher trust level, then the better tier. Write changed actions via `apply_signals`, passing the other three values unchanged. When a VC stops being the top one at its firm, restore its own computed action on the next run.
+**Plan pass (when a run finishes, including partial runs, and after every rescore).** Priority = fit + 0.5 × score.
+1. A firm already engaged (a partner `awaiting_response` or `in_conversation`) routes its other not-contacted partners: `Same firm — go via {engaged partner}`.
+2. Otherwise, within one firm only the highest-priority partner keeps an outreach action (O1–O5); the others get `Same firm — go via {name}`. Ties go to higher trust, then better tier.
+3. At most `OUTREACH_PER_WEEK` (7) new-outreach cards (O1 + O2) by priority; overflow O2 cards become `Good fit — queue for outreach`.
 
-`REACH`, `WARM` and `HALF_LIFE_DAYS` are constants calibrated in Phase 2 (section 12.3). Calibration never chooses `REACH` below 25.
+Changed actions are written via `apply_signals` with the other three values unchanged; a VC's own action is restored on its next rescore.
 
-Note on row 4: under the default TMS persona, several research leads (e.g. firms backing CargoFL, FreightFox or SuperProcure) may surface as conflicts. That is intended behaviour, not a bug.
+**One-click logging** (dashboard, `POST /api/vc/[id]/quick`): *Emailed today* / *Nudged today* (`awaiting_response`, today), *They replied* (`in_conversation`, today), *Meeting booked* (`in_conversation`, today, note appended), *Passed*, *Snooze 2 weeks* / *Unsnooze*, *Not a conflict* / *Restore conflict flag*. Status and dates go through `update_my_fields`; snooze and dismissal live on `vc_profile`. Each is followed by a rescore and the plan pass.
+
+`REACH`, `WARM` and `HALF_LIFE_DAYS` are constants calibrated in Phase 2 (section 12.3); calibration never chooses `REACH` below 25. Fit thresholds and follow-up days are constants in `lib/config.ts`.
 
 ### 9.7 Summary text (`lib/summary.ts`, code)
 
@@ -469,7 +485,7 @@ Note on row 4: under the default TMS persona, several research leads (e.g. firms
 Designed backwards from Vikram's Monday morning: the decision first, the proof one click away.
 
 1. **Header:** both settings (target space and my product, one line each, with an Edit link to `/settings`), last run time (IST) and status, next scheduled run, Tavily credits this month, **Run now**.
-2. **This week:** VCs with actions 5–8, sorted by score. Each row: action badge, score, name and firm, trust badge, `signal_summary`, newest source date and link.
+2. **Follow-ups due** (F1–F3, longest waiting first), then **New outreach this week** (O1–O3, O5, best fit first; at most 7 new-outreach cards). Each card adds a fit badge, "Why fit" (research), how to reach (with the pitch-form link), cheque, stage, deal-breaker flags, days since last contact, and one-click logging buttons. When there's no recent hook, the drawer shows the research fit reason as a talking point. Each row: action badge, score, name and firm, trust badge, `signal_summary`, newest source date and link.
 3. **Evidence drawer** (expand a row):
    - Each accepted signal: type, date, title, link, contribution to score, and **the AI's labels** (about-this-VC, type, relevance level, confidence) in a small muted line.
    - The **hook**, with a Copy button, labelled "Suggested opener — edit before sending".

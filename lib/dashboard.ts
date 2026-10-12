@@ -1,15 +1,21 @@
 import 'server-only';
+import { daysSince } from './actions';
 import { REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
 import { db } from './db';
+import { competitorTerms, fitScore, researchConflict, type Research } from './fit';
+import { loadPersona } from './store';
 import { scoreSignals, signalAge, type ScorableSignal } from './scoring';
 import type { VcRow } from './types';
 
-// SPEC §11 sections, in display order.
+// SPEC §11 sections, in display order (Phase 5: follow-ups and fit-first outreach first).
 export const SECTIONS = [
-  { key: 'thisWeek', title: 'This week', match: (a: string) => /^(Reach out|Nudge|Mention|Warm)/.test(a), open: true },
+  { key: 'followups', title: 'Follow-ups due', match: (a: string) => /^(Nudge due|Close the loop|Next step due|Nudge — reference)/.test(a), open: true },
+  { key: 'thisWeek', title: 'New outreach this week', match: (a: string) => /^(Reach out|Warm)/.test(a), open: true },
   { key: 'conflict', title: 'Check conflict', match: (a: string) => a.startsWith('Check conflict') },
+  { key: 'queue', title: 'Next up — good fit', match: (a: string) => a.startsWith('Good fit') },
   { key: 'sameFirm', title: 'Same firm', match: (a: string) => a.startsWith('Same firm') },
-  { key: 'wait', title: 'Wait', match: (a: string) => a.startsWith('Wait') },
+  { key: 'wait', title: 'Waiting / in conversation', match: (a: string) => a.startsWith('Wait') || a.startsWith('In conversation') || a.startsWith('Mention') },
+  { key: 'snoozed', title: 'Snoozed', match: (a: string) => a.startsWith('Snoozed') },
   { key: 'quiet', title: 'Quiet — hold', match: (a: string) => a.startsWith('Quiet') },
   { key: 'low', title: 'Low priority', match: (a: string) => a.startsWith('Low') },
   { key: 'unavailable', title: 'Data unavailable', match: (a: string) => a.startsWith('Data unavailable') },
@@ -53,6 +59,15 @@ export type VcView = {
   newest: { date: string; url: string } | null;
   badges: string[];
   hook: { text: string; signalId: number } | null;
+  fit: { score: number; label: 'strong' | 'good' | 'weak'; reasons: string[]; flags: string[] };
+  priority: number;
+  whyFit: string | null;     // research fit_reason (verified research, not AI output)
+  approach: { text: string; url: string | null } | null;
+  cheque: string | null;
+  stage: string | null;
+  daysSinceContact: number | null;
+  snoozedUntil: string | null;
+  conflict: { evidence: string; dismissed: boolean } | null; // standing research conflict (firm-level)
   accepted: SignalView[];
   others: SignalView[]; // rejected and undated, collapsed in the drawer
 };
@@ -71,12 +86,15 @@ export async function loadDashboard() {
   const now = new Date();
   const [vcsR, profR, sigR, fbR] = await Promise.all([
     db().from('vcs').select('*'),
-    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of'),
+    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at'),
     db().from('signals').select('id, vc_id, title, url, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
   ]);
   for (const r of [vcsR, profR, sigR, fbR]) if (r.error) throw new Error(r.error.message);
+  const persona = await loadPersona();
+  const terms = competitorTerms(persona.myProduct);
+  const allVcs = vcsR.data as VcRow[];
   const verdicts = new Map((fbR.data ?? []).map((f) => [f.signal_id as number, f.verdict as 'up' | 'down']));
   const signals = (sigR.data as Sig[]).map((s) => ({ ...s, relevance: s.relevance === null ? null : Number(s.relevance), confidence: s.confidence === null ? null : Number(s.confidence), thumbs_down: verdicts.get(s.id) === 'down' }));
 
@@ -102,6 +120,11 @@ export async function loadDashboard() {
     const verified = verifiedDate(prof?.research as Record<string, unknown> | null, prof?.research_as_of ?? null);
     if (verified && (now.getTime() - Date.parse(verified)) / 86_400_000 > REVERIFY_ROLE_DAYS) badges.push('Re-verify role');
     const action = v.recommended_action ?? 'Quiet — hold';
+    const research = (prof?.research ?? null) as Research | null;
+    const fit = fitScore({ tier: prof?.tier ?? null, trust: prof?.trust ?? null, thesis: v.thesis, research }, persona.targetSpace, now);
+    const peers = allVcs.filter((x) => x.firm === v.firm).map((x) => ((profR.data ?? []).find((p) => p.vc_id === x.id)?.research ?? null) as Research | null);
+    const standing = researchConflict(peers, terms);
+    const approachText = research?.approach ? String(research.approach) : null;
     return {
       id: v.id, name: v.name, firm: v.firm, status: v.status, lastContactDate: v.last_contact_date, notes: v.notes,
       score: v.follow_up_score, action, summary: v.signal_summary, lastSignalDate: v.last_signal_date, trust: prof?.trust ?? null,
@@ -109,11 +132,22 @@ export async function loadDashboard() {
       newest: newestDated ? { date: newestDated.published_at!, url: newestDated.url } : null,
       badges,
       hook: hookSignal?.hook ? { text: hookSignal.hook, signalId: hookSignal.id } : null,
+      fit,
+      priority: fit.score + 0.5 * (v.follow_up_score ?? 0),
+      whyFit: research?.fit_reason ? String(research.fit_reason) : null,
+      approach: approachText ? { text: approachText, url: approachText.match(/https?:\/\/\S+/)?.[0] ?? null } : null,
+      cheque: research?.first_cheque ? String(research.first_cheque) : null,
+      stage: research?.stage_focus ? String(research.stage_focus) : null,
+      daysSinceContact: daysSince(v.last_contact_date, now),
+      snoozedUntil: prof?.snoozed_until ?? null,
+      conflict: standing ? { evidence: standing.evidence, dismissed: !!prof?.conflict_dismissed_at } : null,
       accepted: accepted.map(view),
       others: mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).slice(0, 25).map(view),
     };
   });
-  vcs.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.name.localeCompare(b.name));
+  // Follow-ups: longest-waiting first; everything else by priority (fit + 0.5 × recent-signal score).
+  vcs.sort((a, b) => (a.section === 'followups' && b.section === 'followups' ? (b.daysSinceContact ?? 0) - (a.daysSinceContact ?? 0) : 0)
+    || b.priority - a.priority || a.name.localeCompare(b.name));
   return { vcs, generatedAt: now.toISOString() };
 }
 

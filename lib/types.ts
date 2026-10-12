@@ -30,6 +30,13 @@ export type VcContext = {
   ambiguous: boolean;
   firmRss: string | null;
   row: VcRow;
+  // Phase 5: research-based fit and follow-up state (vc_profile)
+  tier?: number | null;
+  trust?: string | null;
+  research?: Record<string, unknown> | null;
+  peerResearch?: (Record<string, unknown> | null)[]; // other partners at the same firm
+  snoozedUntil?: string | null;
+  conflictDismissed?: boolean;
 };
 
 export type RawItem = {

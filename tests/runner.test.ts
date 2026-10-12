@@ -42,7 +42,7 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
       });
     },
     async tavilyCreditsThisMonth() { return 0; },
-    async persona() { return { targetSpace: 'logistics software', myProduct: 'TMS SaaS' }; },
+    async persona() { return { targetSpace: 'logistics software', myProduct: 'TMS SaaS for shippers' }; },
     async insertSignals(rows: NewSignal[]) {
       let k = 0;
       for (const r of rows) {
@@ -69,9 +69,9 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
     async releaseClaims(_runId, ids) { for (const id of ids) profiles.get(id)!.claimedAt = null; },
     async bumpRun(_id, d) { run!.failed_vc_ids = [...new Set([...run!.failed_vc_ids, ...d.failed])]; },
     async remaining(r) { return [...profiles.entries()].filter(([id, p]) => (p.processed === null || p.processed < Date.parse(r.started_at)) && !r.failed_vc_ids.includes(id)).length; },
-    async dedupeRows() {
-      return vcs.map((v) => ({ id: v.id, name: v.name, firm: v.firm, score: v.follow_up_score, action: v.recommended_action,
-        trust: profiles.get(v.id)!.trust, tier: profiles.get(v.id)!.tier, last_signal_date: v.last_signal_date, signal_summary: v.signal_summary }));
+    async planRows() {
+      return vcs.map((v) => ({ id: v.id, name: v.name, firm: v.firm, thesis: v.thesis, status: v.status, score: v.follow_up_score, action: v.recommended_action,
+        trust: profiles.get(v.id)!.trust, tier: profiles.get(v.id)!.tier, research: null, last_signal_date: v.last_signal_date, signal_summary: v.signal_summary }));
     },
     async finishRun() { run!.status = run!.failed_vc_ids.length ? 'partial' : 'done'; return run!.status as 'done' | 'partial'; },
   };
@@ -164,11 +164,21 @@ describe('runner', () => {
     expect(enriched.every((s) => s.status === 'accepted' && s.snippet?.startsWith('Full context') && s.url.startsWith('https://canonical.example/'))).toBe(true);
   });
 
-  it('evidence floor: a high score from press-only signals gets Warm, not Reach out', async () => {
+  it('evidence floor: a high score from press-only signals gets Warm (in-space news), not Reach out', async () => {
     const m = memoryStore(1);
     await runAll(m.store, labeller({ signal_type: 'press', relevance_level: 'core' }));
     expect(m.vcs[0].follow_up_score).toBeGreaterThanOrEqual(50);
     expect(m.vcs[0].recommended_action).toBe(ACTIONS.warm);
+  });
+
+  it('a standing research conflict at the firm flags every partner, until dismissed', async () => {
+    const m = memoryStore(2, { firmOf: () => 'Pentathlon' });
+    const research = { fit_reason: 'Personally associated with fresh TMS investment.' };
+    const orig = m.store.loadContexts;
+    m.store.loadContexts = async (ids) => (await orig(ids)).map((c) => ({ ...c, research: c.id === 'vc0' ? research : null, peerResearch: c.id === 'vc1' ? [research] : [], conflictDismissed: false }));
+    await runAll(m.store, labeller());
+    expect(m.vcs.map((v) => v.recommended_action)).toEqual(['Check conflict — backed a TMS company', 'Check conflict — backed a TMS company']);
+    expect(m.vcs[0].signal_summary).toMatch(/^Research: ".*fresh TMS investment.*". Check for a conflict before pitching.$/);
   });
 
   it('firm RSS items are always subject=firm', async () => {

@@ -12,6 +12,14 @@ export const RELEVANCE_VALUE: Record<RelevanceLevel, number> = { core: 1.0, logi
 export const EVIDENCE_TYPES = ['investment', 'authored', 'speaking'] as const; // evidence floor for contact actions
 export const EVIDENCE_MIN_RELEVANCE = 0.6;
 export const MIN_CALIBRATED_REACH = 25;
+// Phase 5 fit-first plan (docs/REVIEW.md, SPEC §9.6 amended)
+export const FIT_STRONG = 70;
+export const FIT_GOOD = 50;
+export const OUTREACH_PER_WEEK = 7;  // new-outreach cards in This week; the rest queue as "Good fit"
+export const WEAK_FIT_WARM_RELEVANCE = 0.7; // weak-fit VCs get Warm only for core/logistics news
+export const NUDGE_AFTER_DAYS = 8;   // awaiting a reply this long → Nudge due
+export const CLOSE_LOOP_DAYS = 21;   // awaiting a reply this long → Close the loop
+export const NEXT_STEP_DAYS = 10;    // in conversation, untouched this long → Next step due
 export const REVERIFY_ROLE_DAYS = 180; // SPEC §11.6 "Re-verify role" badge
 
 export const TYPE_WEIGHT = { investment: 1.0, authored: 0.8, speaking: 0.7, press: 0.5, other: 0.3 } as const;
