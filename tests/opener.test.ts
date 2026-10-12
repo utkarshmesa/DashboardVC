@@ -46,6 +46,10 @@ describe('assembleDraft', () => {
     expect(d.subject).toBe('We build TMS software for Indian shippers');
     expect(d.body.split('\n')).toEqual(['Hi Prajakt,', '', "Caret's backing of Enmovil stood out.", '', settings.pitch, '', DEFAULT_ASK, '', 'Best,', 'Vikram']);
   });
+  it('one personal line: opener over hook, hook when there is no opener', () => {
+    expect(assembleDraft({ vcName: 'A B', opener: 'Opener.', hook: 'Hook.', settings }).body).not.toContain('Hook.');
+    expect(assembleDraft({ vcName: 'A B', opener: null, hook: 'Hook.', settings }).body).toContain('Hi A,\n\nHook.\n\n');
+  });
   it('placeholders when the founder has not filled settings', () => {
     const d = assembleDraft({ vcName: 'A B', opener: null, hook: null, settings: { pitch: '', senderName: '', ask: '' } });
     expect(d.body).toContain('[Add your one-line pitch in Settings]');

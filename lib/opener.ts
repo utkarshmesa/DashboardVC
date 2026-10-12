@@ -83,6 +83,7 @@ export function assembleDraft(d: { vcName: string; opener: string | null; hook: 
     return { subject: `Re: ${subjectBase}`, body: lines.join('\n') };
   }
   const pitch = d.settings.pitch.trim() || '[Add your one-line pitch in Settings]';
-  const lines = [`Hi ${first},`, '', ...[d.hook, d.opener].filter((x): x is string => !!x).slice(0, 2), '', pitch, '', d.settings.ask.trim() || DEFAULT_ASK, '', 'Best,', d.settings.senderName.trim() || '[Your name]'];
+  const lines = [`Hi ${first},`, '', // One personal line: the fit-grounded opener; the news hook only when there is no opener.
+    d.opener ?? d.hook ?? '', '', pitch, '', d.settings.ask.trim() || DEFAULT_ASK, '', 'Best,', d.settings.senderName.trim() || '[Your name]'];
   return { subject: subjectBase, body: lines.join('\n').replace(/\n{3,}/g, '\n\n') };
 }
