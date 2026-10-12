@@ -218,3 +218,12 @@ describe('runner: LinkedIn posts (DECISIONS #45)', () => {
     expect(calls).toBe(0);
   });
 });
+
+describe('runner: LinkedIn stress', () => {
+  it('a failed LinkedIn search is not marked checked, so the next run retries it', async () => {
+    const m = memoryStore(2, { linkedinCheckedAt: null });
+    await runAll(m.store, labeller(), { collectors: { ...collectors, linkedin: async (): Promise<CollectResult> => ({ ok: false, items: [], error: 'linkedin search HTTP 429' }) } });
+    expect(m.linkedinChecked).toEqual([]);
+    expect(m.vcs.every((v) => v.recommended_action !== ACTIONS.unavailable)).toBe(true); // news still worked: not "unavailable"
+  });
+});

@@ -5,6 +5,7 @@
 import { ApiError, GoogleGenAI, Type } from '@google/genai';
 import { z } from 'zod';
 import { CLASSIFY_CAP, MIN_CONFIDENCE, MIN_RELEVANCE, RELEVANCE_LEVELS, RELEVANCE_VALUE, type RelevanceLevel } from './config';
+import { linkedinHookSafe } from './linkedin';
 import { sleep } from './text';
 import type { Labels, LabelUpdate, SignalStatus } from './types';
 
@@ -292,7 +293,10 @@ export async function classify(items: ClassifyInput[], opts: ClassifyOptions): P
       const { item_id, ...raw } = l;
       const labels = applyGuards(toLabels(raw), byItem.get(item_id)!, opts.persona.myProduct);
       const verdict = acceptance(labels, opts.thresholds);
-      out.updates.push({ id: item_id, ...labels, hook: verdict.status === 'accepted' ? labels.hook : null, ...verdict });
+      const item = byItem.get(item_id)!;
+      // LinkedIn snippets can be a profile headline or someone else's comment: never let those become a hook.
+      const hookOk = verdict.status === 'accepted' && (item.source !== 'linkedin' || linkedinHookSafe(item.snippet ?? item.title, item.vc_name));
+      out.updates.push({ id: item_id, ...labels, hook: hookOk ? labels.hook : null, ...verdict });
     }
     for (const c of chunk) if (!seen.has(c.item_id)) out.unclassified.push(c.item_id);
   }

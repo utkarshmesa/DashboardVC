@@ -28,10 +28,33 @@ export function postDate(id: string): string | null {
 export function cleanPostText(s: string): string {
   return s
     .replace(/Agree & Join LinkedIn[\s\S]*?Cookie Policy\.?/gi, ' ')
-    .replace(/View (organization|profile) page for [^.]+\.?/gi, ' ')
-    .replace(/[\d,]+ followers/gi, ' ')
+    .replace(/View (organization|profile) page for [^.·]+[.·]?/gi, ' ')
+    .replace(/View profile for [^.·]+[.·]?/gi, ' ')
+    .replace(/(^|[\s.])[^.]{1,60}?['’]s Post\b\.?/g, '$1 ')        // "Lightspeed India's Post."
+    .replace(/[\d,]+ followers\.?/gi, ' ')
+    .replace(/\b\d{1,2}[smhdwy]o? ·\s?/g, ' ')                    // "1w ·", "3d ·", "2mo ·"
+    .replace(/\b(Report this (post|comment)|Like · Reply|Like Comment (Repost|Share)( Send)?|… more|\.\.\. more)\b/gi, ' ')
     .replace(/\s+/g, ' ')
+    .replace(/^[\s.·|…]+/, '')
     .trim();
+}
+
+// A hook must be the VC's (or firm's) own words. LinkedIn page snippets sometimes carry the profile headline
+// ("Dev Khare Partner at Lightspeed | Backing founders…") or a comment by someone else ("Thank you Gowri for the
+// shoutout!"); quoting either as "your post" would be wrong, so such items count as activity but give no hook.
+export function linkedinHookSafe(text: string, vcName: string): boolean {
+  const t = text.replace(/^LinkedIn post by [^:]+:\s*/, '').trim();
+  if (/View profile for|['’]s Post\b|is an Influencer|shout-?out/i.test(t)) return false;
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const first = esc(vcName.split(/\s+/)[0]);
+  // Profile header: the name followed straight by the headline ("Dev Khare Partner at Lightspeed | …", "Nishit Garg.
+  // Partner at …"). A post *about* the person names them and continues with a comma or a verb ("Anurag Ramdasan,
+  // Partner at 3one4, joined …"), which is fine.
+  // (Search snippets can start mid-word, e.g. "ani Amit Somani Managing Partner…", so allow a short lead-in.)
+  const header = new RegExp(`^.{0,20}?\\b${esc(vcName)}(?!\\s*[,’'])\\b`, 'i').exec(t);
+  if (header && /\||·|\b(Partner|Founder|Director|Investor|CFO|CEO|Principal|VP)\b/.test(t.slice(header[0].length, header[0].length + 60))) return false;
+  if (new RegExp(`\\b(Hi|Hey|Dear|Thanks|Thank you|Congrats|Congratulations|@)[\\s,!]*${first}\\b`, 'i').test(t)) return false; // a comment addressed to the VC
+  return true;
 }
 
 export type PostAuthor = { kind: 'vc' | 'firm'; label: string };

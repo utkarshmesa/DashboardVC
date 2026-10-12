@@ -88,7 +88,7 @@ function toSignals(vc: VcContext, items: CollectResult['items'], windowDays: num
     const h = urlHash(it.url), t = normTitle(it.title);
     if (seen.has(h) || seen.has(`t:${t}`)) continue;
     seen.add(h); seen.add(`t:${t}`);
-    const reason = filterReason(it, vc, windowDays, now, { personRss: it.source === 'person_rss' });
+    const reason = filterReason(it, vc, windowDays, now, { personRss: it.source === 'person_rss' || it.source === 'linkedin' }); // LinkedIn: author verified by handle
     out.push({ ...it, vc_id: vc.id, url_hash: h, title_norm: t, status: reason ? 'rejected' : 'pending', reject_reason: reason });
   }
   return out;
@@ -142,11 +142,13 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
       tavilyLeft--; tavilyUsed++; // 1 credit per call, counted on attempt
       results.push(await col.tavily(vc, deps.tavilyKey));
     }
-    // LinkedIn posts by the VC or their firm page (weekly; 1 Tavily credit). Checked-at is set on attempt.
+    // LinkedIn posts by the VC or their firm page (weekly; 1 Tavily credit). Marked checked only on success, so a
+    // failed search is retried next run instead of waiting a week.
     if (linkedinDue(vc, now()) && tavilyLeft > 0) {
       tavilyLeft--; tavilyUsed++;
-      results.push(await col.linkedin(vc, deps.tavilyKey));
-      await store.markLinkedinChecked(vc.id);
+      const li = await col.linkedin(vc, deps.tavilyKey);
+      results.push(li);
+      if (li.ok) await store.markLinkedinChecked(vc.id);
     }
     if (vc.row.rss_url) results.push(await col.rss(vc.row.rss_url, 'person_rss'));
     if (vc.firmRss) {
