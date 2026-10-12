@@ -1,0 +1,31 @@
+name: Finisher
+# Phase 0 gate: a full run can exceed one Vercel function's 300 s limit (Gemini latency), and /api/cron stops before
+# starting a step that might not fit. This job finishes any unfinished run by calling one step at a time until done.
+on:
+  schedule:
+    - cron: '30 1 * * 1,4'   # 07:00 IST Mon/Thu, an hour after the Vercel Cron (06:00 IST)
+    - cron: '30 2 * * 1,4'   # second pass in case the first ran before the cron finished
+  workflow_dispatch:
+
+concurrency:
+  group: finisher
+  cancel-in-progress: false
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Step until the run is done
+        env:
+          APP_URL: https://vc-pipeline-zeta.vercel.app
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          for i in $(seq 1 12); do
+            body=$(curl -sS --fail-with-body --max-time 310 -X POST \
+              -H "Authorization: Bearer ${CRON_SECRET}" "${APP_URL}/api/run/step")
+            echo "step $i: $body"
+            if echo "$body" | grep -q '"done":true'; then exit 0; fi
+          done
+          echo "run still unfinished after 12 steps" >&2
+          exit 1
