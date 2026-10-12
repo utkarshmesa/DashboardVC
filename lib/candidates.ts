@@ -3,7 +3,9 @@ import 'server-only';
 // that Vikram can add with one click. Adding writes only Vikram-owned columns of vcs (name, firm, status), exactly as
 // a table-editor insert would; the system columns stay empty until the pipeline's apply_signals fills them.
 import { db } from './db';
-import { fitScore, type Research } from './fit';
+import { buildBrief, type Brief } from './brief';
+import { competitorTerms, fitScore, type Research } from './fit';
+import golden from '../seed/golden_events.json';
 import { rescoreVc } from './pipeline';
 import { loadPersona, supabaseStore } from './store';
 
@@ -11,15 +13,19 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export type CandidateView = {
   id: number; name: string; firm: string; fit: number; label: string; flags: string[]; whyFit: string | null;
-  cheque: string | null; stage: string | null; newFirm: boolean; trackedAtFirm: number;
+  cheque: string | null; stage: string | null; newFirm: boolean; trackedAtFirm: number; brief: Brief;
 };
 
 export async function loadCandidates(): Promise<CandidateView[]> {
-  const [c, v, persona] = await Promise.all([
+  const [c, v, persona, firmsR] = await Promise.all([
     db().from('vc_candidates').select('id, name, firm, tier, trust, research').is('dismissed_at', null).is('added_vc_id', null),
     db().from('vcs').select('name, firm'),
     loadPersona(),
+    db().from('firms').select('display_name, aliases, fund_info_research'),
   ]);
+  const firms = (firmsR.data ?? []) as { display_name: string; aliases: string[] | null; fund_info_research: string | null }[];
+  const fundOf = (firm: string) => firms.find((f) => norm(f.display_name) === norm(firm) || (f.aliases ?? []).some((a) => norm(a) === norm(firm)))?.fund_info_research ?? null;
+  const competitors = [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...competitorTerms(persona.myProduct)];
   if (c.error) throw new Error(c.error.message);
   const tracked = (v.data ?? []) as { name: string; firm: string }[];
   return ((c.data ?? []) as { id: number; name: string; firm: string; tier: number | null; trust: string | null; research: Research | null }[])
@@ -33,6 +39,7 @@ export async function loadCandidates(): Promise<CandidateView[]> {
         cheque: x.research?.first_cheque ? String(x.research.first_cheque) : null,
         stage: x.research?.stage_focus ? String(x.research.stage_focus) : null,
         newFirm: atFirm === 0, trackedAtFirm: atFirm,
+        brief: buildBrief({ research: x.research as Record<string, unknown> | null, thesis: null, trust: x.trust, linkedinSlug: null, firmFund: fundOf(x.firm), firmName: x.firm, fitFlags: f.flags, competitors, verifiedDeals: [] }),
       };
     })
     // New firms first (they add a fresh outreach slot; a second partner at a tracked firm routes via the first), then fit.

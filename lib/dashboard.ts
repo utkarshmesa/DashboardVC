@@ -4,6 +4,8 @@ import { OUTREACH_PER_WEEK, REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './con
 import { db } from './db';
 import { competitorTerms, fitScore, researchConflict, type Research } from './fit';
 import { assembleDraft, type DraftSettings } from './opener';
+import { buildBrief, type Brief } from './brief';
+import golden from '../seed/golden_events.json';
 import { formAnswers, gmailCompose, outreachRoute, type Route } from './route';
 import { loadDraftSettings, loadPersona } from './store';
 import { scoreSignals, signalAge, type ScorableSignal } from './scoring';
@@ -75,13 +77,14 @@ export type VcView = {
   route: Route;               // how to reach them, from the research approach note (REVIEW-2 item 3)
   formAnswers: string | null; // copy-ready pitch-form answers when the route is a form
   gmailUrl: string | null;    // Gmail compose with the draft filled in
-  linkedin: { own: number; firm: number; latestUrl: string } | null; // posts by the VC / firm page in 30 days (DECISIONS #45)
+  linkedin: { own: number; firm: number; latestUrl: string } | null;
+  brief: Brief;               // investor brief: person, fund, cheque, track record (DECISIONS #50) // posts by the VC / firm page in 30 days (DECISIONS #45)
   accepted: SignalView[];
   othersCount: number; // rejected and undated items; the list itself loads on demand (GET /api/vc/[id]/others)
 };
 
 type Sig = ScorableSignal & {
-  vc_id: string; title: string; url: string; source: string; source_name: string | null; reject_reason: string | null; relevance_level: string | null;
+  vc_id: string; title: string; url: string; source: string; source_name: string | null; funded_company: string | null; reject_reason: string | null; relevance_level: string | null;
   confidence: number | null; about_this_vc: boolean | null; hook: string | null; role_change_hint: string | null; created_at: string;
 };
 
@@ -92,14 +95,16 @@ const verifiedDate = (research: Record<string, unknown> | null, asOf: string | n
 
 export async function loadDashboard() {
   const now = new Date();
-  const [vcsR, profR, sigR, fbR] = await Promise.all([
+  const [vcsR, profR, sigR, fbR, firmsR] = await Promise.all([
     db().from('vcs').select('*'),
-    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener, linkedin_slug'),
-    db().from('signals').select('id, vc_id, title, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
+    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener, linkedin_slug, firm_key'),
+    db().from('signals').select('id, vc_id, title, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at, funded_company')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
+    db().from('firms').select('firm_key, fund_info_research'),
   ]);
-  for (const r of [vcsR, profR, sigR, fbR]) if (r.error) throw new Error(r.error.message);
+  for (const r of [vcsR, profR, sigR, fbR, firmsR]) if (r.error) throw new Error(r.error.message);
+  const fundNote = new Map(((firmsR.data ?? []) as { firm_key: string; fund_info_research: string | null }[]).map((f) => [f.firm_key, f.fund_info_research]));
   const [persona, draftSettings] = await Promise.all([loadPersona(), loadDraftSettings()]);
   const terms = competitorTerms(persona.myProduct);
   const allVcs = vcsR.data as VcRow[];
@@ -157,6 +162,16 @@ export async function loadDashboard() {
       route,
       formAnswers: draft && route.kind === 'form' && v.status === 'not_contacted' ? formAnswers(draftSettings) : null,
       gmailUrl: draft ? gmailCompose(draft.subject, draft.body) : null,
+      brief: buildBrief({
+        research: prof?.research as Record<string, unknown> | null, thesis: v.thesis, trust: prof?.trust ?? null, linkedinSlug: (prof?.linkedin_slug as string | null) ?? null,
+        firmFund: fundNote.get(prof?.firm_key as string) ?? null, firmName: v.firm, fitFlags: fit.flags,
+        competitors: [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...terms],
+        // Verified deals: the structured golden events for this VC/firm, plus accepted investment signals naming the company verbatim.
+        verifiedDeals: [
+          ...golden.events.filter((g) => g.tracked_vc === v.name || g.firm === v.firm).map((g) => ({ company: g.company, round: g.round, date: g.approx_date, url: g.sources[0] ?? null })),
+          ...accepted.filter((s) => s.signal_type === 'investment' && s.funded_company && !s.thumbs_down).map((s) => ({ company: s.funded_company!, round: null, date: s.published_at, url: s.url })),
+        ],
+      }),
       linkedin: posts.length ? { own: posts.filter((s) => s.source_name === 'LinkedIn (own post)').length, firm: posts.filter((s) => s.source_name !== 'LinkedIn (own post)').length, latestUrl: posts[0].url } : null,
       accepted: accepted.map(view),
       othersCount: Math.min(25, mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).length),

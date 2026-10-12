@@ -279,10 +279,87 @@ function TextBlock({ title, text, tone = 'neutral', copy, auto }: { title: strin
   );
 }
 
+// Investor brief, ordered the way Vikram decides: can they write the cheque, have they backed companies like his,
+// who is the person, and what to avoid saying. Every line is from verified research or a sourced deal (no AI text).
+function Profile({ vc }: { vc: VcView }) {
+  const b = vc.brief;
+  const row = (label: string, value: React.ReactNode) => (
+    <div className="grid gap-0.5 sm:grid-cols-[150px_1fr] sm:gap-4">
+      <dt className="text-[12.5px] text-ink-3">{label}</dt><dd className="text-[13.5px] leading-relaxed text-ink">{value}</dd>
+    </div>
+  );
+  const box = 'rounded-xl bg-surface p-4 ring-1 ring-line';
+  const head = 'mb-3 text-[12px] font-semibold uppercase tracking-wider text-ink-3';
+  return (
+    <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-profile`} className="grid gap-3">
+      <section className={box} aria-label="Cheque and fund">
+        <h4 className={head}>Can they write your cheque?</h4>
+        <dl className="grid gap-2.5">
+          {row('First cheque', b.cheque ?? <span className="text-ink-3">Not public</span>)}
+          {b.chequeNote && row('Against your round', <Badge tone="warn"><I.alert width={12} height={12} />{b.chequeNote}</Badge>)}
+          {row('Stage focus', b.stage ?? <span className="text-ink-3">Not public</span>)}
+          {row('Fund', b.fund ? <>{b.fundStatus && <Badge tone={b.fundStatus.tone} className="mr-1.5">{b.fundStatus.label}</Badge>}{b.fund}</> : <span className="text-ink-3">No verified fund note</span>)}
+        </dl>
+      </section>
+
+      <section className={box} aria-label="Track record">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h4 className="text-[12px] font-semibold uppercase tracking-wider text-ink-3">Have they backed companies like yours?</h4>
+          <span className="text-[12px] text-ink-3">
+            {b.dealCount ? `${b.dealCount} deal${b.dealCount === 1 ? '' : 's'} found · ${b.inSpaceCount} in your space` : 'No deals found in the research'}
+            {b.latestRelevant && ` · latest relevant ${b.latestRelevant}`}
+          </span>
+        </div>
+        {b.deals.length > 0 ? (
+          <ul className="grid gap-2">
+            {b.deals.map((d) => (
+              <li key={d.label} className="flex items-start gap-2 text-[13.5px]">
+                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${d.competitor ? 'bg-danger' : d.inSpace ? 'bg-accent' : 'bg-line-2'}`} aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink">{d.label}</a> : <span className="text-ink">{d.label}</span>}
+                  <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
+                    {d.competitor ? <Badge tone="danger" title="Names a known competitor or your own product category">possible competitor</Badge> : d.inSpace && <Badge tone="accent">in your space</Badge>}
+                    {d.round && <Badge>{d.round}</Badge>}
+                    {d.year && <Badge>{d.year}</Badge>}
+                    {d.verified && <Badge tone="info" title="A structured, verified deal or a dated news/LinkedIn signal naming the company">verified</Badge>}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="text-[13px] text-ink-3">The research has no deal articles for this investor. Use the why-fit and the firm&apos;s portfolio page.</p>}
+        {b.dealCount > b.deals.length && <p className="mt-2 text-[12px] text-ink-3">+{b.dealCount - b.deals.length} more in the research sources.</p>}
+        <p className="mt-3 text-[11.5px] text-ink-3">Headlines come from the source articles; amounts are left out because they can&apos;t be read reliably from links.</p>
+      </section>
+
+      <section className={box} aria-label="The person">
+        <h4 className={head}>Who they are</h4>
+        <dl className="grid gap-2.5">
+          {row('Role', <>{b.title ?? <span className="text-ink-3">Not verified</span>}{b.titleVerified && <span className="text-ink-3"> · verified {b.titleVerified}</span>}</>)}
+          {b.city && row('Based in', b.city)}
+          {b.thesis && row('Thesis', <span className="italic text-ink-2">“{b.thesis}”</span>)}
+          {b.approach && row('How they like to be approached', b.approach)}
+          {b.linkedin && row('LinkedIn', <a href={b.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-info underline underline-offset-2"><I.linkedin width={13} height={13} />Profile</a>)}
+        </dl>
+      </section>
+
+      {b.caveats && (
+        <section className="rounded-xl bg-warn-soft p-4" aria-label="Before you write">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-warn"><I.alert width={13} height={13} />Before you write</h4>
+          <p className="text-[13.5px] leading-relaxed text-ink">{b.caveats}</p>
+        </section>
+      )}
+      <p className="text-[11.5px] text-ink-3">From {b.sourceCount} research source{b.sourceCount === 1 ? '' : 's'}{b.trust ? ` · research trust ${b.trust}` : ''}. Nothing on this tab is written by AI.</p>
+    </div>
+  );
+}
+
 function Details({ vc }: { vc: VcView }) {
   const hasDraft = !!(vc.draft || vc.hook || vc.opener || vc.formAnswers);
-  const [tab, setTab] = useState<'draft' | 'evidence' | 'notes'>(hasDraft ? 'draft' : 'evidence');
+  // Decide first, then draft: the profile opens first.
+  const [tab, setTab] = useState<'profile' | 'draft' | 'evidence' | 'notes'>('profile');
   const tabs = [
+    ['profile', 'Profile'] as const,
     ...(hasDraft ? [['draft', 'Draft & opener'] as const] : []),
     ['evidence', `Evidence (${vc.accepted.length})`] as const,
     ['notes', 'Notes & status'] as const,
@@ -304,6 +381,8 @@ function Details({ vc }: { vc: VcView }) {
             className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${tab === k ? 'bg-surface text-ink shadow-card ring-1 ring-line' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
         ))}
       </div>
+
+      {tab === 'profile' && <Profile vc={vc} />}
 
       {tab === 'draft' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-draft`} className="grid gap-3">
@@ -328,7 +407,6 @@ function Details({ vc }: { vc: VcView }) {
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-notes`} className="grid gap-4">
           <EditForm vc={vc} />
           <dl className="grid gap-x-6 gap-y-2 rounded-xl bg-surface p-4 text-[13px] ring-1 ring-line sm:grid-cols-[140px_1fr]">
-            {vc.approach && <><dt className="text-ink-3">How to reach</dt><dd className="text-ink-2">{vc.approach.text}</dd></>}
             {vc.conflict && <><dt className="text-ink-3">Research conflict</dt><dd className="text-danger">“{vc.conflict.evidence}” (applies to the whole firm){vc.conflict.dismissed && ' — dismissed by you'}</dd></>}
             <dt className="text-ink-3">Activity score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strong this VC&apos;s public activity was in the last 30 days</dd>
             {vc.trust && <><dt className="text-ink-3">Research trust</dt><dd className="text-ink-2">{vc.trust}</dd></>}
@@ -348,6 +426,8 @@ function Meta({ vc }: { vc: VcView }) {
       <span className="inline-flex items-center gap-1.5" title={vc.approach?.text}><RouteIcon width={14} height={14} className="text-ink-3" />{routeText}</span>
       {vc.cheque && <span title="First cheque"><span className="text-ink-3">Cheque</span> {vc.cheque}</span>}
       {vc.stage && <span title="Stage focus"><span className="text-ink-3">Stage</span> {vc.stage}</span>}
+      {vc.brief.fundStatus && <Badge tone={vc.brief.fundStatus.tone} title={vc.brief.fund ?? undefined}>{vc.brief.fundStatus.label}</Badge>}
+      {vc.brief.dealCount > 0 && <span title="Deals found in the research sources; see Details → Profile"><span className="text-ink-3">Deals</span> {vc.brief.dealCount}{vc.brief.inSpaceCount > 0 && <span className="text-accent-text"> · {vc.brief.inSpaceCount} in your space</span>}</span>}
       <span className="inline-flex items-center gap-1.5 text-ink-3">
         <I.clock width={13} height={13} />
         {vc.status === 'not_contacted' ? 'Not contacted yet' : `${vc.status.replace(/_/g, ' ')}${vc.lastContactDate ? ` · last contact ${day(vc.lastContactDate)}${vc.daysSinceContact !== null ? ` (${vc.daysSinceContact}d ago)` : ''}` : ''}`}
@@ -382,6 +462,7 @@ function FullCard({ vc, onCollapse, autoFocus }: { vc: VcView; onCollapse?: () =
             <h3 className="text-[18px] font-semibold leading-tight tracking-tight text-ink">
               {vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span>
             </h3>
+            {(vc.brief.title || vc.brief.city) && <p className="mt-0.5 text-[12.5px] text-ink-3">{[vc.brief.title, vc.brief.city].filter(Boolean).join(' · ')}</p>}
           </div>
           <div className="flex flex-col items-center gap-1">
             <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
@@ -390,6 +471,12 @@ function FullCard({ vc, onCollapse, autoFocus }: { vc: VcView; onCollapse?: () =
           </div>
         </div>
         {vc.whyFit && <p className="mt-2 text-[14px] leading-relaxed text-ink-2 sm:pl-[60px]">{vc.whyFit}</p>}
+        {vc.brief.competitorDeals.length > 0 && !vc.action.startsWith('Check conflict') && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger sm:ml-[60px]">
+            <I.alert width={15} height={15} className="mt-0.5 shrink-0" />
+            <span>A research source mentions a deal with a possible competitor: <strong className="font-semibold">{vc.brief.competitorDeals[0]}</strong>{vc.brief.competitorDeals.length > 1 && ` (+${vc.brief.competitorDeals.length - 1} more)`}. Open Details → Profile and check the source before pitching.</span>
+          </p>
+        )}
         {conflictCard && vc.conflict && !vc.conflict.dismissed && (
           <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger sm:ml-[60px]"><I.alert width={15} height={15} className="mt-0.5 shrink-0" />Research: “{vc.conflict.evidence}”. Applies to the whole firm; check before pitching.</p>
         )}

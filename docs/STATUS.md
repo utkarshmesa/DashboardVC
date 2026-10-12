@@ -31,6 +31,7 @@ What remains:
 | 5c · LinkedIn posts (X off) | Activity and relevance from posts, without scraping | ✅ 77 reviewed handles (46 VCs, 31 firm pages). 92 posts across 32 of 50 VCs, all dated. "Active on LinkedIn" chip; prompt injection resisted; headline/comment hooks blocked in code |
 | 5d · Reaching out and runway (`docs/REVIEW-2.md` items 3, 2) | Route-aware outreach; the pipeline never runs dry silently | ✅ Form / LinkedIn / contact / Gmail actions with "Sent it?" logging and channel; deck link; runway (21 firms ≈ 3 weeks); Investors page with 49 researched candidates and manual add (row O6) |
 | 5e · Frontend redesign | Presentable, easy to scan, feels good to use | ✅ Design system (tokens, dark mode, Instrument Serif + Geist); one-line answer for the week, stat tiles, pipeline strip; person-first cards with one primary action and tabbed details; every page restyled. Stress test: axe 0 violations (light and dark), no sideways scroll at 320–1440 px, full keyboard support, failures shown instead of hanging, payload down 38% |
+| 5f · Investor brief (owner request) | Know the person and fund before pitching | ✅ Profile tab + one-line brief: cheque vs round, fund status, 111 sourced deals across 45 VCs (42 in your space), person, caveats; possible-competitor deals flagged (found one on Caret Capital, see DECISIONS #50); 122 tests |
 | Deferred, with evidence | Deal discovery; automated research refresh; warm intros (REVIEW-2 item 1); conversation stages (item 4) | ⏸ Deal discovery and research refresh: `docs/PLAN-NEXT.md`. Warm intros need Vikram's LinkedIn Connections export; conversation stages should land before the first replies |
 
 ## Live system
@@ -96,6 +97,7 @@ What remains:
 | Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
 | Reconnect Vercel's GitHub integration so pushes deploy on their own | You | Before the next code change |
 | Add the company name, a traction number and a deck link in Settings | You | Before the first emails |
+| Decide on Caret Capital: a source says SuperProcure (TMS competitor) raised from "Carat Capital". If it is Caret, mark it a conflict | You | Before emailing Prajakt Raut |
 | Send the week's emails and log them ("Sent it?" or "Mark as sent"); after about 20, recalibrate on real replies | You (Vikram) | This week onwards |
 | Optional: export LinkedIn Connections for warm-intro paths (REVIEW-2 item 1) | You (Vikram) | When convenient |
 | Optional: set `DIGEST_WEBHOOK_URL` (Slack/Discord) on Vercel to get the digest after each run | You | Any time |
@@ -106,7 +108,7 @@ What remains:
 
 - `README.md`: setup, commands, AI boundary, eval, Components Map, limitations, tooling.
 - `docs/SPEC.md`: amended where the owner decided (§9.2/§16 LinkedIn, §9.6 row O6, §11 drafts, routes, Add investors).
-- `docs/DECISIONS.md`: #1–49.
+- `docs/DECISIONS.md`: #1–50.
 - Reviews and plans: `docs/REVIEW.md`, `docs/PLAN-NEXT.md`, `docs/REVIEW-2.md`.
 - Acceptance and demo: `docs/ACCEPTANCE.md`, `docs/DEMO.md`; spike report in `spike/REPORT.md`.
 - `eval/`: labels, predictions, eval report, calibration, ranking review.

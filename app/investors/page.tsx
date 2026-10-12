@@ -53,8 +53,22 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px] text-ink-2 sm:pl-[50px]">
           {c.cheque && <span><span className="text-ink-3">Cheque</span> {c.cheque}</span>}
           {c.stage && <span><span className="text-ink-3">Stage</span> {c.stage}</span>}
+          {c.brief.fundStatus && <Badge tone={c.brief.fundStatus.tone} title={c.brief.fund ?? undefined}>{c.brief.fundStatus.label}</Badge>}
+          {c.brief.dealCount > 0 && <span><span className="text-ink-3">Deals</span> {c.brief.dealCount}{c.brief.inSpaceCount > 0 && <span className="text-accent-text"> · {c.brief.inSpaceCount} in your space</span>}</span>}
           {c.flags.map((f) => <Badge key={f} tone="warn"><I.alert width={12} height={12} />{f}</Badge>)}
+          {c.brief.competitorDeals.length > 0 && <Badge tone="danger"><I.alert width={12} height={12} />Possible competitor deal: {c.brief.competitorDeals[0].slice(0, 40)}</Badge>}
         </div>
+        {c.brief.deals.length > 0 && (
+          <ul className="mt-2 grid gap-1 sm:pl-[50px]" aria-label={`${c.name} recent deals`}>
+            {c.brief.deals.slice(0, 3).map((d) => (
+              <li key={d.label} className="flex items-start gap-1.5 text-[12.5px] text-ink-2">
+                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${d.competitor ? 'bg-danger' : d.inSpace ? 'bg-accent' : 'bg-line-2'}`} aria-hidden="true" />
+                {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" className="underline decoration-line-2 underline-offset-2 hover:decoration-ink">{d.label}</a> : d.label}
+                {d.year && <span className="text-ink-3">· {d.year}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="mt-3 flex gap-2 sm:pl-[50px]">
           <form action={add}><input type="hidden" name="id" value={c.id} /><button className={btn('primary')}><I.plus width={14} height={14} />Add to pipeline</button></form>
           <form action={dismiss}><input type="hidden" name="id" value={c.id} /><button className={btn('ghost')}>Not for me</button></form>
