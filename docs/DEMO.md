@@ -4,7 +4,7 @@ Live URL: https://vc-pipeline-zeta.vercel.app. Before you start: be logged in, h
 
 **0:00 Login and header.** "Twice a week this runs on its own, Monday and Thursday at 06:00 IST, with a GitHub finisher an hour later in case a run needs more than one function call." Point at last run, next run and Tavily credits this month. Then the two settings: the **target space** drives relevance, and **my product** only drives the competitor check.
 
-**0:30 Follow-ups and new outreach.** "The decision comes first." Follow-ups due (nudge on day 8, close the loop on day 21) sit on top once Vikram starts emailing. Then **New outreach this week**, best fit first: read the top card (Prajakt Raut, strong fit 92). Point at "Why fit" (from verified research), how to reach him (pitch form), cheque and stage, and the one-click *Emailed today*. "News is the hook and a boost; fit decides whom to email. At most 7 new outreach cards a week, one partner per firm."
+**0:30 Follow-ups and new outreach.** "The decision comes first." Follow-ups due (nudge on day 8, close the loop on day 21) sit on top once Vikram starts emailing. Then **New outreach this week**, best fit first: read the top card (Prajakt Raut, strong fit 92). Point at "Why fit" (from verified research), how to reach him (pitch form), cheque and stage, *Copy email draft* (a research-grounded opener plus your own pitch, assembled in code), and the one-click *Emailed today*. "News is the hook and a boost; fit decides whom to email. At most 7 new outreach cards a week, one partner per firm."
 
 **1:00 Evidence drawer.** Open the top card.
 - The **suggested opener** with Copy, labelled "edit before sending". "Every name and number in it is checked by code against the source text."

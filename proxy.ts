@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, verifySession } from './lib/session';
 
-const PUBLIC = ['/login', '/api/cron', '/api/run/step'];
+const PUBLIC = ['/login', '/api/cron', '/api/run/step', '/api/digest']; // the API ones check Bearer CRON_SECRET
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

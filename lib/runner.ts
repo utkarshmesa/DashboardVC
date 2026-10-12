@@ -2,6 +2,7 @@
 import { decideAction, meetsEvidenceFloor, planPass, type ActionResult } from './actions';
 import { classify, type ClassifyInput, type ClassifyOptions, type Persona } from './classifier';
 import { competitorTerms, fitScore, researchConflict, type Fit, type Research } from './fit';
+import { generateOpeners, openerHash, type OpenerInput } from './opener';
 import { enrichHeadline, googleNews, rssFeed, tavily, type CollectResult, type Enrichment } from './collectors';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
 import { filterReason } from './filter';
@@ -35,6 +36,8 @@ export interface Store {
   bumpRun(runId: string, d: { tavily: number; gemini: number; errors: string[]; failed: string[]; stats: Record<string, unknown> }): Promise<void>;
   remaining(run: RunInfo): Promise<number>;
   planRows(): Promise<PlanSource[]>;
+  openerCandidates(): Promise<(Omit<OpenerInput, 'key'> & { vc_id: string; opener_hash: string | null })[]>;
+  saveOpener(vcId: string, opener: string | null, hash: string): Promise<void>;
   finishRun(runId: string): Promise<'done' | 'partial'>;
 }
 
@@ -61,7 +64,7 @@ export type PlanSource = {
   trust: string | null; tier: number | null; research: Record<string, unknown> | null; last_signal_date: string | null; signal_summary: string | null;
 };
 
-export type StepResult = { runId: string; done: boolean; processed: number; failed: number; remaining: number; status?: 'done' | 'partial'; deduped?: number };
+export type StepResult = { runId: string; done: boolean; processed: number; failed: number; remaining: number; status?: 'done' | 'partial'; deduped?: number; openers?: number };
 
 const DEFAULT_COLLECTORS: Collectors = { googleNews, tavily, rss: rssFeed, enrich: enrichHeadline };
 
@@ -110,8 +113,11 @@ export async function step(opts: { trigger: Trigger; force?: boolean }, deps: St
   const ids = await store.claimBatch(run, BATCH_SIZE);             // 2. claim
   if (!ids.length) {
     const deduped = await applyPlanPass(store, await store.persona());
+    // Openers for this week's cards (review item 5); failures never block finishing the run.
+    let openers = 0;
+    try { openers = (await refreshOpeners(store, deps.classifyOpts)).generated; } catch (e) { console.error('opener refresh failed', e); }
     const status = await store.finishRun(run.id);
-    return { runId: run.id, done: true, processed: 0, failed: 0, remaining: 0, status, deduped };
+    return { runId: run.id, done: true, processed: 0, failed: 0, remaining: 0, status, deduped, openers };
   }
 
   const contexts = await store.loadContexts(ids);
@@ -281,4 +287,15 @@ export async function rescoreAll(store: Store, vcIds: string[], fetchStatusOf: (
   const contexts = await store.loadContexts(vcIds);
   for (const vc of contexts) await scoreAndWrite(store, vc, fetchStatusOf(vc.id), now, SIGNAL_WINDOW_DAYS, persona);
   return { rescored: contexts.length, deduped: await applyPlanPass(store, persona, now) };
+}
+
+// Generate (or regenerate) research-grounded openers for VCs whose research text or prompt version changed.
+export async function refreshOpeners(store: Store, opts: Pick<ClassifyOptions, 'keys' | 'model' | 'generate'>) {
+  const cands = await store.openerCandidates();
+  const stale = cands.filter((c) => c.opener_hash !== openerHash(c)).slice(0, 50);
+  if (!stale.length) return { generated: 0, calls: 0, errors: [] as string[] };
+  const res = await generateOpeners(stale.map((c, i) => ({ key: i, vc_name: c.vc_name, firm: c.firm, thesis: c.thesis, fit_reason: c.fit_reason, latest_relevant_deal: c.latest_relevant_deal })), opts);
+  if (res.calls && !res.openers.size) return { generated: 0, calls: res.calls, errors: res.errors }; // keep old openers if the call failed
+  for (const [i, c] of stale.entries()) await store.saveOpener(c.vc_id, res.openers.get(i) ?? null, openerHash(c));
+  return { generated: stale.length, calls: res.calls, errors: res.errors };
 }

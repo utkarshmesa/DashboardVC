@@ -3,7 +3,8 @@ import { daysSince } from './actions';
 import { REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
 import { db } from './db';
 import { competitorTerms, fitScore, researchConflict, type Research } from './fit';
-import { loadPersona } from './store';
+import { assembleDraft } from './opener';
+import { loadDraftSettings, loadPersona } from './store';
 import { scoreSignals, signalAge, type ScorableSignal } from './scoring';
 import type { VcRow } from './types';
 
@@ -68,6 +69,8 @@ export type VcView = {
   daysSinceContact: number | null;
   snoozedUntil: string | null;
   conflict: { evidence: string; dismissed: boolean } | null; // standing research conflict (firm-level)
+  opener: string | null;     // research-grounded opener (AI, guarded against the research text)
+  draft: { subject: string; body: string } | null; // code-assembled email draft (outreach or nudge)
   accepted: SignalView[];
   others: SignalView[]; // rejected and undated, collapsed in the drawer
 };
@@ -86,13 +89,13 @@ export async function loadDashboard() {
   const now = new Date();
   const [vcsR, profR, sigR, fbR] = await Promise.all([
     db().from('vcs').select('*'),
-    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at'),
+    db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener'),
     db().from('signals').select('id, vc_id, title, url, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
   ]);
   for (const r of [vcsR, profR, sigR, fbR]) if (r.error) throw new Error(r.error.message);
-  const persona = await loadPersona();
+  const [persona, draftSettings] = await Promise.all([loadPersona(), loadDraftSettings()]);
   const terms = competitorTerms(persona.myProduct);
   const allVcs = vcsR.data as VcRow[];
   const verdicts = new Map((fbR.data ?? []).map((f) => [f.signal_id as number, f.verdict as 'up' | 'down']));
@@ -141,6 +144,8 @@ export async function loadDashboard() {
       daysSinceContact: daysSince(v.last_contact_date, now),
       snoozedUntil: prof?.snoozed_until ?? null,
       conflict: standing ? { evidence: standing.evidence, dismissed: !!prof?.conflict_dismissed_at } : null,
+      opener: (prof?.opener as string | null) ?? null,
+      draft: draftFor(v, action, (prof?.opener as string | null) ?? null, hookSignal?.hook ?? null, draftSettings),
       accepted: accepted.map(view),
       others: mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).slice(0, 25).map(view),
     };
@@ -175,4 +180,15 @@ export function nextScheduledRun(now = new Date()): Date {
     if ([1, 4].includes(t.getUTCDay()) && t > now) return t;
   }
   return now;
+}
+
+// Outreach draft for new-outreach / queued VCs, nudge draft for follow-ups; none for conflicts, passed or waiting.
+function draftFor(v: VcRow, action: string, opener: string | null, hook: string | null, settings: { pitch: string; senderName: string; ask: string }) {
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  if (/^(Nudge|Close the loop)/.test(action)) {
+    const since = v.last_contact_date ? `${Number(v.last_contact_date.slice(8, 10))} ${MONTHS[Number(v.last_contact_date.slice(5, 7)) - 1]}` : null;
+    return assembleDraft({ vcName: v.name, opener: null, hook, settings: { ...settings, ask: settings.ask }, nudgeSince: since });
+  }
+  if (/^(Reach out|Warm|Good fit)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
+  return null;
 }

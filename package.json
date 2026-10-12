@@ -22,7 +22,8 @@
     "test:recall:record": "node scripts/test-recall.mjs record",
     "diagnose": "tsx --conditions=react-server --env-file=.env.local scripts/diagnose-scores.ts",
     "settings": "tsx --conditions=react-server --env-file=.env.local scripts/set-settings.ts",
-    "rescore": "tsx --conditions=react-server --env-file=.env.local scripts/rescore-all.ts"
+    "rescore": "tsx --conditions=react-server --env-file=.env.local scripts/rescore-all.ts",
+    "openers": "tsx --conditions=react-server --env-file=.env.local scripts/refresh-openers.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { ist } from '@/components/format';
 import { db } from '@/lib/db';
+import { loadFunnel } from '@/lib/outcomes';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,8 @@ export default async function QualityPage() {
       pending: rows.filter((x) => x.status === 'pending' || x.status === 'unclassified').length,
     };
   };
-  const [lastRun, all] = await Promise.all([run ? counts(run.started_at, run.finished_at ?? undefined) : null, counts()]);
+  const [lastRun, all, funnel] = await Promise.all([run ? counts(run.started_at, run.finished_at ?? undefined) : null, counts(), loadFunnel()]);
+  const rate = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
@@ -60,6 +62,22 @@ export default async function QualityPage() {
             </tbody>
           </table>
         ) : <p className="text-sm text-neutral-500">No ratings yet. Use 👍/👎 in a VC&apos;s evidence drawer.</p>}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-2 font-medium">Outreach outcomes</h2>
+        <p className="mb-3 text-sm text-neutral-700">From your one-click logging and status edits: of the VCs you emailed, how many replied or booked a meeting.</p>
+        {funnel.total.emailed === 0 ? <p className="text-sm text-neutral-500">No emails logged yet. Use “Emailed today” on a card.</p> : (
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left text-neutral-500"><th className="py-1"></th><th>Emailed</th><th>Replied</th><th>Meeting</th><th>Reply rate</th><th>Meeting rate</th></tr></thead>
+            <tbody>
+              {[funnel.total, ...funnel.byFit.map((r) => ({ ...r, group: `${r.group} fit` })), ...funnel.byHook].map((r) => (
+                <tr key={r.group} className="border-b"><td className="py-1 capitalize">{r.group}</td><td>{r.emailed}</td><td>{r.replied}</td><td>{r.meeting}</td><td>{rate(r.replyRate)}</td><td>{rate(r.meetingRate)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mt-2 text-xs text-neutral-500">Rankings are recalibrated on outcomes only once there are at least 20 logged emails.</p>
       </section>
 
       <section>

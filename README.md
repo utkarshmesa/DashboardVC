@@ -26,6 +26,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `CRON_SECRET` | Bearer secret for `/api/cron` (sent by Vercel Cron) and `/api/run/step` (the finisher) |
 | `DASHBOARD_PASSWORD`, `SESSION_SECRET` | Dashboard login; 30-day HMAC-signed cookie |
 | `SUPABASE_ANON_KEY` | Optional, local only: lets the ownership test prove the anon role can't read `vcs` |
+| `DIGEST_WEBHOOK_URL` | Optional: Slack/Discord incoming webhook; the cron posts the weekly digest after each finished run |
 
 ### Database and seed
 
@@ -47,6 +48,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `npm run eval` | Precision/recall on hand labels, with tune/test split |
 | `npm run ranking:export` / `ranking:calibrate` | §12.3 ranking review and threshold calibration |
 | `npm run diagnose` | Per-VC score diagnosis → `eval/score_diagnosis.md` |
+| `npm run openers` | (Re)generate research-grounded openers for this week's cards (also runs at the end of each run) |
 | `npm run rescore` (after a settings or constants change) | Recompute fit, actions and the weekly plan from stored data |
 | `node --env-file=.env.local scripts/stress-live.mjs` | Auth, input-fuzzing, concurrency and load checks against the deployed app |
 
@@ -59,7 +61,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
   - whether the VC backed a competitor of the founder's **product**, with verbatim evidence;
   - the funded company and any role change.
 
-  It also writes a 20-word summary and a one-sentence suggested opener.
+  It also writes a 20-word summary and a one-sentence suggested opener per signal, and, separately, a **research-grounded opener** per VC from the verified research note (guarded so every name and number is in that note). Email drafts around the opener are **assembled in code** from Vikram's own pitch line.
 - **Code owns everything that must be verifiable and repeatable:**
   - investor **fit** (research tier, thesis and deal relevance to the target space, deal recency, trust, deal-breakers for a USD 1–3M seed) and **standing conflicts** from the research (`lib/fit.ts`);
   - dates (source metadata only) and URLs (collectors only);
@@ -146,6 +148,7 @@ flowchart TB
 - **Fit comes from the seed research,** which is dated (`research_as_of`); stale roles show a "Re-verify role" badge, but fund status and theses can drift.
 - **Gemini output varies run to run,** even at temperature 0; a VC's score can move between runs on the same evidence.
 - **Eval labels and ranking answers came from the builder, not a human** (see above).
+- **Openers depend on the research note's quality;** the guard blocks invented names and numbers but not every awkward phrasing, so drafts are labelled "edit before sending". Deal discovery and automated research refresh were deferred (`docs/PLAN-NEXT.md`).
 
 ## Tooling disclosure
 

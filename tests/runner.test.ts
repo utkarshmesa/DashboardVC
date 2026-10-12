@@ -73,6 +73,8 @@ function memoryStore(n: number, opts: { firmOf?: (i: number) => string; firmRss?
       return vcs.map((v) => ({ id: v.id, name: v.name, firm: v.firm, thesis: v.thesis, status: v.status, score: v.follow_up_score, action: v.recommended_action,
         trust: profiles.get(v.id)!.trust, tier: profiles.get(v.id)!.tier, research: null, last_signal_date: v.last_signal_date, signal_summary: v.signal_summary }));
     },
+    async openerCandidates() { return []; },
+    async saveOpener() {},
     async finishRun() { run!.status = run!.failed_vc_ids.length ? 'partial' : 'done'; return run!.status as 'done' | 'partial'; },
   };
   return { store, vcs, signals, writes, getRun: () => run };

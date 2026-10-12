@@ -22,6 +22,7 @@
 | 2 · Correctness | CI green; eval gate met on the test split; ranking agreement recorded; values in README | ✅ Precision 0.95 / about-precision 1.00; recall 6/6; agreement 98% |
 | 3 · Usefulness | A newcomer answers "who to email this week, with what opener" in under a minute | ✅ Built and walked through; ⏳ an independent human timing is recommended |
 | 4 · Reliability and submission | SPEC §15 all ticked | ⏳ 11/13; the last 2 are due Thu 15 Oct (see below) |
+| 5b · Drafts, digest, outcome log (review items 5, 6, 8) | Sendable drafts; funnel; digest | ✅ 23 openers live (guarded), Copy email draft on every outreach card, `/api/digest`, `/quality` funnel; 85 tests |
 | 5 · Fit-first weekly plan (owner-approved, from `docs/REVIEW.md`) | Best-fit VCs reach This week; competitor firms flagged; follow-ups tracked | ✅ All 12 tier-1 VCs in outreach, queue, conflict check or same-firm route (was 1/12 in This week); 3 TMS-competitor partners flagged; 73 tests |
 
 ## Live system
@@ -66,12 +67,14 @@
 |---|---|---|
 | Scheduled cron processes all 50 VCs on its own (§15.1) | Automatic; verified by the scheduled task `vc-pipeline-thursday-acceptance` | Thu 2026-10-15, cron 06:00 IST, finisher 07:00/08:00, check 09:30 (needs the Claude app open, or it runs at next launch) |
 | Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
+| Fill in your pitch line, ask and sign-off in Settings → Email drafts (drafts show placeholders until then) | You | Before the first emails |
+| Optional: set `DIGEST_WEBHOOK_URL` (Slack/Discord) on Vercel to get the digest after each cron run | You | Any time |
 | Demo rehearsal (§15.12) | You | Any time. `docs/DEMO.md`; a dry run of every step was done on 2026-10-12 |
 | Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only, and the README has the tooling disclosure |
 
 ## Product review
 
-`docs/REVIEW.md` (2026-10-12) found the dashboard ranked by recent news, not fit; items 1–4 were built as Phase 5 (above). Items 5–9 (sendable drafts, Monday digest, logistics deal discovery, outcome learning, research refresh) remain proposed.
+`docs/REVIEW.md` (2026-10-12) found the dashboard ranked by recent news, not fit; items 1–4 were built as Phase 5 (above). After a stress test (`docs/PLAN-NEXT.md`), items 5 (research-grounded openers and code-assembled email drafts), 6 (summary bar and digest) and 8 (outreach outcome log and funnel) were built; 7 (deal discovery) and 9 (research refresh) are deferred with evidence.
 
 ## Where to look
 

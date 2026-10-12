@@ -43,7 +43,7 @@ SPEC §1 asks for (2) and for knowing whom to skip. The system builds (2) well, 
 
 ### Status (2026-10-12)
 
-Items **1–4 are built** (Phase 5; SPEC §9.6 amended; `docs/DECISIONS.md` #32–37). After a rescore, all 12 tier-1 VCs are in outreach, the queue, a conflict check or a same-firm route, and the three TMS-competitor partners show "Check conflict". Items 5–9 remain proposed.
+Items **1–4 are built** (Phase 5; SPEC §9.6 amended; `docs/DECISIONS.md` #32–37). After a rescore, all 12 tier-1 VCs are in outreach, the queue, a conflict check or a same-firm route, and the three TMS-competitor partners show "Check conflict". Items 5, 6 and 8 are now built as well (`docs/DECISIONS.md` #39–41) after the stress test in `docs/PLAN-NEXT.md`; items 7 and 9 are deferred with evidence.
 
 ### Recommendation
 

@@ -2,6 +2,8 @@
 // (SPEC §11.5). The action depends on status and last contact, so the VC is rescored from stored signals afterwards.
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { statusEvent } from '@/lib/funnel';
+import { logEvent } from '@/lib/outcomes';
 import { rescoreVc } from '@/lib/pipeline';
 
 const Body = z.object({
@@ -16,8 +18,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: 'invalid body' }, { status: 400 });
   const b = parsed.data;
+  const before = await db().from('vcs').select('status').eq('id', id).maybeSingle();
   const r = await db().rpc('update_my_fields', { p_id: id, p_status: b.status, p_last_contact_date: b.last_contact_date, p_notes: b.notes?.trim() || null });
   if (r.error) return Response.json({ error: r.error.message }, { status: 500 });
+  const ev = before.data ? statusEvent(before.data.status, b.status) : null;
+  if (ev) await logEvent(id, ev, before.data!.status, b.status);
   await rescoreVc(id);
   const vc = await db().from('vcs').select('*').eq('id', id).single();
   return Response.json({ ok: true, vc: vc.data });

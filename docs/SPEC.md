@@ -494,8 +494,9 @@ Designed backwards from Vikram's Monday morning: the decision first, the proof o
 4. **Other sections, collapsed:** Check conflict, Same firm, Wait, Quiet — hold, Low priority, Data unavailable, Passed.
 5. **Inline edit** of status, last contact date, notes via `PATCH /api/vc/[id]` → `update_my_fields`. System columns read-only with an "auto" tag.
 6. **Badges** (display only): "Possible move — verify" when an accepted signal has a `role_change_hint`; "Re-verify role" when the research verification date is over 180 days old.
-7. **`/settings`:** edit both settings (`settings.target_space`, `settings.my_product`; my product may be empty). Saving either one triggers the reset in section 2.
-8. **`/quality`:** thumbs-based precision (up ÷ (up + down)) overall and by signal type, plus counts of accepted, rejected and undated items from the last run.
+6b. **Drafts (review item 5):** each new-outreach or follow-up card has *Copy email draft*. The drawer shows a research-grounded opener (AI, guarded against the research text; hidden for conflict-flagged VCs) and the code-assembled draft (greeting, hook/opener, Vikram's pitch line, ask, sign-off; a nudge template for follow-ups). A one-line **This week** summary bar links to the cards. `GET /api/digest` (Bearer CRON_SECRET) returns the same plan as plain text, optionally posted to `DIGEST_WEBHOOK_URL` after each cron run.
+7. **`/settings`:** edit both settings (`settings.target_space`, `settings.my_product`; my product may be empty). Saving either one triggers the reset in section 2. A separate form edits the draft settings (`my_pitch`, `outreach_ask`, `sender_name`), which never trigger a reset.
+8. **`/quality`:** thumbs-based precision (up ÷ (up + down)) overall and by signal type; the **outreach funnel** from `outreach_events` (emailed → replied → meeting, by fit label and by hook vs no hook); and counts of accepted, rejected and undated items from the last run.
 
 ## 12. Quality: how we know it works
 

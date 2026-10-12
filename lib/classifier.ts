@@ -132,14 +132,15 @@ export type ClassifyInput = {
   source: string;
 };
 
-export type GenerateFn = (args: { apiKey: string; model: string; system: string; contents: string }) => Promise<string>;
+// `schema` defaults to the classifier response schema; other callers (openers) pass their own.
+export type GenerateFn = (args: { apiKey: string; model: string; system: string; contents: string; schema?: unknown }) => Promise<string>;
 
-export const geminiGenerate: GenerateFn = async ({ apiKey, model, system, contents }) => {
+export const geminiGenerate: GenerateFn = async ({ apiKey, model, system, contents, schema }) => {
   const ai = new GoogleGenAI({ apiKey });
   const res = await ai.models.generateContent({
     model,
     contents,
-    config: { systemInstruction: system, responseMimeType: 'application/json', responseSchema, temperature: 0 },
+    config: { systemInstruction: system, responseMimeType: 'application/json', responseSchema: (schema ?? responseSchema) as typeof responseSchema, temperature: 0 },
   });
   return res.text ?? '';
 };

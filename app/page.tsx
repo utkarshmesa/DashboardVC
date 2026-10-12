@@ -37,6 +37,19 @@ export default async function Home() {
         </div>
       </header>
 
+      {(() => {
+        const f = vcs.filter((v) => v.section === 'followups'), o = vcs.filter((v) => v.section === 'thisWeek'), c = vcs.filter((v) => v.section === 'conflict');
+        const names = (xs: typeof vcs) => xs.slice(0, 6).map((v, i) => <span key={v.id}>{i ? ', ' : ''}<a href={`#vc-${v.id}`} className="underline decoration-neutral-300 hover:decoration-neutral-700">{v.name}</a></span>);
+        return (
+          <p className="mb-5 rounded border border-neutral-200 bg-white px-3 py-2 text-sm" aria-label="This week at a glance">
+            <strong>This week:</strong>{' '}
+            {f.length > 0 && <>{f.length} follow-up{f.length === 1 ? '' : 's'} due ({names(f)}) · </>}
+            {o.length} email{o.length === 1 ? '' : 's'} to send{o.length ? <> ({names(o)}{o.length > 6 ? ', …' : ''})</> : ''}
+            {c.length > 0 && <> · {c.length} conflict{c.length === 1 ? '' : 's'} to check</>}
+          </p>
+        );
+      })()}
+
       {SECTIONS.map((sec) => {
         const list = vcs.filter((v) => v.section === sec.key);
         if (sec.key === 'followups' || sec.key === 'thisWeek') {

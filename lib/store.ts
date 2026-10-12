@@ -164,6 +164,23 @@ export const supabaseStore: Store = {
     return r.count ?? 0;
   },
 
+  // Openers (review item 5): VCs that may get a draft this week, with the research the opener is grounded in.
+  async openerCandidates() {
+    const vcs = must(await db().from('vcs').select('id, name, firm, thesis, recommended_action'), 'load vcs') as { id: string; name: string; firm: string; thesis: string | null; recommended_action: string | null }[];
+    const keep = vcs.filter((v) => /^(Reach out|Warm|Good fit|Nudge|Close the loop|Next step|Check conflict)/.test(v.recommended_action ?? ''));
+    if (!keep.length) return [];
+    const prof = must(await db().from('vc_profile').select('vc_id, research, opener_hash').in('vc_id', keep.map((v) => v.id)), 'load profiles') as { vc_id: string; research: Record<string, unknown> | null; opener_hash: string | null }[];
+    return keep.map((v) => {
+      const p = prof.find((x) => x.vc_id === v.id);
+      return { vc_id: v.id, vc_name: v.name, firm: v.firm, thesis: v.thesis, fit_reason: (p?.research?.fit_reason as string) ?? null,
+        latest_relevant_deal: (p?.research?.latest_relevant_deal as string) ?? null, opener_hash: p?.opener_hash ?? null };
+    });
+  },
+
+  async saveOpener(vcId, opener, hash) {
+    must(await db().from('vc_profile').update({ opener, opener_hash: hash, opener_at: new Date().toISOString() }).eq('vc_id', vcId), 'save opener');
+  },
+
   async finishRun(runId) {
     const r = must(await db().from('runs').select('failed_vc_ids').eq('id', runId).single(), 'load run') as { failed_vc_ids: string[] | null };
     const status = (r.failed_vc_ids ?? []).length ? 'partial' : 'done';
@@ -199,4 +216,18 @@ export async function setSettings(next: { targetSpace?: string; myProduct?: stri
     .or(`published_at.gte.${since},published_at.is.null`);
   if (r.error) throw new Error(`reset signals: ${r.error.message}`);
   return r.count ?? 0;
+}
+
+// Draft settings (review item 5): Vikram's own pitch line, sender name and ask. Changing them never reclassifies signals.
+export async function loadDraftSettings(): Promise<{ pitch: string; senderName: string; ask: string }> {
+  const rows = must(await db().from('settings').select('key, value').in('key', ['my_pitch', 'sender_name', 'outreach_ask']), 'load draft settings') as { key: string; value: string }[];
+  const get = (k: string) => rows.find((r) => r.key === k)?.value ?? '';
+  return { pitch: get('my_pitch'), senderName: get('sender_name'), ask: get('outreach_ask') };
+}
+
+export async function saveDraftSettings(d: { pitch: string; senderName: string; ask: string }) {
+  const now = new Date().toISOString();
+  must(await db().from('settings').upsert([
+    { key: 'my_pitch', value: d.pitch.trim(), updated_at: now }, { key: 'sender_name', value: d.senderName.trim(), updated_at: now }, { key: 'outreach_ask', value: d.ask.trim(), updated_at: now },
+  ], { onConflict: 'key' }), 'save draft settings');
 }

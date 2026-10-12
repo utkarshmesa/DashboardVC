@@ -86,6 +86,16 @@ function EditForm({ vc }: { vc: VcView }) {
 
 type Quick = 'emailed' | 'replied' | 'meeting' | 'passed' | 'snooze' | 'unsnooze' | 'dismiss_conflict' | 'restore_conflict';
 
+function CopyButton({ text, label, className = 'rounded border border-neutral-300 px-2 py-0.5 text-xs hover:bg-neutral-50' }: { text: string; label: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button type="button" className={className}
+      onClick={async () => { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+      {copied ? 'Copied' : label}
+    </button>
+  );
+}
+
 function QuickActions({ vc }: { vc: VcView }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Quick | null>(null);
@@ -100,6 +110,7 @@ function QuickActions({ vc }: { vc: VcView }) {
       className={`rounded border px-2 py-0.5 text-xs disabled:opacity-50 ${tone}`}>{busy === action ? '…' : label}</button>
   );
   const items: React.ReactNode[] = [];
+  if (vc.draft) items.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy email draft" className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-900 hover:bg-emerald-100" />);
   if (vc.status !== 'passed') {
     if (vc.status === 'not_contacted') items.push(b('emailed', 'Emailed today'));
     if (vc.status === 'awaiting_response') items.push(b('emailed', 'Nudged today'), b('replied', 'They replied'));
@@ -142,7 +153,7 @@ function SignalLine({ s }: { s: SignalView }) {
 export default function VcCard({ vc }: { vc: VcView }) {
   const [open, setOpen] = useState(false);
   return (
-    <article className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
+    <article id={`vc-${vc.id}`} className="scroll-mt-4 rounded-lg border border-neutral-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${actionTone(vc.action)}`}>{vc.action}</span>
         <span className="text-xs tabular-nums text-neutral-600" title="Recent-signal score (0–100): how strong this VC's public activity in the last 30 days is">news {vc.score ?? 0}<Auto /></span>
@@ -186,10 +197,23 @@ export default function VcCard({ vc }: { vc: VcView }) {
               <p className="mt-1 text-sm text-emerald-950">{vc.hook.text}</p>
             </div>
           )}
-          {!vc.hook && vc.whyFit && (
+          {!vc.hook && (vc.opener || vc.whyFit) && !vc.action.startsWith('Check conflict') && (
             <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2">
-              <span className="text-xs font-medium text-sky-900">No recent public hook: talking point from verified research</span>
-              <p className="mt-1 text-sm text-sky-950">{vc.whyFit}</p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-sky-900">{vc.opener ? 'Suggested opener from verified research — edit before sending' : 'No recent public hook: talking point from verified research'}</span>
+                {vc.opener && <CopyButton text={vc.opener} label="Copy" />}
+              </div>
+              <p className="mt-1 text-sm text-sky-950">{vc.opener ?? vc.whyFit}</p>
+            </div>
+          )}
+          {vc.draft && (
+            <div className="rounded border border-neutral-200 bg-white px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-neutral-700">Email draft — edit before sending</span>
+                <CopyButton text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" />
+              </div>
+              <p className="mt-1 text-xs text-neutral-500">Subject: {vc.draft.subject}</p>
+              <pre className="mt-1 whitespace-pre-wrap font-sans text-sm text-neutral-800">{vc.draft.body}</pre>
             </div>
           )}
           {vc.accepted.length > 0 ? (

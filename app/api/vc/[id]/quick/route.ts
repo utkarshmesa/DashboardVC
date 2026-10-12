@@ -3,6 +3,7 @@
 // vc_profile. The VC is then rescored from stored signals, which also re-runs firm routing and the weekly cap.
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { logEvent } from '@/lib/outcomes';
 import { rescoreVc } from '@/lib/pipeline';
 
 const Body = z.object({ action: z.enum(['emailed', 'replied', 'meeting', 'passed', 'snooze', 'unsnooze', 'dismiss_conflict', 'restore_conflict']) });
@@ -33,6 +34,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     : a === 'dismiss_conflict' ? await profile({ conflict_dismissed_at: new Date().toISOString() })
     : await profile({ conflict_dismissed_at: null });
   if (res.error) return Response.json({ error: res.error.message }, { status: 500 });
+  const before = cur.data.status;
+  const event = a === 'emailed' ? (before === 'not_contacted' ? 'emailed' : 'nudged') : a === 'replied' ? 'replied' : a === 'meeting' ? 'meeting'
+    : a === 'passed' ? 'passed' : a === 'snooze' ? 'snoozed' : a === 'unsnooze' ? 'unsnoozed' : null;
+  if (event) await logEvent(id, event, before, a === 'emailed' ? 'awaiting_response' : a === 'replied' || a === 'meeting' ? 'in_conversation' : a === 'passed' ? 'passed' : before);
   await rescoreVc(id);
   const vc = await db().from('vcs').select('status, last_contact_date, follow_up_score, recommended_action').eq('id', id).single();
   return Response.json({ ok: true, vc: vc.data });
