@@ -24,6 +24,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const profile = (patch: Record<string, unknown>) => db().from('vc_profile').update(patch).eq('vc_id', id);
 
   const a = parsed.data.action;
+  // Idempotent: a repeated click (retry, second tab) must not log a second event or append the note twice.
+  const c = cur.data;
+  const repeat = (a === 'emailed' && c.status === 'awaiting_response' && c.last_contact_date === today)
+    || (a === 'replied' && c.status === 'in_conversation')
+    || (a === 'meeting' && (c.notes ?? '').includes(`Meeting booked ${today}`))
+    || (a === 'passed' && c.status === 'passed');
+  if (repeat) return Response.json({ ok: true, repeat: true });
   const res =
     a === 'emailed' ? await mine('awaiting_response', today, cur.data.notes)
     : a === 'replied' ? await mine('in_conversation', today, cur.data.notes)

@@ -44,13 +44,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <label className="block">
           <span className="block text-sm font-medium">Target space</span>
           <span className="mb-2 block text-xs text-neutral-500">Drives relevance: core, logistics (non-software), adjacent or unrelated.</span>
-          <textarea name="target_space" defaultValue={persona.targetSpace} rows={4} required
+          <textarea name="target_space" defaultValue={persona.targetSpace} rows={4} required maxLength={2000}
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <label className="block">
           <span className="block text-sm font-medium">My product</span>
           <span className="mb-2 block text-xs text-neutral-500">Drives the competitor check only. Leave empty to turn competitor flags off.</span>
-          <textarea name="my_product" defaultValue={persona.myProduct} rows={5}
+          <textarea name="my_product" defaultValue={persona.myProduct} rows={5} maxLength={2000}
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <p className="text-xs text-neutral-500">Changing either setting queues the last {SIGNAL_WINDOW_DAYS} days of classified signals for reclassification.</p>
@@ -63,16 +63,16 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <form action={saveDraft} className="space-y-4">
         <label className="block">
           <span className="block text-sm font-medium">Your pitch (1–2 sentences)</span>
-          <textarea name="my_pitch" defaultValue={draft.pitch} rows={3} placeholder="What you build, your traction, and the round you are raising, in one or two sentences."
+          <textarea name="my_pitch" defaultValue={draft.pitch} rows={3} maxLength={600} placeholder="What you build, your traction, and the round you are raising, in one or two sentences."
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <label className="block">
           <span className="block text-sm font-medium">Your ask</span>
-          <input name="outreach_ask" defaultValue={draft.ask} placeholder={DEFAULT_ASK} className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
+          <input name="outreach_ask" defaultValue={draft.ask} maxLength={300} placeholder={DEFAULT_ASK} className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <label className="block">
           <span className="block text-sm font-medium">Sign-off name</span>
-          <input name="sender_name" defaultValue={draft.senderName} placeholder="Vikram" className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
+          <input name="sender_name" defaultValue={draft.senderName} maxLength={80} placeholder="Vikram" className="w-full rounded border border-neutral-300 px-3 py-2 text-sm" />
         </label>
         <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">Save draft settings</button>
       </form>

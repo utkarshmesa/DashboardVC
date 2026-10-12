@@ -5,7 +5,8 @@ export type DigestVc = { name: string; firm: string; action: string; section: st
 export function buildDigest(vcs: DigestVc[], appUrl: string, now = new Date()): string {
   const pick = (s: string) => vcs.filter((v) => v.section === s);
   const followups = pick('followups').sort((a, b) => (b.daysSinceContact ?? 0) - (a.daysSinceContact ?? 0));
-  const outreach = pick('thisWeek');
+  const all = pick('thisWeek');
+  const outreach = all.filter((v) => !v.action.startsWith('Warm')), optional = all.filter((v) => v.action.startsWith('Warm'));
   const conflicts = pick('conflict');
   const day = now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', day: 'numeric', month: 'short' });
   const lines = [`VC pipeline: ${day}`, ''];
@@ -14,9 +15,18 @@ export function buildDigest(vcs: DigestVc[], appUrl: string, now = new Date()): 
     for (const v of followups) lines.push(`• ${v.name} (${v.firm}): ${v.action}${v.daysSinceContact !== null ? `, last contact ${v.daysSinceContact} days ago` : ''}`);
     lines.push('');
   }
-  lines.push(outreach.length ? `New outreach this week (${outreach.length}):` : 'No new outreach suggested this week.');
-  for (const v of outreach) lines.push(`• ${v.name} (${v.firm}), fit ${v.fitScore}: ${v.action}${v.whyFit ? ` — ${v.whyFit.split(/[;.]/)[0]}` : ''}`);
+  lines.push(outreach.length ? `New outreach this week (${outreach.length}):` : all.length ? 'No committed outreach this week.' : 'No new outreach suggested this week.');
+  const item = (v: DigestVc) => `• ${v.name} (${v.firm}), fit ${v.fitScore}: ${v.action}${v.whyFit ? ` — ${v.whyFit.split(/[;.]/)[0]}` : ''}`;
+  for (const v of outreach) lines.push(item(v));
+  if (optional.length) lines.push('', `Optional, if you have capacity (${optional.length}):`, ...optional.map(item));
   if (conflicts.length) lines.push('', `Check before pitching (${conflicts.length}): ${conflicts.map((v) => `${v.name} (${v.firm})`).join(', ')}`);
   lines.push('', `Drafts, evidence and one-click logging: ${appUrl}`);
   return lines.join('\n');
+}
+
+// Post the digest once per run, and only for runs that processed VCs (the finisher's empty no-op runs never post).
+export function shouldPostDigest(stats: Record<string, unknown> | null): boolean {
+  const s = stats ?? {};
+  if (s.digest_posted_at) return false;
+  return Object.values(s).some((x) => typeof x === 'object' && x !== null && ((x as { processed?: number }).processed ?? 0) > 0);
 }

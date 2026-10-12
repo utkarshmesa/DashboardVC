@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDigest } from '@/lib/digest';
+import { buildDigest, shouldPostDigest } from '@/lib/digest';
 import { computeFunnel, statusEvent, type OutreachEvent } from '@/lib/funnel';
 
 const ev = (vc: string, event: string, at: string, fit = 'strong', hook = false): OutreachEvent => ({ vc_id: vc, event, at, fit_label: fit, had_hook: hook });
@@ -36,5 +36,19 @@ describe('digest', () => {
     expect(t).toContain('• C (FC), fit 92: Reach out — strong fit — Supply-chain sector lead');
     expect(t).toContain('Check before pitching (1): D (FD)');
     expect(t).toContain('https://app.example/');
+  });
+  it('lists Warm cards separately as optional', () => {
+    const t = buildDigest([
+      { name: 'C', firm: 'FC', action: 'Reach out — strong fit', section: 'thisWeek', whyFit: null, daysSinceContact: null, fitScore: 90 },
+      { name: 'W', firm: 'FW', action: 'Warm — reach out if capacity', section: 'thisWeek', whyFit: null, daysSinceContact: null, fitScore: 60 },
+    ], 'https://app.example/');
+    expect(t).toContain('New outreach this week (1):\n• C ');
+    expect(t).toContain('Optional, if you have capacity (1):\n• W ');
+  });
+  it('posts once per run, only when the run processed VCs', () => {
+    expect(shouldPostDigest({ step_a: { processed: 10 } })).toBe(true);
+    expect(shouldPostDigest({})).toBe(false);
+    expect(shouldPostDigest({ step_a: { processed: 0 } })).toBe(false);
+    expect(shouldPostDigest({ step_a: { processed: 10 }, digest_posted_at: '2026-10-15T01:00:00Z' })).toBe(false);
   });
 });

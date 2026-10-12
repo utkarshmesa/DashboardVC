@@ -196,6 +196,9 @@ export async function loadPersona(): Promise<{ targetSpace: string; myProduct: s
   return { targetSpace: get('target_space') ?? DEFAULT_TARGET_SPACE, myProduct: get('my_product') ?? DEFAULT_MY_PRODUCT };
 }
 
+// Persona text goes into every Gemini prompt; cap it so a paste accident cannot blow the token budget.
+const PERSONA_MAX = 2000;
+
 // Saving either setting resets every in-window signal that reached the classifier to pending, so the next run
 // reclassifies it against the new settings. my_product may be empty; target_space may not.
 export async function setSettings(next: { targetSpace?: string; myProduct?: string }, windowDays: number): Promise<number> {
@@ -203,9 +206,9 @@ export async function setSettings(next: { targetSpace?: string; myProduct?: stri
   const now = new Date().toISOString();
   if (next.targetSpace !== undefined) {
     if (!next.targetSpace.trim()) throw new Error('target space cannot be empty');
-    rows.push({ key: 'target_space', value: next.targetSpace.trim(), updated_at: now });
+    rows.push({ key: 'target_space', value: next.targetSpace.trim().slice(0, PERSONA_MAX), updated_at: now });
   }
-  if (next.myProduct !== undefined) rows.push({ key: 'my_product', value: next.myProduct.trim(), updated_at: now });
+  if (next.myProduct !== undefined) rows.push({ key: 'my_product', value: next.myProduct.trim().slice(0, PERSONA_MAX), updated_at: now });
   if (!rows.length) return 0;
   must(await db().from('settings').upsert(rows, { onConflict: 'key' }), 'save settings');
   const since = new Date(Date.now() - windowDays * 86_400_000).toISOString();
@@ -228,6 +231,6 @@ export async function loadDraftSettings(): Promise<{ pitch: string; senderName: 
 export async function saveDraftSettings(d: { pitch: string; senderName: string; ask: string }) {
   const now = new Date().toISOString();
   must(await db().from('settings').upsert([
-    { key: 'my_pitch', value: d.pitch.trim(), updated_at: now }, { key: 'sender_name', value: d.senderName.trim(), updated_at: now }, { key: 'outreach_ask', value: d.ask.trim(), updated_at: now },
+    { key: 'my_pitch', value: d.pitch.trim().slice(0, 600), updated_at: now }, { key: 'sender_name', value: d.senderName.trim().slice(0, 80), updated_at: now }, { key: 'outreach_ask', value: d.ask.trim().slice(0, 300), updated_at: now },
   ], { onConflict: 'key' }), 'save draft settings');
 }
