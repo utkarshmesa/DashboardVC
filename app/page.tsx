@@ -12,7 +12,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 function Stat({ label, value, tone, children, href }: { label: string; value: React.ReactNode; tone: Tone; children?: React.ReactNode; href?: string }) {
   const body = (
-    <Card className={`h-full p-4 transition-shadow ${href ? 'hover:shadow-lift' : ''}`}>
+    <Card className={`h-full p-4 transition-shadow hover:shadow-lift`} data-tilt="" data-spotlight="">
       <p className="flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-wider text-ink-3">
         <span className={`h-1.5 w-1.5 rounded-full ${TONE[tone].dot}`} aria-hidden="true" />{label}
       </p>
@@ -20,7 +20,15 @@ function Stat({ label, value, tone, children, href }: { label: string; value: Re
       {children && <div className="mt-3 text-[12.5px] text-ink-2">{children}</div>}
     </Card>
   );
-  return href ? <Link href={href} className="block rounded-2xl">{body}</Link> : body;
+  return <div data-reveal="" className="h-full">{href ? <Link href={href} className="block h-full rounded-2xl">{body}</Link> : body}</div>;
+}
+
+// The hero headline, split into words for the staggered entrance; emphasised words carry the gradient sweep.
+function Words({ parts }: { parts: { text: string; em?: boolean }[] }) {
+  let k = 0;
+  return <>{parts.flatMap((p) => p.text.split(' ').filter(Boolean).map((w) => (
+    <span key={k++} data-word="" className="inline-block whitespace-pre will-change-transform">{p.em ? <em data-shimmer="" className="shimmer pr-1">{w}</em> : w}{' '}</span>
+  )))}</>;
 }
 
 function Faces({ vcs }: { vcs: VcView[] }) {
@@ -60,29 +68,34 @@ export default async function Home() {
       <AppHeader active="/" run={header.lastRun} nextRun={nextScheduledRun().toISOString()} credits={header.credits} />
       <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-24 pt-8 outline-none sm:px-6">
         {/* Hero: the answer to "what do I do this week?" in one line. */}
-        <section className="fade-in mb-8">
-          <p className="mb-3 text-[12px] font-medium uppercase tracking-[0.14em] text-ink-3">{today} · Seed round, USD 1–3M</p>
-          <h1 className="max-w-3xl font-display text-[40px] leading-[1.05] tracking-tight text-ink sm:text-[54px]">
-            {followups.length > 0 && <><em className="text-accent-text">{plural(followups.length, 'follow-up')}</em> due and </>}
-            <em className="text-accent-text">{plural(committed.length, 'investor')}</em> to reach this week.
+        <section className="relative mb-8">
+          <div className="aurora grain" aria-hidden="true"><span data-blob="" /><span data-blob="" /><span data-blob="" /></div>
+          <div className="relative z-[1]">
+          <p data-reveal="" className="mb-3 text-[12px] font-medium uppercase tracking-[0.14em] text-ink-3">{today} · Seed round, USD 1–3M</p>
+          <h1 className="max-w-3xl font-display text-[40px] leading-[1.05] tracking-tight text-ink sm:text-[58px]">
+            <Words parts={[
+              ...(followups.length > 0 ? [{ text: plural(followups.length, 'follow-up'), em: true }, { text: 'due and' }] : []),
+              { text: plural(committed.length, 'investor'), em: true }, { text: 'to reach this week.' },
+            ]} />
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">
+          <p data-reveal="" className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">
             Best fit first. Each card shows why they fit, the way in, a ready draft and the evidence behind it.
             {optional.length > 0 && <> {plural(optional.length, 'more is', 'more are')} worth a note if you have time.</>}
           </p>
+          </div>
         </section>
 
         <section aria-label="This week at a glance" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="To reach" value={committed.length} tone="accent"><Faces vcs={committed} /></Stat>
-          <Stat label="Follow-ups due" value={followups.length} tone="info">
+          <Stat label="To reach" value={<span data-count={committed.length}>{committed.length}</span>} tone="accent"><Faces vcs={committed} /></Stat>
+          <Stat label="Follow-ups due" value={<span data-count={followups.length}>{followups.length}</span>} tone="info">
             {followups.length ? <Faces vcs={followups} /> : <span className="text-ink-3">Nothing waiting on you</span>}
           </Stat>
-          <Stat label="Check first" value={conflicts.length} tone="danger">
+          <Stat label="Check first" value={<span data-count={conflicts.length}>{conflicts.length}</span>} tone="danger">
             {conflicts.length ? <span>{plural(conflicts.length, 'partner')} at firms that backed a company like yours</span> : <span className="text-ink-3">No conflicts</span>}
           </Stat>
-          <Stat label="Runway" value={<>{runway.weeks}<span className="ml-1 font-sans text-[15px] text-ink-3">wks</span></>} tone={runway.weeks < 4 ? 'warn' : 'accent'} href="/investors">
+          <Stat label="Runway" value={<><span data-count={runway.weeks} data-decimals={Number.isInteger(runway.weeks) ? 0 : 1}>{runway.weeks}</span><span className="ml-1 font-sans text-[15px] text-ink-3">wks</span></>} tone={runway.weeks < 4 ? 'warn' : 'accent'} href="/investors">
             <span className="block h-1.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
-              <span className={`block h-full rounded-full ${runway.weeks < 4 ? 'bg-warn' : 'bg-accent'}`} style={{ width: `${runwayPct}%` }} />
+              <span data-fill="" className={`block h-full rounded-full ${runway.weeks < 4 ? 'bg-warn' : 'bg-accent'}`} style={{ width: `${runwayPct}%` }} />
             </span>
             <span className="mt-2 flex items-center justify-between gap-2">
               <span>{plural(runway.firms, 'good-fit firm')} left at {runway.perWeek}/wk</span>
@@ -91,9 +104,9 @@ export default async function Home() {
           </Stat>
         </section>
 
-        <Card className="mb-10 p-4">
+        <div data-reveal=""><Card className="mb-10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[13px] font-medium text-ink">Pipeline · {vcs.length} investors</p>
+            <p className="text-[13px] font-medium text-ink">Pipeline · <span data-count={vcs.length}>{vcs.length}</span> investors</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-2">
               {STAGES.map((s) => (
                 <span key={s.key} className="inline-flex items-center gap-1.5">
@@ -105,7 +118,7 @@ export default async function Home() {
           <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
             {STAGES.map((s) => {
               const n = vcs.filter((v) => v.status === s.key).length;
-              return n ? <span key={s.key} className={`${s.cls} h-full`} style={{ width: `${(100 * n) / vcs.length}%` }} /> : null;
+              return n ? <span key={s.key} data-seg="" className={`${s.cls} h-full`} style={{ width: `${(100 * n) / vcs.length}%` }} /> : null;
             })}
           </div>
           <div className="mt-3 grid gap-1 border-t border-line pt-3 text-[12px] text-ink-3 sm:grid-cols-[1fr_1fr_auto] sm:gap-4">
@@ -113,7 +126,7 @@ export default async function Home() {
             <p className="truncate" title={persona.myProduct || 'Not set'}><span className="font-medium text-ink-2">My product</span> · {persona.myProduct || 'not set (competitor flags off)'}</p>
             <Link href="/settings" className="-my-1 inline-flex min-h-6 items-center font-medium text-accent-text hover:underline">Edit</Link>
           </div>
-        </Card>
+        </Card></div>
 
         {followups.length > 0 && (
           <section className="mb-12">

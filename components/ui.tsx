@@ -1,5 +1,5 @@
 // Small shared UI kit (server- and client-safe: no hooks). All colours come from the tokens in app/globals.css.
-import type { ReactNode, SVGProps } from 'react';
+import type { HTMLAttributes, ReactNode, SVGProps } from 'react';
 
 // ---- Icons (inline, 16px, stroke = currentColor) ----
 const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
@@ -29,9 +29,9 @@ export const I = {
 
 // ---- Buttons (class strings so links and buttons share one look) ----
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'quiet';
-const BASE = 'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-[background,box-shadow,color,transform] duration-150 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap';
+const BASE = 'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-[background,box-shadow,color,translate] duration-150 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap';
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-accent text-accent-ink shadow-card hover:bg-accent-2',
+  primary: 'btn-shine bg-accent text-accent-ink shadow-card hover:bg-accent-2',
   secondary: 'bg-surface text-ink ring-1 ring-line-2 hover:bg-surface-2 hover:ring-ink-3/40',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   danger: 'bg-surface text-danger ring-1 ring-danger/30 hover:bg-danger-soft',
@@ -92,18 +92,18 @@ export function FitMeter({ score, label, size = 44, title }: { score: number; la
   const colour = label === 'strong' ? 'var(--accent)' : label === 'good' ? 'var(--info)' : 'var(--ink-3)';
   return (
     <span className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} title={title ?? `Fit ${score}/100 (${label})`} role="img" aria-label={`Fit ${score} out of 100, ${label}`}>
-      <svg width={size} height={size} className="-rotate-90">
+      <svg data-ring="" width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth={4} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colour} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} />
+        <circle data-ring-arc={c * pct} data-ring-total={c} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colour} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${c * pct} ${c}`} />
       </svg>
-      <span className="absolute font-mono text-[12.5px] font-semibold tabular-nums text-ink">{score}</span>
+      <span data-count={score} className="absolute font-mono text-[12.5px] font-semibold tabular-nums text-ink">{score}</span>
     </span>
   );
 }
 
 // ---- Layout pieces ----
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl bg-surface shadow-card ring-1 ring-line ${className}`}>{children}</div>;
+export function Card({ children, className = '', ...rest }: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string>) {
+  return <div {...rest} className={`rounded-2xl bg-surface shadow-card ring-1 ring-line ${className}`}>{children}</div>;
 }
 
 export function SectionTitle({ children, count, hint, tone }: { children: ReactNode; count?: number; hint?: string; tone?: Tone }) {
@@ -121,10 +121,13 @@ export function SectionTitle({ children, count, hint, tone }: { children: ReactN
 
 export function PageTitle({ eyebrow, title, sub }: { eyebrow?: string; title: ReactNode; sub?: ReactNode }) {
   return (
-    <div className="mb-8">
-      {eyebrow && <p className="mb-2 text-[12px] font-medium uppercase tracking-[0.14em] text-ink-3">{eyebrow}</p>}
-      <h1 className="font-display text-[40px] leading-[1.05] tracking-tight text-ink sm:text-[46px]">{title}</h1>
-      {sub && <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">{sub}</p>}
+    <div className="relative mb-8">
+      <div className="aurora grain" style={{ height: 360, opacity: 0.8 }} aria-hidden="true"><span data-blob="" /><span data-blob="" /><span data-blob="" /></div>
+      <div className="relative z-[1]">
+        {eyebrow && <p data-reveal="" className="mb-2 text-[12px] font-medium uppercase tracking-[0.14em] text-ink-3">{eyebrow}</p>}
+        <h1 data-reveal="" className="font-display text-[40px] leading-[1.05] tracking-tight text-ink sm:text-[50px]">{title}</h1>
+        {sub && <p data-reveal="" className="mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">{sub}</p>}
+      </div>
     </div>
   );
 }

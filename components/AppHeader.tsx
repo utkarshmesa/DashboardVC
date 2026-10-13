@@ -21,10 +21,11 @@ export default function AppHeader({ active, run, nextRun, credits }: {
     <>
     <a href="#main" className="sr-only fixed left-3 top-3 z-50 rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-accent-ink focus:not-sr-only">Skip to content</a>
     <header className="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur supports-[backdrop-filter]:bg-paper/70">
+      <span data-progress="" aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[-1px] h-[2px] origin-left bg-gradient-to-r from-accent via-accent-2 to-warn" />
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:flex-nowrap sm:px-6">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Pipeline home">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-ink shadow-card">
-            <I.route width={17} height={17} />
+            <I.route width={17} height={17} data-draw="" />
           </span>
           <span className="font-display text-[22px] leading-none tracking-tight">Pipeline</span>
         </Link>

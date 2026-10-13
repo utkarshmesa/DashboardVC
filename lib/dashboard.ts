@@ -189,7 +189,7 @@ export async function loadDashboard() {
 export async function loadHeader() {
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
   const [runR, creditsR] = await Promise.all([
-    db().from('runs').select('id, status, trigger, started_at, finished_at, stats').order('started_at', { ascending: false }).limit(20),
+    db().from('runs').select('id, status, trigger, started_at, finished_at, stats').order('started_at', { ascending: false }).limit(300), // wide enough that empty finisher/test runs never hide the last real run
     db().from('runs').select('tavily_credits').gte('started_at', monthStart),
   ]);
   // Show the latest run that processed VCs (finisher/no-op runs that found nothing due would otherwise hide it).

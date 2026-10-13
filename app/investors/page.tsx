@@ -40,7 +40,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
   const low = runway.weeks < 4;
   const row = (c: (typeof candidates)[number]) => (
     <li key={c.id}>
-      <Card className="p-4 transition-shadow hover:shadow-lift">
+      <Card className="p-4 transition-shadow hover:shadow-lift" data-card="" data-spotlight="">
         <div className="flex flex-wrap items-start gap-3">
           <Avatar name={c.name} fit={c.label} size={38} />
           <div className="min-w-0 flex-1">

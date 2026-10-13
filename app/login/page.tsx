@@ -18,15 +18,16 @@ async function login(formData: FormData) {
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="fade-in w-full max-w-sm">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <div className="aurora grain" style={{ inset: 0, height: "100%" }} aria-hidden="true"><span data-blob="" /><span data-blob="" /><span data-blob="" /></div>
+      <div className="relative z-[1] w-full max-w-sm">
         <div className="mb-8 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-accent-ink shadow-card"><I.route width={18} height={18} /></span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-accent-ink shadow-card"><I.route width={18} height={18} data-draw="" /></span>
           <span className="font-display text-[26px] leading-none tracking-tight">Pipeline</span>
         </div>
-        <h1 className="font-display text-[36px] leading-tight tracking-tight text-ink">Your seed round, <em className="text-accent-text">one screen</em>.</h1>
-        <p className="mt-2 text-[14px] text-ink-2">Who to contact this week, why they fit, and how to reach them.</p>
-        <form action={login} className="mt-8 grid gap-3">
+        <h1 className="font-display text-[40px] leading-tight tracking-tight text-ink">{"Your seed round,".split(" ").map((w, i) => <span key={i} data-word="" className="inline-block whitespace-pre">{w} </span>)}<span data-word="" className="inline-block"><em data-shimmer="" className="shimmer pr-1">one screen</em>.</span></h1>
+        <p data-reveal="" className="mt-2 text-[14px] text-ink-2">Who to contact this week, why they fit, and how to reach them.</p>
+        <form action={login} data-reveal="" className="mt-8 grid gap-3">
           <label className="text-[13px] font-medium text-ink" htmlFor="password">Password</label>
           <input id="password" name="password" type="password" required autoFocus autoComplete="current-password" className={inputCls} />
           {error && <p role="alert" className="text-[13px] text-danger">Wrong password. Try again.</p>}

@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { SignalView, VcView } from '@/lib/dashboard';
 import { day, LEVEL_LABEL, REASON_LABEL } from './format';
+import { gsap } from 'gsap';
+import { burst, reducedMotion } from './motion';
 import { actionToneOf, Auto, Avatar, Badge, btn, FitMeter, I, inputCls, TONE } from './ui';
 
 const STATUSES = [
@@ -140,7 +142,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
     </a>
   );
   const quick = (action: Quick, label: string, variant: 'secondary' | 'ghost' | 'danger' = 'secondary', channel?: Channel) => (
-    <button key={action + label} type="button" disabled={!!busy} onClick={() => { setMore(false); go(action, channel); }} className={btn(variant)}>
+    <button key={action + label} type="button" disabled={!!busy} onClick={(e) => { const t = e.currentTarget; setMore(false); go(action, channel).then((ok) => { if (ok && ['emailed', 'replied', 'meeting'].includes(action)) burst(t); }); }} className={btn(variant)}>
       {busy === action ? 'Saving…' : label}
     </button>
   );
@@ -200,7 +202,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
           <span className="font-medium">Sent it?</span>
           <span className="text-ink-2">Logging it starts the follow-up timer.</span>
           <span className="ml-auto flex gap-2">
-            <button type="button" disabled={!!busy} onClick={async () => { if (await go('emailed', confirm)) setConfirm(null); }} className={btn('primary')}>
+            <button type="button" disabled={!!busy} onClick={async (e) => { const t = e.currentTarget; if (await go('emailed', confirm)) { burst(t); setConfirm(null); } }} className={btn('primary')}>
               {vc.status === 'awaiting_response' ? 'Yes, log the nudge' : 'Yes, log as sent'}
             </button>
             <button type="button" onClick={() => setConfirm(null)} className={btn('ghost')}>Not yet</button>
@@ -358,6 +360,18 @@ function Details({ vc }: { vc: VcView }) {
   const hasDraft = !!(vc.draft || vc.hook || vc.opener || vc.formAnswers);
   // Decide first, then draft: the profile opens first.
   const [tab, setTab] = useState<'profile' | 'draft' | 'evidence' | 'notes'>('profile');
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Panel content slides in, staggered, on open and on every tab change.
+  useEffect(() => {
+    const panel = panelRef.current?.querySelector('[role=tabpanel]');
+    if (!panel || reducedMotion()) return;
+    // A context, reverted on cleanup: an interrupted animation (re-render, refresh) restores the content to visible
+    // instead of freezing it at the hidden starting state.
+    const ctx = gsap.context(() => {
+      gsap.fromTo(panel.children, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.45, stagger: 0.05, ease: 'power3.out', clearProps: 'transform,opacity,visibility' });
+    });
+    return () => ctx.revert();
+  }, [tab]);
   const tabs = [
     ['profile', 'Profile'] as const,
     ...(hasDraft ? [['draft', 'Draft & opener'] as const] : []),
@@ -366,7 +380,7 @@ function Details({ vc }: { vc: VcView }) {
   ];
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
-    <div className="rounded-b-2xl border-t border-line bg-surface-2/60 px-5 pb-5 pt-3">
+    <div ref={panelRef} className="rounded-b-2xl border-t border-line bg-surface-2/60 px-5 pb-5 pt-3">
       <div role="tablist" aria-label={`${vc.name} details`} className="mb-4 flex gap-1 overflow-x-auto"
         onKeyDown={(e) => {
           // WAI-ARIA tabs: arrow keys move between tabs, Home/End jump to the ends.
@@ -443,7 +457,7 @@ function FullCard({ vc, onCollapse, autoFocus }: { vc: VcView; onCollapse?: () =
   const tone = actionToneOf(vc.action);
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
-    <article ref={ref} tabIndex={autoFocus ? -1 : undefined} aria-label={`${vc.name}, ${vc.firm}`} id={`vc-${vc.id}`} className={`group fade-in relative scroll-mt-28 rounded-2xl bg-surface has-[[data-menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
+    <article ref={ref} data-card="" data-spotlight="" tabIndex={autoFocus ? -1 : undefined} aria-label={`${vc.name}, ${vc.firm}`} id={`vc-${vc.id}`} className={`group ${autoFocus ? 'fade-in ' : ''}relative scroll-mt-28 rounded-2xl bg-surface has-[[data-menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
       <div className="p-5">
         <div className="flex gap-4">
           <Avatar name={vc.name} fit={vc.fit.label} size={44} />
@@ -509,8 +523,8 @@ function CompactRow({ vc }: { vc: VcView }) {
   if (open) return <FullCard vc={vc} onCollapse={() => setOpen(false)} autoFocus />;
   const tone = actionToneOf(vc.action);
   return (
-    <button type="button" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
-      className="group flex w-full scroll-mt-28 items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left ring-1 ring-line transition-all hover:shadow-card hover:ring-line-2">
+    <button type="button" data-card="" data-spotlight="" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
+      className="group flex w-full scroll-mt-28 items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left ring-1 ring-line transition-[box-shadow,--tw-ring-color] hover:shadow-card hover:ring-line-2">
       <Avatar name={vc.name} fit={vc.fit.label} size={32} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-medium text-ink">{vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span></span>
