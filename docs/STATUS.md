@@ -1,119 +1,103 @@
 # Build status: VC Fundraising Pipeline Intelligence
 
-*As of 2026-10-13. The live app is at https://vc-pipeline-zeta.vercel.app: open to anyone with the link, no password.*
+*As of Tue 2026-10-13, evening IST. Live: https://vc-pipeline-zeta.vercel.app (no password; share the link only with people you trust). Production commit `e0a9685`.*
 
-**Plan V2 (2026-10-13, DECISIONS #55):** rebuilt around the problem statement only. Recommendations are signal-first: "reach out" only on an observable logistics signal from the last 30 days; quiet VCs are listed with a reason. The persona holds only what the problem says (Seed, B2B logistics SaaS). The home page is now a weekly to-do list with progress tracking, plus a spreadsheet-style Pipeline page and a Progress page. A labelled demo contact history shows follow-ups and progress. See docs/PLAN-V2.md.
+## Summary
 
-**Summary.** Everything specified is built, deployed and stress-tested. Beyond the spec, the owner approved and received:
-- a fit-first weekly plan (Phase 5);
-- sendable email drafts, a digest and an outcome log (5b);
-- LinkedIn posts as an activity and relevance signal (5c; X stays off);
-- route-aware outreach and a pipeline runway with one-click "Add investors" (5d);
-- a full frontend redesign, stress-tested for accessibility, layout, keyboard use and failures (5e);
-- an investor brief on every card: cheque, fund status, past deals, competitor flags (5f);
-- an operational-console redesign with a matching GSAP motion layer, with **no password** and names that link to each person's LinkedIn and each firm's website (DECISIONS #52–54).
+**The build solves Problem Statement 10 as written.**
+- **Schedule:** it runs twice a week (Mon/Thu 06:00 IST), before Vikram starts work.
+- **Why to write:** it tells him who to contact this week and why, from an observable signal in the last 30 days: something they wrote, said, invested in or appeared at.
+- **Who to skip:** it tells him who is quiet, so he knows where not to spend energy.
+- **His table:** every run updates the 4 signal columns in his Supabase table, and only those. His notes and contact history are never touched; this is enforced in the database and proven by tests.
 
-What remains:
-- **11 of 13 acceptance items (SPEC §15) are verified on production.** The other 2 depend on the calendar: a scheduled cron that processes all 50 VCs by itself, and a third day of full runs. Both fall on **Thursday 2026-10-15**. A scheduled task checks them at 09:30 IST and updates this file and `docs/ACCEPTANCE.md`.
+Since the last status, rebuilt around the problem statement only (DECISIONS #53–57):
+- **Problem-only persona.** Seed round, B2B logistics SaaS. The invented TMS product and USD 1–3M round were removed.
+- **Signal-first recommendations.** "Reach out" only on a dated logistics signal; fit alone never qualifies. Quiet investors are listed with a reason.
+- **A to-do dashboard.** A weekly checklist with Done controls, a progress strip, a funnel and "Done this week". Also a spreadsheet-style **Pipeline** table (import and export his CSV, edit status and notes in the cell) and a **Progress** page.
+- **First-use fixes from Vikram's point of view.** Drafts open with the signal; nudges reply in his existing thread; plain-language reasons; evidence shows why it's about the investor.
+- **Contact emails.** 33 of 50 found (25 personal), so Gmail drafts open with the To field filled.
+- **No password.** Names link to LinkedIn and firm websites.
+
+**What remains:**
+- **Automatic, Thu 15 Oct:** the scheduled cron must process all 50 VCs by itself; this is also the third day of runs. A scheduled task checks it at 09:30 IST.
 - **Human steps:**
-  - rehearse the demo (`docs/DEMO.md`, updated for the redesign);
-  - add the company name, a traction number and a deck link in Settings;
-  - reconnect Vercel's GitHub integration (see Live system).
-- **Not doing:** key rotation, which the owner chose to skip for this project.
+  - add the company name, a traction number and a deck link in Settings (the home page shows a reminder until then);
+  - rehearse the demo;
+  - decide whether to keep the labelled demo history for the submission.
+
+## What Vikram sees today (live data)
+
+| | Now |
+|---|---|
+| Headline | "7 things to do this week, 1 done so far" |
+| Follow-ups due | 6: 3 nudges, 2 close-the-loop, 1 next step. All from the labelled demo history |
+| Reach out: signal this week | 1: **Alok Goyal** (Stellaris). He posted about the logistics space on 30 Sep. His draft opens with that post, addressed to alok@stellarisvp.com from his own team page |
+| If you have capacity | 10 good-fit investors who are active, but not on logistics; plain reasons |
+| Not worth chasing this week | 23: 9 good fits to revisit when active, 5 quiet, 9 active only outside logistics |
+| Other | 5 routed via a colleague at the same firm; 3 waiting (contacted in the last 7 days); 2 passed |
+| Why the signal list is short | Only 1 of 120 accepted items in the last 30 days is about logistics. An independent web search found no missed logistics deal by these 50 firms in the window. The page says so plainly |
 
 ## Phases
 
-| Phase | Exit check | Status |
-|---|---|---|
-| 0 · Spike and evidence | Metrics report delivered; gate decided | ✅ `spike/REPORT.md`; gate decisions in `docs/DECISIONS.md` |
-| 1 · Walking skeleton | Cron fires on the live URL; table updates with real data; ownership test passes in production | ✅ |
-| 2 · Correctness | CI green; eval gate met on the test split; ranking agreement recorded; values in README | ✅ Precision 0.95, about-this-VC precision 1.00; recall 6/6 |
-| 3 · Usefulness | A newcomer answers "who to email this week, with what opener" in under a minute | ✅ The headline now answers it in one line; ⏳ an independent human timing is recommended |
-| 4 · Reliability and submission | SPEC §15 all ticked | ⏳ 11/13; the last 2 are due Thu 15 Oct |
-| 5 · Fit-first weekly plan (`docs/REVIEW.md`) | Best-fit VCs reach This week; competitor firms flagged; follow-ups tracked | ✅ All 12 tier-1 VCs are in outreach, the queue, a conflict check or a same-firm route (was 1 of 12). 3 TMS-competitor partners flagged. 92% agreement with the ranking review |
-| 5b · Drafts, digest, outcome log | Sendable drafts; outreach funnel; digest | ✅ Research-grounded openers (21 live, guarded); drafts assembled in code; `/api/digest` with an optional webhook; funnel on Quality |
-| 5c · LinkedIn posts (X off) | Activity and relevance from posts, without scraping | ✅ 77 reviewed handles (46 VCs, 31 firm pages). 92 posts across 32 of 50 VCs, all dated. "Active on LinkedIn" chip; prompt injection resisted; headline/comment hooks blocked in code |
-| 5d · Reaching out and runway (`docs/REVIEW-2.md` items 3, 2) | Route-aware outreach; the pipeline never runs dry silently | ✅ Form / LinkedIn / contact / Gmail actions with "Sent it?" logging and channel; deck link; runway (21 firms ≈ 3 weeks); Investors page with 49 researched candidates and manual add (row O6) |
-| 5e · Frontend redesign | Presentable, easy to scan, feels good to use | ✅ Design system (tokens, dark mode, Instrument Serif + Geist); one-line answer for the week, stat tiles, pipeline strip; person-first cards with one primary action and tabbed details; every page restyled. Stress test: axe 0 violations (light and dark), no sideways scroll at 320–1440 px, full keyboard support, failures shown instead of hanging, payload down 38% |
-| 5f · Investor brief (owner request) | Know the person and fund before pitching | ✅ Profile tab + one-line brief: cheque vs round, fund status, 111 sourced deals across 45 VCs (42 in your space), person, caveats; possible-competitor deals flagged (found one on Caret Capital, see DECISIONS #50); 122 tests |
-| Deferred, with evidence | Deal discovery; automated research refresh; warm intros (REVIEW-2 item 1); conversation stages (item 4) | ⏸ Deal discovery and research refresh: `docs/PLAN-NEXT.md`. Warm intros need Vikram's LinkedIn Connections export; conversation stages should land before the first replies |
+| Phase | Status |
+|---|---|
+| 0–2 · Spike, walking skeleton, correctness | ✅ Precision 0.95, about-this-VC precision 1.00, recall 6/6 on frozen fixtures |
+| 3 · Usefulness | ✅ The home page answers "what do I do this week, and why" in one line; ⏳ an independent human timing is still recommended |
+| 4 · Reliability and submission | ⏳ 11 of 13 SPEC §15 items verified; the last 2 are due Thu 15 Oct |
+| 5–5f · Beyond the spec | ✅ Drafts and digest; LinkedIn posts as signals (X off); route-aware outreach; runway and Add investors; investor brief (cheque, fund, deals) |
+| Design and motion (#52–53) | ✅ Operational-console redesign with matching GSAP motion; reduced-motion safe |
+| Access (#54) | ✅ No password; names link to LinkedIn (47/50) and firm sites (46/50) |
+| **Plan V2 (#55)** | ✅ Problem-only persona; signal-first tiers; logistics-weighted score; to-do home, Pipeline, Progress; labelled demo history |
+| **First-use fixes (#56)** | ✅ Drafts use the reason; CSV import and export; in-cell edits; clear labels; evidence with naming line; Gmail threads; plain reasons |
+| **Contact emails (#57)** | ✅ 25 personal and 8 firm-inbox addresses with sources; Gmail To filled for new outreach |
+| Deferred | ⏸ Undo after Done; tasks-first layout on mobile; the Progress page's "last run" can show a stress-test run; warm intros (needs Vikram's LinkedIn export); automated research refresh |
 
 ## Live system
 
 | Part | State |
 |---|---|
-| Vercel project `vc-pipeline` | Next.js 16, region bom1. ⚠ GitHub auto-deploy has been unreliable since the afternoon of 12 Oct: several pushes got no deployment (no status, no error). Each was deployed from its GitHub commit through the Vercel API (`6633e83`, `298a489`, `fab66cb`, `fcf8040`). **Reconnect the GitHub integration in Vercel → Project → Settings → Git** |
-| Vercel Cron | `/api/cron`, Mon/Thu 06:00 IST. Fired on its own on Mon 12 Oct. Unaffected by the deploy issue: it runs the current production build |
-| GitHub finisher | Mon/Thu 07:00 and 08:00 IST plus manual dispatch. If a cron run overflows the 300 s limit, the finisher completes it and posts the digest (once per run) |
-| LinkedIn search | Weekly per VC (Monday run; the Thursday run skips it). Last checked Mon 12 Oct, so next due Mon 19 Oct |
-| CI | Lint, typecheck, 113 unit tests and the recall replay (6/6) on every push; no secrets needed. All recent runs green |
-| Supabase `vc-pipeline` (ap-south-1) | Migrations 001–010; 50 VCs, 57 firms, 50 profiles, 49 open candidates. RLS denies anon/authenticated; the pipeline writes `vcs` only through `apply_signals` |
-| Data | 155 accepted signals (72 from LinkedIn), 21 openers, 0 logged outreach events (nothing sent yet) |
-| Weekly plan now | 5 Reach out (strong fit), 1 Reach out this week (Alok Goyal, from his own LinkedIn post on logistics), 6 Warm (optional), 3 Check conflict, 9 Good fit (queued), 8 Same firm, 15 Low, 3 Quiet |
-| Email draft settings | Filled from persona facts only: product, early revenue, USD 1–3M seed. Sign-off "Vikram". No company name, traction number or deck link yet |
-| Tavily | 347 of the 800-credit monthly budget used. LinkedIn adds about 46 credits a week |
-| Performance | Home page 61 KB compressed (was 99 KB); single loads 0.25–0.4 s warm; 25 parallel loads all succeed (median 2.3 s) |
+| Vercel `vc-pipeline` | Next.js 16, region bom1. Recent pushes deployed on their own through GitHub (source "git"); the API deploy path is kept as a fallback |
+| Vercel Cron | `/api/cron` Mon/Thu 06:00 IST. Last fired on its own Mon 12 Oct; next Thu 15 Oct |
+| GitHub finisher | Mon/Thu 07:00 and 08:00 IST; completes any run that overflows the 300 s limit |
+| CI | Lint, typecheck, 150 unit tests and the recall replay on every push. All recent runs green |
+| Supabase (ap-south-1) | Migrations 001–013; 50 VCs, 57 firms, 49 research candidates. The pipeline writes `vcs` only through `apply_signals`; his columns change only through `update_my_fields` / `update_my_thesis` |
+| Signals | 168 accepted (73 from LinkedIn); 120 in the last 30 days; 0 pending. Last full run Tue 13 Oct (manual, all 50 processed, 0 failed) |
+| Settings | Target space "B2B logistics and supply-chain technology…". Product empty, so competitor checks are off. Round size empty. The pitch is a neutral placeholder until Vikram sets it |
+| Demo history | Loaded: 11 investors badged DEMO, notes start "[demo]", 16 flagged events. Clear it in Settings or with `scripts/demo-history.ts --clear` |
+| Contact emails | `vc_contact`: 25 personal (7 from firm pages, 18 from Hunter at 81–99%) and 8 firm inboxes; 17 none (mostly form-route by design). `HUNTER_API_KEY` is in `.env.local` only, never on Vercel |
+| Budgets | Tavily 391 of 800 this month. Hunter 22 of 50 searches used (resets 13 Nov; a reserve of 15 is kept). Gemini within quota |
+| Performance | Home page 0.5 s on a single load; 25 parallel loads all succeed (median about 3 s) |
 
-## Quality numbers
+## Quality and verification
 
-- **Golden recall:** 6/6. SuperProcure is flagged as a competitor with verbatim evidence.
-- **Eval (test split, 30 items):** acceptance precision 0.95, recall 0.95; about-this-VC precision 1.00. Type accuracy 0.70; relevance-level accuracy 0.77.
-- **Calibration (v2, fit-first):** REACH 30, WARM 15, half-life 20 days, FIT_STRONG 70, FIT_GOOD 50, giving 92% agreement with the ranking review.
-- **LinkedIn content (first run):** 72 of 92 posts accepted (1 logistics, 34 adjacent, 35 unrelated); 34 of 35 own posts mention the VC's tracked firm, which supports the handles.
-- **Accessibility:** WCAG 2.1 AA via axe-core, 0 violations on every page in light and dark mode. All key colour pairs are at 4.5:1 or better.
-- **Caveats** (also in the README):
-  - The labels and ranking answers came from the builder (Claude Code) at the owner's request, not from a human.
-  - Calibration rests on 2 positive examples. Real replies, after about 20 logged emails, should replace them.
-  - Searches see only some LinkedIn posts, so activity under-counts and never over-counts.
-
-## Stress tests (all on 2026-10-12)
-
-- **Whole build:**
-  - Every suite green: typecheck, lint, unit tests, DB ownership tests, eval gate, `npm audit` (0 vulnerabilities), production build.
-  - Live production abuse checks pass: auth bypass attempts, bad input, 6 concurrent steps (nothing processed twice), 25 parallel loads.
-  - Fixed:
-    - the digest was lost when a run overflowed into the finisher;
-    - repeated clicks logged false events;
-    - settings text had no length limits;
-    - optional Warm cards were counted as committed emails.
-- **LinkedIn:**
-  - Prompt injection was resisted; near-miss handles and other people's posts are dropped.
-  - Fixed: headline/comment hooks are blocked in code; stray page text stripped; common-name VCs keep their own posts; failed searches retry.
-- **Reaching out and runway:** a live add test showed weak-fit candidates would land as Quiet. Fixed with row O6, so an investor Vikram adds himself is queued.
-- **Frontend:**
-  - Every write action was exercised through the UI on live data and reverted, plus a temporary follow-up state and a 120-character name. Database verified identical to the snapshot afterwards.
-  - Fixed:
-    - **actions hung on "Saving…" when the network failed**; they now say so;
-    - the phone layout scrolled sideways;
-    - 2 accessibility violations;
-    - focus was lost when a row expanded;
-    - tabs lacked arrow keys;
-    - no skip link;
-    - small tap targets;
-    - payload was 41% rejected items, now loaded on demand.
-- **Earlier (Phases 4–5):** a real Gemini outage left a `partial` run with nothing written and nothing looping. Fixed: claims released after each step; key rotation on 400 `API_KEY_INVALID`; the header shows the last run that processed VCs.
+- **Unit tests:** 150 passing. Include property tests: one fresh logistics signal outranks any volume of off-topic activity; fit alone never yields "reach out".
+- **Database ownership tests:** 4/4 against the live database. A CSV-import round trip on a live row changed the note and thesis and left all 4 system columns identical (then restored).
+- **Live stress test** (`scripts/stress-live.mjs`): 27/27 on production. No password needed; old login gone; cron routes need the Bearer; bad input rejected; 6 concurrent steps never double-process; CSV export complete; no service key in client code.
+- **Recall:** 6/6 on frozen fixtures, measured under the persona they were recorded with.
+- **Accessibility and layout:** no sideways scroll at phone width on any page; keyboard paths kept; reduced motion respected.
+- **First-use review from Vikram's point of view:** 10 complaints found; 6 fixed and verified. 3 small ones are deferred (above); the 10th, open-link editing, is an accepted trade-off.
+- **Caveats:**
+  - Logistics signals are rare, so most weeks the signal list is 0–3 investors.
+  - The labels behind the eval were produced by the builder, not a human.
+  - LinkedIn coverage is partial: it under-counts, never over-counts.
+  - Anyone with the link can edit his data and press Run now.
 
 ## Open items
 
 | Item | Owner | When |
 |---|---|---|
-| Scheduled cron processes all 50 VCs on its own (§15.1) | Automatic; checked by the scheduled task `vc-pipeline-thursday-acceptance` | Thu 2026-10-15: cron 06:00 IST, finisher 07:00/08:00, check 09:30 (needs the Claude app open, or it runs at next launch) |
-| Third day of full runs (§13 Phase 4) | Same run and task | Thu 2026-10-15 |
-| Reconnect Vercel's GitHub integration so pushes deploy on their own | You | Before the next code change |
-| Add the company name, a traction number and a deck link in Settings | You | Before the first emails |
-| Decide on Caret Capital: a source says SuperProcure (TMS competitor) raised from "Carat Capital". If it is Caret, mark it a conflict | You | Before emailing Prajakt Raut |
-| Send the week's emails and log them ("Sent it?" or "Mark as sent"); after about 20, recalibrate on real replies | You (Vikram) | This week onwards |
-| Optional: export LinkedIn Connections for warm-intro paths (REVIEW-2 item 1) | You (Vikram) | When convenient |
-| Optional: set `DIGEST_WEBHOOK_URL` (Slack/Discord) on Vercel to get the digest after each run | You | Any time |
-| Demo rehearsal (§15.12) | You | Any time. See `docs/DEMO.md`, updated for the redesign |
-| Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only, and the README has the tooling disclosure |
+| Scheduled cron processes all 50 VCs on its own; third day of runs | Automatic; task `vc-pipeline-thursday-acceptance` checks at 09:30 IST | Thu 15 Oct |
+| Add company name, traction and deck link in Settings | You | Before the first real email |
+| Keep or clear the labelled demo history for the submission | You | Before submission |
+| Demo rehearsal (`docs/DEMO.md`; update for the to-do home and Pipeline) | You | Any time |
+| Regenerate the Hunter key (it was pasted in chat) and update `.env.local` | You | When convenient |
+| Optional quick fixes: Undo after Done, tasks first on mobile, real last run on Progress | Builder, on request | Before Thursday if wanted |
+| Instructor question: Claude Code as the build tool when the brief says "do not use Claude API" | You | Before submission. The runtime uses Gemini only; the README discloses the tooling |
 
 ## Where to look
 
-- `README.md`: setup, commands, AI boundary, eval, Components Map, limitations, tooling.
-- `docs/SPEC.md`: amended where the owner decided (§9.2/§16 LinkedIn, §9.6 row O6, §11 drafts, routes, Add investors).
-- `docs/DECISIONS.md`: #1–52.
-- Reviews and plans: `docs/REVIEW.md`, `docs/PLAN-NEXT.md`, `docs/REVIEW-2.md`.
-- Acceptance and demo: `docs/ACCEPTANCE.md`, `docs/DEMO.md`; spike report in `spike/REPORT.md`.
-- `eval/`: labels, predictions, eval report, calibration, ranking review.
-- `seed/linkedin_handles.csv`: the reviewed LinkedIn handles.
+- `README.md`: setup, commands (`npm run step`, `rescore`, `emails`, `test:db`), AI boundary, eval, Components Map, limitations.
+- `docs/SPEC.md`: amended §2, §9.5–9.7, §10 and §11 per the owner's decisions.
+- `docs/DECISIONS.md`: #1–57. Recent: #55 (Plan V2), #56 (first-use fixes), #57 (contact emails).
+- `docs/PLAN-V2.md`: first-principles plan, its stress test and amendments.
+- `docs/ACCEPTANCE.md`, `docs/DEMO.md`, `spike/REPORT.md`, `eval/`.
