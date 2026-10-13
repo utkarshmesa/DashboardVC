@@ -1,5 +1,4 @@
-// Shared top bar: wordmark, navigation, run status and Run now (SPEC §11.1). Visitors on the view-only link see a
-// sign-in link instead of Run now.
+// Shared top bar: wordmark, navigation, run status and Run now (SPEC §11.1).
 import Link from 'next/link';
 import RunNow from './RunNow.client';
 import { ist } from './format';
@@ -12,12 +11,11 @@ const NAV = [
   { href: '/settings', label: 'Settings', code: '04' },
 ] as const;
 
-export default function AppHeader({ active, run, nextRun, credits, owner = false }: {
+export default function AppHeader({ active, run, nextRun, credits }: {
   active: (typeof NAV)[number]['href'];
   run?: { finished_at: string | null; started_at: string; status: string; trigger: string; processed: number } | null;
   nextRun?: string;
   credits?: number;
-  owner?: boolean;
 }) {
   return (
     <>
@@ -40,11 +38,7 @@ export default function AppHeader({ active, run, nextRun, credits, owner = false
             ))}
           </nav>
           <span className="ml-auto md:ml-2">
-            {owner ? <RunNow /> : (
-              <Link href="/login" className="inline-flex h-8 items-center gap-2 border border-line-2 px-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 transition-colors hover:border-ink-3 hover:text-ink" title="Anyone with this link can view. Sign in as the owner to log outreach or edit.">
-                <I.lock width={12} height={12} />View only · Sign in
-              </Link>
-            )}
+            <RunNow />
           </span>
         </div>
         {/* Mobile nav */}

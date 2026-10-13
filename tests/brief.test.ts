@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBrief, chequeMaxUsd, chequeNoteFrom, dealFromUrl, fundStatus, headline } from '@/lib/brief';
+import { buildBrief, chequeMaxUsd, chequeNoteFrom, dealFromUrl, firmSite, fundStatus, headline, linkedinFrom } from '@/lib/brief';
 
 const NOW = new Date('2026-10-12T00:00:00Z');
 
@@ -139,5 +139,31 @@ describe('stress: cheque size against a USD 1–3M round', () => {
     expect(chequeNoteFrom('USD 500k–1M; firm prefers to lead or co-lead.')).toBeNull();
     expect(chequeNoteFrom('USD 1–2 million initial investment')).toBeNull();
     expect(chequeNoteFrom(null)).toBeNull();
+  });
+});
+
+describe('profile links', () => {
+  const urls = [
+    'https://in.linkedin.com/in/AlokGoyal1971',
+    'https://www.livemint.com/companies/news/stellaris-venture-launches-its-largest-ever-fund.html',
+    'https://www.stellarisvp.com/blog/stellaris-closes-300m-fund',
+    'https://www.stellarisvp.com/team/alok-goyal',
+    'https://orbitshift.ai/resources/news/raises-7m',
+  ];
+  it('finds the firm site from source domains carrying the firm name', () => {
+    expect(firmSite(urls, 'Stellaris Venture Partners')).toBe('https://stellarisvp.com');
+    expect(firmSite(['https://blume.vc/team', 'https://yourstory.com/blume-ventures-x'], 'Blume Ventures')).toBe('https://blume.vc');
+  });
+  it('never guesses: news sites, generic words and unmatched firms give null', () => {
+    expect(firmSite(['https://economictimes.indiatimes.com/stellaris'], 'Stellaris Venture Partners')).toBeNull();
+    expect(firmSite(['https://capital.com/x'], 'Capital Ventures')).toBeNull();
+    expect(firmSite(urls, 'Unknown Partners')).toBeNull();
+  });
+  it('uses hand-checked sites for firms whose domain lacks their name', () => {
+    expect(firmSite([], 'Lightspeed')).toBe('https://lsvp.com');
+  });
+  it('reads a personal LinkedIn profile from the sources', () => {
+    expect(linkedinFrom(urls)).toBe('https://www.linkedin.com/in/alokgoyal1971');
+    expect(linkedinFrom(['https://www.linkedin.com/posts/caretcapital_x-activity-1'])).toBeNull();
   });
 });

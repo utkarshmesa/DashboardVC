@@ -101,6 +101,20 @@ export function FitMeter({ score, label, title, compact = false }: { score: numb
   );
 }
 
+// "Person / Firm", each a link: the person to their LinkedIn, the firm to its website. When either isn't known, the
+// link is a web search for it (labelled as such in the tooltip), never a guessed URL.
+const search = (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+export function NameLinks({ name, firm, linkedin, website, className = '' }: { name: string; firm: string; linkedin: string | null; website: string | null; className?: string }) {
+  const a = 'relative z-[1] underline decoration-transparent decoration-1 underline-offset-4 transition-colors hover:decoration-current focus-visible:decoration-current';
+  return (
+    <span className={className}>
+      <a href={linkedin ?? search(`${name} ${firm} LinkedIn`)} target="_blank" rel="noopener noreferrer" title={linkedin ? `${name} on LinkedIn` : `Search for ${name}'s LinkedIn`} className={`${a} text-ink`}>{name}</a>
+      <span className="text-ink-3"> / </span>
+      <a href={website ?? search(`${firm} venture capital`)} target="_blank" rel="noopener noreferrer" title={website ? `${firm} website (${website.replace(/^https:\/\//, '')})` : `Search for ${firm}'s website`} className={`${a} text-ink-3 hover:text-ink-2`}>{firm}</a>
+    </span>
+  );
+}
+
 // ---- Layout pieces ----
 export function Card({ children, className = '', ...rest }: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string>) {
   return <div {...rest} className={`rounded-[2px] border border-line bg-surface ${className}`}>{children}</div>;

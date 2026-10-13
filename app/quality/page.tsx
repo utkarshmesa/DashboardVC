@@ -1,7 +1,6 @@
 // SPEC §11.8: thumbs-based precision (up ÷ (up + down)) overall and by signal type, plus item counts from the last run.
 import AppHeader from '@/components/AppHeader';
 import { PageTitle, SectionTitle } from '@/components/ui';
-import { isOwner } from '@/lib/auth';
 import { ist } from '@/components/format';
 import { db } from '@/lib/db';
 import { loadFunnel } from '@/lib/outcomes';
@@ -43,7 +42,7 @@ export default async function QualityPage() {
       pending: rows.filter((x) => x.status === 'pending' || x.status === 'unclassified').length,
     };
   };
-  const [lastRun, all, funnel, owner] = await Promise.all([run ? counts(run.started_at, run.finished_at ?? undefined) : null, counts(), loadFunnel(), isOwner()]);
+  const [lastRun, all, funnel] = await Promise.all([run ? counts(run.started_at, run.finished_at ?? undefined) : null, counts(), loadFunnel()]);
   const rate = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 
   const th = 'py-2.5 pr-3 text-left font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-3';
@@ -57,7 +56,7 @@ export default async function QualityPage() {
   );
   return (
     <>
-      <AppHeader active="/quality" owner={owner} />
+      <AppHeader active="/quality" />
       <main id="main" tabIndex={-1} className="mx-auto max-w-[1040px] px-4 pb-28 pt-12 outline-none sm:px-8">
         <PageTitle eyebrow="03 / Quality · Feedback loop" title="Is it working?" sub="Replies to your outreach, how often the signals are right by your own judgement, and what the last run collected." />
 

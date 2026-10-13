@@ -482,7 +482,7 @@ Changed actions are written via `apply_signals` with the other three values unch
 
 `middleware.ts` protects everything except `/login`, `/api/cron`, `/api/run/step`. `/login` compares to `DASHBOARD_PASSWORD` in constant time and sets an httpOnly, secure, SameSite=Lax cookie signed with HMAC-SHA256 (`SESSION_SECRET`), valid 30 days. `lib/db.ts` begins with `import 'server-only'`; an ESLint `no-restricted-imports` rule blocks client imports of it.
 
-*Amended 2026-10-13 (DECISIONS #53):* pages are readable by anyone with the link; every write (API routes and server actions) still requires the owner cookie, checked in `proxy.ts` and again inside each write path.
+*Amended 2026-10-13 (DECISIONS #54):* no dashboard password. Every page and action is open to anyone with the link; only the scheduled routes require `Authorization: Bearer <CRON_SECRET>`.
 
 ## 11. Dashboard
 

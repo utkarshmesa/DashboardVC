@@ -1,18 +1,15 @@
 // REVIEW-2 item 2: pipeline runway. Researched-but-untracked investors Vikram can add, plus any investor he names.
 import { revalidatePath } from 'next/cache';
-import { isOwner, requireOwner } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { addCandidate, addManualVc, dismissCandidate, loadCandidates } from '@/lib/candidates';
 import { loadDashboard } from '@/lib/dashboard';
 import AppHeader from '@/components/AppHeader';
-import Link from 'next/link';
-import { Badge, btn, FitMeter, I, inputCls, PageTitle, SectionTitle } from '@/components/ui';
+import { Badge, btn, FitMeter, I, inputCls, NameLinks, PageTitle, SectionTitle } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
 async function add(formData: FormData) {
   'use server';
-  await requireOwner(); // view-only visitors are sent to sign in
   const id = Number(formData.get('id'));
   if (!Number.isInteger(id) || id <= 0) redirect('/investors?error=1');
   await addCandidate(id);
@@ -22,7 +19,6 @@ async function add(formData: FormData) {
 
 async function dismiss(formData: FormData) {
   'use server';
-  await requireOwner(); // view-only visitors are sent to sign in
   const id = Number(formData.get('id'));
   if (!Number.isInteger(id) || id <= 0) redirect('/investors?error=1');
   await dismissCandidate(id);
@@ -31,7 +27,6 @@ async function dismiss(formData: FormData) {
 
 async function addManual(formData: FormData) {
   'use server';
-  await requireOwner(); // view-only visitors are sent to sign in
   const name = String(formData.get('name') ?? ''), firm = String(formData.get('firm') ?? '');
   if (!name.trim() || !firm.trim()) redirect('/investors?error=manual');
   await addManualVc({ name, firm, linkedinUrl: String(formData.get('linkedin') ?? '') });
@@ -40,7 +35,7 @@ async function addManual(formData: FormData) {
 }
 
 export default async function InvestorsPage({ searchParams }: { searchParams: Promise<{ added?: string; error?: string }> }) {
-  const [{ added, error }, candidates, { runway }, owner] = await Promise.all([searchParams, loadCandidates(), loadDashboard(), isOwner()]);
+  const [{ added, error }, candidates, { runway }] = await Promise.all([searchParams, loadCandidates(), loadDashboard()]);
   const fresh = candidates.filter((c) => c.newFirm), more = candidates.filter((c) => !c.newFirm);
   const low = runway.weeks < 4;
   let n = 0;
@@ -50,7 +45,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
         <div className="flex flex-wrap items-start gap-x-5 gap-y-2">
           <span className="hidden w-8 pt-1 font-mono text-[11px] tabular-nums text-ink-3 sm:block" aria-hidden="true">{String(++n).padStart(2, '0')}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[16px] font-medium tracking-[-0.01em] text-ink">{c.name} <span className="text-ink-3">/ {c.firm}</span></p>
+            <p className="text-[16px] font-medium tracking-[-0.01em] text-ink"><NameLinks name={c.name} firm={c.firm} linkedin={c.brief.linkedin} website={c.brief.website} /></p>
             {!c.newFirm && <p className="mt-0.5 font-mono text-[10.5px] uppercase tracking-[0.1em] text-ink-3">{c.trackedAtFirm} partner{c.trackedAtFirm === 1 ? '' : 's'} already tracked at this firm</p>}
           </div>
           <FitMeter score={c.fit} label={c.label} />
@@ -75,18 +70,16 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
             ))}
           </ul>
         )}
-        {owner && (
-          <div className="mt-4 flex gap-2 sm:pl-[52px]">
+        <div className="mt-4 flex gap-2 sm:pl-[52px]">
             <form action={add}><input type="hidden" name="id" value={c.id} /><button className={btn('primary')}><I.plus width={14} height={14} />Add to pipeline</button></form>
             <form action={dismiss}><input type="hidden" name="id" value={c.id} /><button className={btn('ghost')}>Not for me</button></form>
-          </div>
-        )}
+        </div>
       </div>
     </li>
   );
   return (
     <>
-      <AppHeader active="/investors" owner={owner} />
+      <AppHeader active="/investors" />
       <main id="main" tabIndex={-1} className="mx-auto max-w-[1040px] px-4 pb-28 pt-12 outline-none sm:px-8">
         <PageTitle eyebrow="02 / Investors · Runway" title={<>Keep the pipeline full.</>}
           sub="Researched investors you don't track yet, plus anyone you want to add. Adding one puts them in your queue with a draft ready." />
@@ -100,7 +93,6 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
             <p className="mt-2 text-[13px] text-ink-2">{runway.firms} good-fit firm{runway.firms === 1 ? '' : 's'} left to contact at {runway.perWeek} new emails a week.{low && ' Add a few below to stay ahead.'}</p>
           </div>
         </div>
-        {!owner && <p className="mb-8 flex items-center gap-2 border border-dashed border-line-2 px-4 py-3 text-[13px] text-ink-3"><I.lock width={13} height={13} />View-only link. <Link href="/login" className="text-ink underline underline-offset-4">Sign in</Link> as the owner to add investors.</p>}
         {added && <p role="status" className="fade-in mb-6 flex items-center gap-2 border-l-2 border-accent-text bg-accent-soft px-4 py-3 text-[13.5px] text-accent-text"><I.check width={16} height={16} />Added. Their card is in your queue now; news and LinkedIn arrive with the next run.</p>}
         {error && <p role="alert" className="mb-6 border-l-2 border-danger bg-danger-soft px-4 py-3 text-[13.5px] text-danger">{error === 'manual' ? 'Name and firm are required.' : 'Something went wrong. Try again.'}</p>}
 
@@ -117,7 +109,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
           <ul className="border-t border-line">{more.map(row)}</ul>
         </details>
 
-        {owner && <section className="mt-12 border border-line p-6">
+        <section className="mt-12 border border-line p-6">
           <SectionTitle index="§2" tone="info">Add someone else</SectionTitle>
           <form action={addManual} className="grid gap-3 sm:grid-cols-3">
             <input name="name" required maxLength={120} placeholder="Name" aria-label="Name" className={inputCls} />
@@ -126,7 +118,7 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
             <div className="sm:col-span-3"><button className={btn('primary', 'md')}><I.plus width={15} height={15} />Add to pipeline</button></div>
           </form>
           <p className="mt-3 text-[12.5px] text-ink-3">Without research, fit starts weak, but your choice still queues them. With the LinkedIn URL, their posts arrive with the next weekly check.</p>
-        </section>}
+        </section>
       </main>
     </>
   );

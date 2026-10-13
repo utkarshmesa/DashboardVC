@@ -1,6 +1,6 @@
 import 'server-only';
 
-type Need = 'supabase' | 'gemini' | 'tavily' | 'cron' | 'session';
+type Need = 'supabase' | 'gemini' | 'tavily' | 'cron';
 
 // Reads server env; reports missing variable NAMES only, never values.
 export function serverEnv(needs: Need[]) {
@@ -14,8 +14,6 @@ export function serverEnv(needs: Need[]) {
   need('gemini', !!e.GEMINI_MODEL, 'GEMINI_MODEL');
   need('tavily', !!e.TAVILY_API_KEY, 'TAVILY_API_KEY');
   need('cron', !!e.CRON_SECRET, 'CRON_SECRET');
-  need('session', !!e.SESSION_SECRET, 'SESSION_SECRET');
-  need('session', !!e.DASHBOARD_PASSWORD, 'DASHBOARD_PASSWORD');
   if (missing.length) throw new Error(`Missing required env: ${missing.join(', ')}`);
   return {
     supabaseUrl: e.SUPABASE_URL ?? '',
@@ -25,7 +23,5 @@ export function serverEnv(needs: Need[]) {
     tavilyKey: e.TAVILY_API_KEY ?? '',
     tavilyBudget: Number(e.TAVILY_MONTHLY_BUDGET ?? 800),
     cronSecret: e.CRON_SECRET ?? '',
-    sessionSecret: e.SESSION_SECRET ?? '',
-    dashboardPassword: e.DASHBOARD_PASSWORD ?? '',
   };
 }

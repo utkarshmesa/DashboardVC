@@ -1,6 +1,5 @@
 // PATCH /api/vc/[id] { status, last_contact_date, notes } — inline edit of Vikram's columns via update_my_fields
 // (SPEC §11.5). The action depends on status and last contact, so the VC is rescored from stored signals afterwards.
-import { forbidden, ownerFromRequest } from '@/lib/auth';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { statusEvent } from '@/lib/funnel';
@@ -14,7 +13,6 @@ const Body = z.object({
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!ownerFromRequest(req)) return forbidden(); // view-only visitors can read, not write
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: 'invalid id' }, { status: 400 });
   const parsed = Body.safeParse(await req.json().catch(() => null));

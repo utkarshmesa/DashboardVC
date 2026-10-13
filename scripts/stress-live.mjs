@@ -1,59 +1,43 @@
 // Stress / abuse checks against the deployed app. Usage: node --env-file=.env.local scripts/stress-live.mjs [baseUrl]
 // Every request is either invalid by design or a no-op; prints PASS/FAIL per check and never prints secrets.
-import { createHmac } from 'node:crypto';
+// The dashboard is open to anyone with the link (DECISIONS #54); only the scheduled routes need the cron Bearer.
 
-const BASE = process.argv[2] ?? 'https://vc-pipeline-zeta.vercel.app';
-const { SESSION_SECRET, CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY } = process.env;
-if (!SESSION_SECRET || !CRON_SECRET || !SUPABASE_SERVICE_ROLE_KEY) { console.error('Missing required env: SESSION_SECRET, CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
+const BASE = process.argv[2] ?? "https://vc-pipeline-zeta.vercel.app";
+const { CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+if (!CRON_SECRET || !SUPABASE_SERVICE_ROLE_KEY) { console.error("Missing required env: CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY"); process.exit(1); }
 
-const token = (expMs, secret = SESSION_SECRET) => { const e = String(expMs); return `${e}.${createHmac('sha256', secret).update(e).digest('hex')}`; };
-const cookie = (t) => ({ cookie: `vcp_session=${t}` });
-const good = cookie(token(Date.now() + 600_000));
+const good = {}; // no session any more: every request is anonymous
 let failures = 0;
-const check = (name, ok, detail = '') => { if (!ok) failures++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`); };
-const req = (path, init = {}) => fetch(BASE + path, { redirect: 'manual', ...init });
+const check = (name, ok, detail = "") => { if (!ok) failures++; console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? `  (${detail})` : ""}`); };
+const req = (path, init = {}) => fetch(BASE + path, { redirect: "manual", ...init });
 
 // 1. Service-role key must not appear in any client chunk.
 {
-  const html = await (await req('/login')).text();
+  const html = await (await req("/")).text();
   const srcs = [...new Set([...html.matchAll(/(?:src|href)="(\/_next\/static\/[^"]+\.js)"/g)].map((m) => m[1]))];
-  const sig = SUPABASE_SERVICE_ROLE_KEY.split('.')[2] ?? SUPABASE_SERVICE_ROLE_KEY;
+  const sig = SUPABASE_SERVICE_ROLE_KEY.split(".")[2] ?? SUPABASE_SERVICE_ROLE_KEY;
   let hits = 0;
-  for (const s of srcs) { const t = await (await fetch(BASE + s)).text(); if (t.includes(sig) || t.includes('service_role')) hits++; }
-  check('service-role key absent from production client chunks', srcs.length > 0 && hits === 0, `${srcs.length} chunks scanned`);
+  for (const s of srcs) { const t = await (await fetch(BASE + s)).text(); if (t.includes(sig) || t.includes("service_role")) hits++; }
+  check("service-role key absent from production client chunks", srcs.length > 0 && hits === 0, `${srcs.length} chunks scanned`);
 }
 
-// 2. Authentication.
+// 2. Open access: every page loads with no password; the old login route is gone; scheduled routes still need the Bearer.
 const gate = async (name, path, headers, want, init = {}) => {
   const r = await req(path, { headers, ...init });
   check(name, want.includes(r.status), `HTTP ${r.status}`);
 };
-// View-only sharing (DECISIONS #53): pages open to anyone; a bad cookie is treated as a visitor, never as the owner.
-const ownerView = async (name, headers, wantOwner) => {
-  const r = await req('/', { headers });
-  const html = r.status === 200 ? await r.text() : '';
-  const owner = html.includes('Run now'), visitor = html.includes('View only');
-  check(name, r.status === 200 && (wantOwner ? owner && !visitor : visitor && !owner), `HTTP ${r.status}, ${owner ? 'owner' : visitor ? 'visitor' : 'neither'} view`);
-};
-await ownerView('dashboard without cookie: view-only page', {}, false);
-await ownerView('expired cookie: visitor, not owner', cookie(token(Date.now() - 1000)), false);
-await ownerView('cookie signed with wrong secret: visitor', cookie(token(Date.now() + 600_000, 'not-the-secret')), false);
-await ownerView('tampered expiry: visitor', cookie(`9999999999999.${token(Date.now() + 600_000).split('.')[1]}`), false);
-await ownerView('garbage cookie: visitor', cookie('x.y.z'), false);
-await ownerView('valid cookie: owner view', good, true);
-for (const p of ['/investors', '/quality', '/settings']) await gate(`${p} viewable without cookie`, p, {}, [200]);
-await gate('API without cookie → 401', '/api/run/estimate', {}, [401]);
-const anonJson = { 'content-type': 'application/json' };
-await gate('visitor: feedback write → 401', '/api/feedback', anonJson, [401], { method: 'POST', body: JSON.stringify({ signal_id: 1, verdict: 'up' }) });
-await gate('visitor: card edit → 401', '/api/vc/00000000-0000-4000-8000-000000000000', anonJson, [401], { method: 'PATCH', body: JSON.stringify({ status: 'passed', last_contact_date: null, notes: null }) });
-await gate('visitor: quick action → 401', '/api/vc/00000000-0000-4000-8000-000000000000/quick', anonJson, [401], { method: 'POST', body: JSON.stringify({ action: 'emailed', channel: 'email' }) });
-await gate('visitor: Run now → 401', '/api/run/manual', anonJson, [401], { method: 'POST', body: '{}' });
-await gate('visitor: server action POST to /settings → 401', '/settings', { 'next-action': 'x', 'content-type': 'text/plain' }, [401], { method: 'POST', body: '[]' });
-await gate('visitor: evidence list is readable', '/api/vc/00000000-0000-4000-8000-000000000000/others', {}, [200, 404]);
-await gate('cron without bearer → 401', '/api/cron', {}, [401]);
-await gate('cron with wrong bearer → 401', '/api/cron', { authorization: 'Bearer wrong' }, [401]);
-await gate('cron with session cookie but no bearer → 401', '/api/cron', good, [401]);
-await gate('run/step with wrong bearer → 401', '/api/run/step', { authorization: `Bearer ${CRON_SECRET}x` }, [401], { method: 'POST' });
+{
+  const html = await (await req("/")).text();
+  check("dashboard opens with no password and shows Run now", html.includes("Run now") && !html.includes("Sign in"), "anonymous request");
+}
+for (const p of ["/investors", "/quality", "/settings"]) await gate(`${p} opens with no password`, p, {}, [200]);
+await gate("/login no longer exists", "/login", {}, [404]);
+await gate("Run now estimate works anonymously", "/api/run/estimate", {}, [200]);
+await gate("evidence list is readable", "/api/vc/00000000-0000-4000-8000-000000000000/others", {}, [200, 404]);
+await gate("cron without bearer → 401", "/api/cron", {}, [401]);
+await gate("cron with wrong bearer → 401", "/api/cron", { authorization: "Bearer wrong" }, [401]);
+await gate("run/step with wrong bearer → 401", "/api/run/step", { authorization: `Bearer ${CRON_SECRET}x` }, [401], { method: "POST" });
+await gate("digest without bearer → 401", "/api/digest", {}, [401, 405]);
 
 // 3. Input validation: malformed bodies must be rejected without writes or 500s.
 const json = () => ({ ...good, 'content-type': 'application/json' });

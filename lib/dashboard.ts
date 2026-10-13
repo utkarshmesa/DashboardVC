@@ -177,6 +177,9 @@ export async function loadDashboard() {
       othersCount: Math.min(25, mine.filter((s) => s.status !== 'accepted' || (!s.published_at && !s.date_approx)).length),
     };
   });
+  // A firm's website found through one partner's research serves every partner at that firm.
+  const sites = new Map(vcs.filter((v) => v.brief.website).map((v) => [v.firm.toLowerCase(), v.brief.website]));
+  for (const v of vcs) v.brief.website ??= sites.get(v.firm.toLowerCase()) ?? null;
   // Follow-ups: longest-waiting first; everything else by priority (fit + 0.5 × recent-signal score).
   vcs.sort((a, b) => (a.section === 'followups' && b.section === 'followups' ? (b.daysSinceContact ?? 0) - (a.daysSinceContact ?? 0) : 0)
     || b.priority - a.priority || a.name.localeCompare(b.name));

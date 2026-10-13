@@ -1,6 +1,5 @@
 // POST /api/feedback { signal_id, verdict: 'up' | 'down' | null, reason? } — Vikram's thumbs (SPEC §11.3).
 // A thumbs-down removes the signal from scoring; either way the VC is rescored immediately from stored signals.
-import { forbidden, ownerFromRequest } from '@/lib/auth';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { rescoreVc } from '@/lib/pipeline';
@@ -8,7 +7,6 @@ import { rescoreVc } from '@/lib/pipeline';
 const Body = z.object({ signal_id: z.number().int().positive(), verdict: z.enum(['up', 'down']).nullable(), reason: z.string().max(500).optional() });
 
 export async function POST(req: Request) {
-  if (!ownerFromRequest(req)) return forbidden(); // view-only visitors can read, not write
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: 'invalid body' }, { status: 400 });
   const { signal_id, verdict, reason } = parsed.data;

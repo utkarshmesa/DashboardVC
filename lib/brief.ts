@@ -5,6 +5,7 @@
 export type Deal = { label: string; round: string | null; year: string | null; url: string | null; inSpace: boolean; verified: boolean; competitor?: boolean };
 export type Brief = {
   title: string | null; titleVerified: string | null; city: string | null; thesis: string | null; approach: string | null; linkedin: string | null;
+  website: string | null; // the firm's own site, read from research source URLs whose domain carries the firm's name
   fund: string | null; fundStatus: { label: string; tone: 'accent' | 'info' | 'warn' } | null;
   stage: string | null; cheque: string | null; chequeNote: string | null;
   deals: Deal[]; dealCount: number; inSpaceCount: number; latestRelevant: string | null;
@@ -150,6 +151,38 @@ const clean = (v: unknown) => {
   return s && !/^(not (independently |publicly )?verified|not public|n\/a|unknown|none)\b/i.test(s) ? s : null;
 };
 
+// Words too generic to identify a firm by its domain.
+const GENERIC = new Set(['capital', 'ventures', 'venture', 'partners', 'partner', 'fund', 'funds', 'investments', 'investors', 'india', 'group', 'advisors', 'management', 'the', 'and', 'global', 'labs', 'holdings']);
+const NOT_FIRM_SITE = /\.(linkedin|twitter|x|facebook|youtube|medium|crunchbase|tracxn|pitchbook|google|wikipedia|economictimes|indiatimes|livemint|moneycontrol|yourstory|inc42|entrackr|vccircle|techcrunch|businessstandard|business-standard|thehindu|globenewswire|prnewswire|businesswire|forbes|bloomberg|reuters|substack|github)\./;
+
+// The firm's website: the research source domain that best carries the firm's distinctive name ("stellarisvp.com" for
+// Stellaris Venture Partners). Null when no source domain matches, so the UI never guesses a wrong site.
+// Firms whose domain doesn't carry their name (checked by hand).
+const KNOWN_SITES: Record<string, string> = { lightspeed: 'https://lsvp.com', 'inflection point ventures': 'https://ipventures.in' };
+
+export function firmSite(urls: string[], firm: string | null | undefined): string | null {
+  const known = KNOWN_SITES[(firm ?? '').trim().toLowerCase()];
+  if (known) return known;
+  const words = (firm ?? '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !GENERIC.has(w));
+  if (!words.length) return null;
+  const hits = new Map<string, number>();
+  for (const u of urls) {
+    let host: string;
+    try { host = new URL(u).hostname.toLowerCase().replace(/^www\./, ''); } catch { continue; }
+    if (NOT_FIRM_SITE.test(`.${host}`)) continue;
+    const label = host.split('.').slice(0, -1).join('.').replace(/[^a-z0-9]/g, '');
+    if (words.some((w) => label.includes(w))) hits.set(host, (hits.get(host) ?? 0) + 1);
+  }
+  const best = [...hits.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0];
+  return best ? `https://${best[0]}` : null;
+}
+
+// A personal LinkedIn profile among the research sources (used when no slug is stored).
+export function linkedinFrom(urls: string[]): string | null {
+  const slug = urls.map((u) => u.match(/linkedin\.com\/in\/([^/?#\s]+)/i)?.[1]).find(Boolean);
+  return slug ? `https://www.linkedin.com/in/${slug.toLowerCase()}` : null;
+}
+
 export function buildBrief(i: {
   research: Record<string, unknown> | null; thesis: string | null; trust: string | null; linkedinSlug: string | null;
   firmFund: string | null; firmName?: string | null; fitFlags: string[];
@@ -185,7 +218,8 @@ export function buildBrief(i: {
   return {
     title: clean(r.title), titleVerified: clean(r.title_verified)?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
     city: clean(r.city), thesis: clean(i.thesis), approach: clean(r.approach),
-    linkedin: i.linkedinSlug ? `https://www.linkedin.com/in/${i.linkedinSlug}` : null,
+    linkedin: i.linkedinSlug ? `https://www.linkedin.com/in/${i.linkedinSlug}` : linkedinFrom(urls),
+    website: firmSite(urls, i.firmName),
     fund, fundStatus: fundStatus(fund, now),
     stage: clean(r.stage_focus), cheque: clean(r.first_cheque),
     chequeNote: chequeFlag ? `${chequeFlag[0].toUpperCase()}${chequeFlag.slice(1)}` : chequeNoteFrom(clean(r.first_cheque)),

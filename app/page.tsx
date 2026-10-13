@@ -4,7 +4,6 @@ import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import VcCard from '@/components/VcCard.client';
 import { btn, I, SectionTitle } from '@/components/ui';
-import { isOwner } from '@/lib/auth';
 import { loadDashboard, loadHeader, nextScheduledRun, SECTIONS } from '@/lib/dashboard';
 import { loadPersona } from '@/lib/store';
 
@@ -41,7 +40,7 @@ const STAGES = [
 ] as const;
 
 export default async function Home() {
-  const [{ vcs, runway }, header, persona, owner] = await Promise.all([loadDashboard(), loadHeader(), loadPersona(), isOwner()]);
+  const [{ vcs, runway }, header, persona] = await Promise.all([loadDashboard(), loadHeader(), loadPersona()]);
   const pick = (k: string) => vcs.filter((v) => v.section === k);
   const followups = pick('followups'), conflicts = pick('conflict'), week = pick('thisWeek');
   const committed = week.filter((v) => !v.action.startsWith('Warm')), optional = week.filter((v) => v.action.startsWith('Warm'));
@@ -54,7 +53,7 @@ export default async function Home() {
 
   return (
     <>
-      <AppHeader active="/" run={header.lastRun} nextRun={nextScheduledRun().toISOString()} credits={header.credits} owner={owner} />
+      <AppHeader active="/" run={header.lastRun} nextRun={nextScheduledRun().toISOString()} credits={header.credits} />
       <main id="main" tabIndex={-1} className="mx-auto max-w-[1240px] px-4 pb-28 outline-none sm:px-8">
         {/* Hero: the answer to "what do I do this week?" */}
         <section className="relative -mx-4 border-b border-line px-4 pb-12 pt-14 sm:-mx-8 sm:px-8 sm:pt-20">
@@ -64,7 +63,6 @@ export default async function Home() {
           <div className="relative z-[1]">
             <p data-reveal="" className="label mb-8 flex flex-wrap gap-x-5 gap-y-1">
               <span data-scramble="">Week {pad(isoWeek(now))}</span><span data-scramble="">{dateLabel}</span><span data-scramble="">Seed round · USD 1–3M</span>
-              {!owner && <span className="text-signal" data-scramble="">View-only link</span>}
             </p>
             <h1 className="max-w-[980px] text-[44px] font-medium leading-[0.98] tracking-[-0.045em] text-ink sm:text-[76px]">
               <span className="mask-line"><span data-line="">
@@ -112,18 +110,18 @@ export default async function Home() {
         {followups.length > 0 && (
           <section className="mb-16">
             <SectionTitle index="§1" count={followups.length} tone="info" hint="Longest waiting first">Follow-ups due</SectionTitle>
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{followups.map((v) => <VcCard key={v.id} vc={v} index={num()} canEdit={owner} />)}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{followups.map((v) => <VcCard key={v.id} vc={v} index={num()} />)}</div>
           </section>
         )}
 
         <section className="mb-16">
           <SectionTitle index={followups.length ? '§2' : '§1'} count={committed.length} tone="signal" hint="Best fit first · at most 7 new a week · one partner per firm">Reach out this week</SectionTitle>
-          {committed.length ? <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{committed.map((v) => <VcCard key={v.id} vc={v} index={num()} canEdit={owner} />)}</div>
+          {committed.length ? <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{committed.map((v) => <VcCard key={v.id} vc={v} index={num()} />)}</div>
             : <div className="border border-dashed border-line-2 p-10 text-center text-[14px] text-ink-3">No new outreach this week. <Link href="/investors" className="text-ink underline underline-offset-4">Add investors</Link> to refill the pipeline.</div>}
           {optional.length > 0 && (
             <div className="mt-12">
               <SectionTitle index="+" count={optional.length} tone="warn" hint="Good fit or recent in-space activity; reach out if there is capacity">If there is time</SectionTitle>
-              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{optional.map((v) => <VcCard key={v.id} vc={v} index={num()} canEdit={owner} />)}</div>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{optional.map((v) => <VcCard key={v.id} vc={v} index={num()} />)}</div>
             </div>
           )}
         </section>
@@ -131,7 +129,7 @@ export default async function Home() {
         {conflicts.length > 0 && (
           <section className="mb-16">
             <SectionTitle index="!" count={conflicts.length} tone="danger" hint="Their firm backed a company like yours. Open a row to see the evidence.">Check before pitching</SectionTitle>
-            <div className="grid grid-cols-[minmax(0,1fr)] border-t border-line">{conflicts.map((v) => <VcCard key={v.id} vc={v} compact index={num()} canEdit={owner} />)}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)] border-t border-line">{conflicts.map((v) => <VcCard key={v.id} vc={v} compact index={num()} />)}</div>
           </section>
         )}
 
@@ -147,7 +145,7 @@ export default async function Home() {
                   <I.chevron width={14} height={14} className="text-ink-3 transition-transform group-open:rotate-180" />
                   <span className="font-medium">{s.title}</span><span className="ml-auto font-mono text-[11px] text-ink-3">{pad(s.list.length)}</span>
                 </summary>
-                <div className="grid grid-cols-[minmax(0,1fr)] border-t border-line">{s.list.map((v) => <VcCard key={v.id} vc={v} compact index={num()} canEdit={owner} />)}</div>
+                <div className="grid grid-cols-[minmax(0,1fr)] border-t border-line">{s.list.map((v) => <VcCard key={v.id} vc={v} compact index={num()} />)}</div>
               </details>
             ))}
           </div>

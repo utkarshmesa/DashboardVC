@@ -6,7 +6,7 @@ import type { SignalView, VcView } from '@/lib/dashboard';
 import { day, LEVEL_LABEL, REASON_LABEL } from './format';
 import { gsap } from 'gsap';
 import { burst, reducedMotion } from './motion';
-import { actionToneOf, Auto, Badge, btn, FitMeter, I, inputCls, TONE } from './ui';
+import { actionToneOf, Auto, Badge, btn, FitMeter, I, inputCls, NameLinks, TONE } from './ui';
 
 const STATUSES = [
   ['not_contacted', 'Not contacted'], ['awaiting_response', 'Awaiting response'], ['in_conversation', 'In conversation'], ['passed', 'Passed'],
@@ -47,7 +47,7 @@ function CopyButton({ text, label, variant = 'secondary' }: { text: string; labe
   );
 }
 
-function Thumbs({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
+function Thumbs({ s }: { s: SignalView }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -69,7 +69,6 @@ function Thumbs({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
       </button>
     );
   };
-  if (!canEdit) return s.verdict ? <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">{s.verdict === 'up' ? 'Marked useful' : 'Marked wrong'}</span> : null;
   return (
     <span className="inline-flex items-center gap-0.5">
       {failed && <span role="alert" className="mr-1 text-[11.5px] text-danger">Not saved</span>}
@@ -120,7 +119,7 @@ function EditForm({ vc }: { vc: VcView }) {
 
 const ROUTE_ICON = { form: I.form, linkedin: I.linkedin, email: I.mail, contact: I.globe, unknown: I.route } as const;
 
-function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolean; onDetails: () => void; open: boolean }) {
+function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; open: boolean }) {
   const { busy, go, failed, clearFailed } = useQuick(vc);
   const [confirm, setConfirm] = useState<Channel | null>(null);
   const [more, setMore] = useState(false);
@@ -138,7 +137,7 @@ function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolea
   const fresh = vc.status === 'not_contacted';
   const defaultChannel: Channel = fresh && vc.route.kind === 'form' ? 'form' : fresh && vc.route.kind === 'linkedin' ? 'linkedin' : 'email';
   const link = (href: string, label: string, channel: Channel, variant: 'primary' | 'secondary' | 'ghost', Icon = I.external) => (
-    <a key={label} href={href} target="_blank" rel="noopener noreferrer" onClick={() => { setMore(false); if (canEdit) setConfirm(channel); }} className={btn(variant)}>
+    <a key={label} href={href} target="_blank" rel="noopener noreferrer" onClick={() => { setMore(false); setConfirm(channel); }} className={btn(variant)}>
       <Icon width={14} height={14} />{label}
     </a>
   );
@@ -164,7 +163,7 @@ function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolea
   }
   if (vc.draft) secondary.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" variant={primary.length ? 'ghost' : 'secondary'} />);
 
-  if (canEdit && vc.status !== 'passed') {
+  if (vc.status !== 'passed') {
     if (fresh) secondary.push(quick('emailed', 'Mark as sent', 'ghost', defaultChannel));
     if (vc.status === 'awaiting_response') { secondary.push(quick('replied', 'They replied')); overflow.push(quick('emailed', 'Nudged today', 'ghost', 'email')); }
     if (vc.status === 'in_conversation') secondary.push(quick('meeting', 'Meeting booked'));
@@ -172,8 +171,8 @@ function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolea
     overflow.push(vc.snoozedUntil ? quick('unsnooze', 'Unsnooze', 'ghost') : quick('snooze', 'Snooze 2 weeks', 'ghost'));
     overflow.push(quick('passed', 'Mark as passed', 'ghost'));
   }
-  if (canEdit && vc.conflict && !vc.conflict.dismissed) secondary.unshift(quick('dismiss_conflict', 'Not a conflict', 'danger')); // the first decision on a conflict card
-  if (canEdit && vc.conflict?.dismissed) overflow.push(quick('restore_conflict', 'Restore conflict flag', 'ghost'));
+  if (vc.conflict && !vc.conflict.dismissed) secondary.unshift(quick('dismiss_conflict', 'Not a conflict', 'danger')); // the first decision on a conflict card
+  if (vc.conflict?.dismissed) overflow.push(quick('restore_conflict', 'Restore conflict flag', 'ghost'));
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-line bg-paper/40 px-5 py-3 sm:pl-[100px] sm:pr-6">
@@ -188,8 +187,7 @@ function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolea
           )}
         </span>
       )}
-      {!canEdit && <span className="ml-auto hidden font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3 lg:inline" title="Sign in as the owner to log outreach">View only</span>}
-      <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ${canEdit ? 'ml-auto' : ''} font-mono text-[11px] uppercase tracking-[0.12em]`}>
+      <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ml-auto font-mono text-[11px] uppercase tracking-[0.12em]`}>
         {open ? 'Close' : 'Details'}<I.chevron width={14} height={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {failed && (
@@ -215,7 +213,7 @@ function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolea
   );
 }
 
-function SignalLine({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
+function SignalLine({ s }: { s: SignalView }) {
   return (
     <li className="flex gap-3 border-t border-line py-3 first:border-t-0">
       <div className="min-w-0 flex-1">
@@ -233,7 +231,7 @@ function SignalLine({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
           {s.verdict === 'down' && <span className="text-danger"> · excluded by your thumbs-down</span>}
         </p>
       </div>
-      <Thumbs s={s} canEdit={canEdit} />
+      <Thumbs s={s} />
     </li>
   );
 }
@@ -358,7 +356,7 @@ function Profile({ vc }: { vc: VcView }) {
   );
 }
 
-function Details({ vc, canEdit }: { vc: VcView; canEdit: boolean }) {
+function Details({ vc }: { vc: VcView }) {
   const hasDraft = !!(vc.draft || vc.hook || vc.opener || vc.formAnswers);
   // Decide first, then draft: the profile opens first.
   const [tab, setTab] = useState<'profile' | 'draft' | 'evidence' | 'notes'>('profile');
@@ -413,7 +411,7 @@ function Details({ vc, canEdit }: { vc: VcView; canEdit: boolean }) {
 
       {tab === 'evidence' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-evidence`}>
-          {vc.accepted.length ? <ul className="bg-surface px-4 border border-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} canEdit={canEdit} />)}</ul>
+          {vc.accepted.length ? <ul className="bg-surface px-4 border border-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
             : <p className="bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 border border-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
           {vc.othersCount > 0 && <OtherItems vcId={vc.id} count={vc.othersCount} />}
         </div>
@@ -421,9 +419,7 @@ function Details({ vc, canEdit }: { vc: VcView; canEdit: boolean }) {
 
       {tab === 'notes' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-notes`} className="grid gap-4">
-          {canEdit ? <EditForm vc={vc} /> : (
-            <p className="flex items-center gap-2 border border-dashed border-line-2 px-4 py-3 text-[13px] text-ink-3"><I.lock width={13} height={13} />View-only link. <a href="/login" className="text-ink underline underline-offset-4">Sign in</a> as the owner to change status or notes.</p>
-          )}
+          <EditForm vc={vc} />
           <dl className="grid gap-x-6 gap-y-2 bg-surface p-4 text-[13px] border border-line sm:grid-cols-[140px_1fr]">
             {vc.conflict && <><dt className="text-ink-3">Research conflict</dt><dd className="text-danger">“{vc.conflict.evidence}” (applies to the whole firm){vc.conflict.dismissed && ' — dismissed by you'}</dd></>}
             <dt className="text-ink-3">Activity score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strong this VC&apos;s public activity was in the last 30 days</dd>
@@ -455,7 +451,7 @@ function Meta({ vc }: { vc: VcView }) {
 }
 
 // A dossier entry: index, who, one action, why they fit; the proof one click away.
-function FullCard({ vc, index, canEdit, onCollapse, autoFocus }: { vc: VcView; index?: string; canEdit: boolean; onCollapse?: () => void; autoFocus?: boolean }) {
+function FullCard({ vc, index, onCollapse, autoFocus }: { vc: VcView; index?: string; onCollapse?: () => void; autoFocus?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => { if (autoFocus) ref.current?.focus({ preventScroll: true }); }, [autoFocus]); // keep keyboard users in place after expanding a row
@@ -480,7 +476,7 @@ function FullCard({ vc, index, canEdit, onCollapse, autoFocus }: { vc: VcView; i
             )}
           </div>
           <h3 className="text-[20px] font-medium leading-tight tracking-[-0.02em] text-ink">
-            {vc.name} <span className="text-ink-3">/ {vc.firm}</span>
+            <NameLinks name={vc.name} firm={vc.firm} linkedin={vc.brief.linkedin} website={vc.brief.website} />
           </h3>
           {(vc.brief.title || vc.brief.city) && <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">{[vc.brief.title, vc.brief.city].filter(Boolean).join(' · ')}</p>}
           {vc.whyFit && <p className="mt-3 max-w-[760px] text-[14px] leading-relaxed text-ink-2">{vc.whyFit}</p>}
@@ -517,34 +513,36 @@ function FullCard({ vc, index, canEdit, onCollapse, autoFocus }: { vc: VcView; i
           )}
         </div>
       </div>
-      <Actions vc={vc} canEdit={canEdit} open={open} onDetails={() => setOpen((o) => !o)} />
+      <Actions vc={vc} open={open} onDetails={() => setOpen((o) => !o)} />
       <div className="reveal" data-open={open}>
-        <div>{open && <Details vc={vc} canEdit={canEdit} />}</div>
+        <div>{open && <Details vc={vc} />}</div>
       </div>
     </article>
   );
 }
 
 // Compact ledger row for the rest of the pipeline; expands into the full entry.
-function CompactRow({ vc, index, canEdit }: { vc: VcView; index?: string; canEdit: boolean }) {
+function CompactRow({ vc, index }: { vc: VcView; index?: string }) {
   const [open, setOpen] = useState(false);
-  if (open) return <FullCard vc={vc} index={index} canEdit={canEdit} onCollapse={() => setOpen(false)} autoFocus />;
+  if (open) return <FullCard vc={vc} index={index} onCollapse={() => setOpen(false)} autoFocus />;
   const tone = actionToneOf(vc.action);
+  // The whole row opens the entry (a full-size button behind the content); the names stay real links above it.
   return (
-    <button type="button" data-card="" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
-      className="row-hover group grid w-full scroll-mt-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-line px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface sm:grid-cols-[40px_minmax(0,1.3fr)_minmax(0,1fr)_auto_16px]">
-      <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:block">{index}</span>
+    <div data-card="" id={`vc-${vc.id}`}
+      className="row-hover group relative grid w-full scroll-mt-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-line px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface sm:grid-cols-[40px_minmax(0,1.3fr)_minmax(0,1fr)_auto_16px]">
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} aria-label={`Open ${vc.name}, ${vc.firm}`} className="absolute inset-0 z-0 cursor-pointer" />
+      <span className="pointer-events-none hidden font-mono text-[11px] tabular-nums text-ink-3 sm:block">{index}</span>
       <span className="min-w-0">
-        <span className="block truncate text-[14px] text-ink">{vc.name} <span className="text-ink-3">/ {vc.firm}</span></span>
-        <span className={`block truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:hidden ${TONE[tone].text}`}>{vc.action}</span>
+        <NameLinks name={vc.name} firm={vc.firm} linkedin={vc.brief.linkedin} website={vc.brief.website} className="block truncate text-[14px]" />
+        <span className={`pointer-events-none block truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:hidden ${TONE[tone].text}`}>{vc.action}</span>
       </span>
-      <span className={`hidden truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:block ${TONE[tone].text}`}>{vc.action}</span>
-      <FitMeter score={vc.fit.score} label={vc.fit.label} compact />
-      <I.chevron width={14} height={14} className="hidden text-ink-3 transition-transform group-hover:translate-y-0.5 sm:block" />
-    </button>
+      <span className={`pointer-events-none hidden truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:block ${TONE[tone].text}`}>{vc.action}</span>
+      <span className="pointer-events-none"><FitMeter score={vc.fit.score} label={vc.fit.label} compact /></span>
+      <I.chevron width={14} height={14} className="pointer-events-none hidden text-ink-3 transition-transform group-hover:translate-y-0.5 sm:block" />
+    </div>
   );
 }
 
-export default function VcCard({ vc, compact = false, index, canEdit = false }: { vc: VcView; compact?: boolean; index?: string; canEdit?: boolean }) {
-  return compact ? <CompactRow vc={vc} index={index} canEdit={canEdit} /> : <FullCard vc={vc} index={index} canEdit={canEdit} />;
+export default function VcCard({ vc, compact = false, index }: { vc: VcView; compact?: boolean; index?: string }) {
+  return compact ? <CompactRow vc={vc} index={index} /> : <FullCard vc={vc} index={index} />;
 }
