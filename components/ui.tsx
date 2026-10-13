@@ -121,11 +121,11 @@ export function Card({ children, className = '', ...rest }: { children: ReactNod
 }
 
 // Indexed section header: "01  Reach out this week ..................... 06"
-export function SectionTitle({ children, count, hint, tone, index }: { children: ReactNode; count?: number; hint?: string; tone?: Tone; index?: string }) {
+// `index` is accepted for call-site compatibility but no longer shown (Vikram found the § codes cryptic).
+export function SectionTitle({ children, count, hint, tone }: { children: ReactNode; count?: number; hint?: string; tone?: Tone; index?: string }) {
   return (
     <div className="mb-4 border-b border-line pb-3">
       <div className="flex items-baseline gap-3">
-        {index && <span className="font-mono text-[11px] text-ink-3">{index}</span>}
         <h2 className="flex items-center gap-2.5 text-[15px] font-medium tracking-tight text-ink">
           {tone && <span className={`h-1.5 w-1.5 ${TONE[tone].dot}`} aria-hidden="true" />}
           {children}

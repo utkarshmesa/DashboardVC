@@ -8,6 +8,13 @@ import { fmtDay } from './text';
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const line = (c: Contribution) => `${cap(c.signal.signal_type ?? 'other')}: ${c.signal.summary ?? ''} (${fmtDay(c.signal.published_at!)})`;
 
+// In-space signals in the window, strongest first: the reason to reach out, and the date shown as "last signal".
+export const inSpaceSignals = (r: ScoreResult) => r.counted.filter((c) => (c.signal.relevance ?? 0) >= EVIDENCE_MIN_RELEVANCE).sort((a, b) => b.value - a.value);
+
+// The date the summary describes: the leading in-space signal when there is one (so the table never pairs an in-space
+// reason with a later passing mention), else the newest accepted signal.
+export const describedDate = (r: ScoreResult, newest: string | null) => inSpaceSignals(r)[0]?.signal.published_at?.slice(0, 10) ?? newest;
+
 export function summaryText(
   r: ScoreResult,
   opts: { conflict?: { company: string; date: string | null; evidence?: string } | null; lastSignalDate: string | null },
@@ -17,7 +24,7 @@ export function summaryText(
     const when = opts.conflict.date ? ` (${fmtDay(opts.conflict.date)})` : '';
     return `Backed ${opts.conflict.company}${when}, a likely competitor.`;
   }
-  const inSpace = r.counted.filter((c) => (c.signal.relevance ?? 0) >= EVIDENCE_MIN_RELEVANCE).sort((a, b) => b.value - a.value);
+  const inSpace = inSpaceSignals(r);
   if (inSpace.length) {
     const more = inSpace.length > 1 ? ` · +${inSpace.length - 1} more in your space` : '';
     return `In your space — ${line(inSpace[0])}${more}`;

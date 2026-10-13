@@ -6,6 +6,7 @@ import AppHeader from '@/components/AppHeader';
 import TaskRow from '@/components/TaskRow.client';
 import { btn, I, NameLinks, SectionTitle } from '@/components/ui';
 import { loadDashboard, loadHeader, nextScheduledRun } from '@/lib/dashboard';
+import { loadDraftSettings } from '@/lib/store';
 import { demoActive } from '@/lib/demo';
 import { loadProgress } from '@/lib/outcomes';
 import { DONE_LABEL } from '@/lib/progress';
@@ -19,7 +20,7 @@ function Readout({ code, label, value, unit, note, tone, bar }: { code: string; 
   const colour = tone === 'signal' ? 'text-signal' : tone === 'info' ? 'text-info' : tone === 'accent' ? 'text-accent-text' : tone === 'warn' ? 'text-warn' : 'text-ink';
   return (
     <div data-reveal="" className="h-full px-5 py-5 sm:px-6">
-      <p className="label flex items-center justify-between"><span data-scramble="">{label}</span><span className="text-ink-3/70">{code}</span></p>
+      <p className="label" data-code={code}><span data-scramble="">{label}</span></p>
       <p className={`mt-4 font-mono text-[40px] font-light leading-none tabular-nums tracking-[-0.04em] ${value > 0 ? colour : 'text-ink-3'}`}>
         <span data-count={value} data-decimals={Number.isInteger(value) ? 0 : 1}>{value}</span>{unit && <span className="ml-1.5 text-[14px] tracking-normal text-ink-3">{unit}</span>}
       </p>
@@ -30,7 +31,10 @@ function Readout({ code, label, value, unit, note, tone, bar }: { code: string; 
 }
 
 export default async function Home() {
-  const [{ vcs, runway }, header, progress, demo] = await Promise.all([loadDashboard(), loadHeader(), loadProgress(), demoActive()]);
+  const [{ vcs, runway }, header, progress, demo, draft] = await Promise.all([loadDashboard(), loadHeader(), loadProgress(), demoActive(), loadDraftSettings()]);
+  // Drafts are only sendable once the pitch names the company and the deck link is set.
+  const genericPitch = !draft.pitch.trim() || /^we are building b2b logistics saas and raising our seed round.?$/i.test(draft.pitch.trim());
+  const setupMissing = [genericPitch && 'your one-line pitch (company name and a traction number)', !draft.deckUrl.trim() && 'your deck link'].filter(Boolean) as string[];
   const pick = (k: string) => vcs.filter((v) => v.section === k);
   const followups = pick('followups'), signal = pick('thisWeek'), conflicts = pick('conflict'), capacity = pick('capacity'), quiet = pick('quiet');
   const committed = followups.length + signal.length + conflicts.length;
@@ -58,6 +62,14 @@ export default async function Home() {
             <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-signal">Demo history loaded</span>
             Rows marked DEMO are example contact history for the walkthrough, not real interactions.
             <Link href="/settings#demo" className="text-ink underline underline-offset-4">Clear it in Settings</Link>
+          </p>
+        )}
+
+        {setupMissing.length > 0 && (
+          <p className="-mx-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-signal-soft px-4 py-2.5 text-[12.5px] text-ink sm:-mx-8 sm:px-8">
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-signal">Before you send anything</span>
+            Add {setupMissing.join(' and ')} in Settings. Every draft uses them.
+            <Link href="/settings" className="text-ink underline underline-offset-4">Open Settings</Link>
           </p>
         )}
 

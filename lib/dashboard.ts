@@ -1,6 +1,6 @@
 import 'server-only';
 import { daysSince } from './actions';
-import { OUTREACH_PER_WEEK, REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
+import { EVIDENCE_MIN_RELEVANCE, OUTREACH_PER_WEEK, REVERIFY_ROLE_DAYS, SIGNAL_WINDOW_DAYS } from './config';
 import { db } from './db';
 import { competitorTerms, fitScore, researchConflict, type Research } from './fit';
 import { assembleDraft, type DraftSettings } from './opener';
@@ -42,6 +42,7 @@ export type SignalView = {
   aboutThisVc: boolean | null;
   contribution: number | null; // points this signal adds to the score (0 if superseded within its event)
   hook: string | null;
+  context: string | null; // the snippet sentence naming this VC, when the headline doesn't
   roleHint: string | null;
   competitor: boolean;
   verdict: 'up' | 'down' | null;
@@ -54,6 +55,7 @@ export type VcView = {
   status: VcRow['status'];
   lastContactDate: string | null;
   notes: string | null;
+  thesis: string | null;
   score: number | null;
   action: string;
   summary: string | null;
@@ -84,7 +86,7 @@ export type VcView = {
 };
 
 type Sig = ScorableSignal & {
-  vc_id: string; title: string; url: string; source: string; source_name: string | null; funded_company: string | null; reject_reason: string | null; relevance_level: string | null;
+  vc_id: string; title: string; snippet: string | null; url: string; source: string; source_name: string | null; funded_company: string | null; reject_reason: string | null; relevance_level: string | null;
   confidence: number | null; about_this_vc: boolean | null; hook: string | null; role_change_hint: string | null; created_at: string;
 };
 
@@ -98,7 +100,7 @@ export async function loadDashboard() {
   const [vcsR, profR, sigR, fbR, firmsR] = await Promise.all([
     db().from('vcs').select('*'),
     db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener, linkedin_slug, firm_key'),
-    db().from('signals').select('id, vc_id, title, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at, funded_company')
+    db().from('signals').select('id, vc_id, title, snippet, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at, funded_company')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
     db().from('firms').select('firm_key, fund_info_research'),
@@ -122,12 +124,16 @@ export async function loadDashboard() {
       id: s.id, title: s.title, url: s.url, sourceName: s.source_name, date: s.published_at, dateApprox: s.date_approx, status: s.status,
       rejectReason: s.reject_reason, type: s.signal_type, subject: s.subject, relevanceLevel: s.relevance_level, confidence: s.confidence,
       aboutThisVc: s.about_this_vc, contribution: s.status === 'accepted' && signalAge(s, now, SIGNAL_WINDOW_DAYS) !== null ? (points.get(s.id) ?? 0) : null,
-      hook: s.hook, roleHint: s.role_change_hint, competitor: s.possible_competitor === true, verdict: verdicts.get(s.id) ?? null,
+      hook: s.hook, context: namingLine(s.title, s.snippet, v.name, v.firm), roleHint: s.role_change_hint, competitor: s.possible_competitor === true, verdict: verdicts.get(s.id) ?? null,
     });
     const scored = accepted.filter((s) => signalAge(s, now, SIGNAL_WINDOW_DAYS) !== null);
     const newestDated = scored.filter((s) => s.published_at).sort((a, b) => b.published_at!.localeCompare(a.published_at!))[0];
     const top = result.top?.signal as Sig | undefined;
-    const hookSignal = (top?.hook && !top.thumbs_down ? top : scored.find((s) => s.hook && !s.thumbs_down)) as Sig | undefined;
+    void top;
+    // Hooks come only from in-space signals (the reason to write); off-topic activity never becomes an opener.
+    const inSpace = result.groups.map((g) => g.signal as Sig).filter((s) => (s.relevance ?? 0) >= EVIDENCE_MIN_RELEVANCE && s.published_at && !s.thumbs_down);
+    const hookSignal = inSpace.find((s) => s.hook);
+    const lead = inSpace[0] ?? newestDated;
     const badges: string[] = [];
     if (accepted.some((s) => s.role_change_hint)) badges.push('Possible move — verify');
     const verified = verifiedDate(prof?.research as Record<string, unknown> | null, prof?.research_as_of ?? null);
@@ -142,10 +148,10 @@ export async function loadDashboard() {
     const route = outreachRoute(research?.approach ? String(research.approach) : null, v.firm, (prof?.linkedin_slug as string | null) ?? null);
     const approachText = research?.approach ? String(research.approach) : null;
     return {
-      id: v.id, name: v.name, firm: v.firm, status: v.status, lastContactDate: v.last_contact_date, notes: v.notes,
+      id: v.id, name: v.name, firm: v.firm, status: v.status, lastContactDate: v.last_contact_date, notes: v.notes, thesis: v.thesis,
       score: v.follow_up_score, action, summary: v.signal_summary, lastSignalDate: v.last_signal_date, trust: prof?.trust ?? null,
       section: SECTIONS.find((sec) => sec.match(action))?.key ?? 'low',
-      newest: newestDated ? { date: newestDated.published_at!, url: newestDated.url } : null,
+      newest: lead ? { date: lead.published_at!, url: lead.url } : null,
       badges,
       hook: hookSignal?.hook ? { text: hookSignal.hook, signalId: hookSignal.id } : null,
       fit,
@@ -216,6 +222,16 @@ export function nextScheduledRun(now = new Date()): Date {
   return now;
 }
 
+// The sentence of a snippet that names the VC (last name or the firm's first word), shown when the headline doesn't, so
+// a passing mention ("…raised from Stellaris last year…") is visibly about this VC.
+function namingLine(title: string, snippet: string | null, name: string, firm: string): string | null {
+  const keys = [name.trim().split(/\s+/).at(-1)!, firm.trim().split(/\s+/)[0]].filter((k) => k.length >= 3).map((k) => k.toLowerCase());
+  const has = (t: string) => keys.some((k) => new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t));
+  if (has(title) || !snippet) return null;
+  const sentence = snippet.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).find(has);
+  return sentence ? sentence.slice(0, 220) : null;
+}
+
 // Outreach draft for new-outreach / queued VCs, nudge draft for follow-ups; none for conflicts, passed or waiting.
 function draftFor(v: VcRow, action: string, opener: string | null, hook: string | null, settings: DraftSettings) {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -223,6 +239,8 @@ function draftFor(v: VcRow, action: string, opener: string | null, hook: string 
     const since = v.last_contact_date ? `${Number(v.last_contact_date.slice(8, 10))} ${MONTHS[Number(v.last_contact_date.slice(5, 7)) - 1]}` : null;
     return assembleDraft({ vcName: v.name, opener: null, hook, settings: { ...settings, ask: settings.ask }, nudgeSince: since });
   }
-  if (/^(Reach out|If you have capacity|Quiet — good fit|Added by you)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
+  // Signal tier: the signal is the reason to write, so it is the personal line. Otherwise the research opener.
+  if (action.startsWith('Reach out') && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener: hook ?? opener, hook: null, settings });
+  if (/^(If you have capacity|Quiet — good fit|Added by you)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook: null, settings });
   return null;
 }

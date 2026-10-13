@@ -51,7 +51,7 @@ export default async function ProgressPage() {
   const td = 'py-2.5 pr-3 font-mono text-[13px] tabular-nums text-ink';
   const big = (code: string, label: string, value: string, note: string) => (
     <div data-reveal="" className="px-5 py-5">
-      <p className="label flex justify-between"><span data-scramble="">{label}</span><span>{code}</span></p>
+      <p className="label" data-code={code}><span data-scramble="">{label}</span></p>
       <p className="mt-4 font-mono text-[40px] font-light leading-none tracking-[-0.04em] text-ink">{value}</p>
       <p className="mt-3 text-[12.5px] text-ink-2">{note}</p>
     </div>

@@ -8,7 +8,7 @@ import { linkedinDue, linkedinPosts } from './linkedin';
 import { BATCH_SIZE, COLLECT_CONCURRENCY, ENRICH_PER_RUN, SIGNAL_WINDOW_DAYS } from './config';
 import { filterReason } from './filter';
 import { lastSignalDate, scoreSignals, type ScoreResult, type ScorableSignal } from './scoring';
-import { summaryText } from './summary';
+import { describedDate, summaryText } from './summary';
 import { normTitle, urlHash } from './text';
 import type { FetchStatus, LabelUpdate, NewSignal, SignalRow, VcContext } from './types';
 
@@ -273,8 +273,8 @@ export async function scoreAndWrite(store: Store, vc: VcContext, fetch: FetchSta
     await store.applySignals(vc.id, vc.row.last_signal_date, vc.row.signal_summary, vc.row.follow_up_score, decision.action);
     return decision;
   }
-  const last = lastSignalDate(signals);
-  await store.applySignals(vc.id, last, summaryText(result, { conflict, lastSignalDate: last }), result.score, decision.action);
+  const newest = lastSignalDate(signals);
+  await store.applySignals(vc.id, describedDate(result, newest), summaryText(result, { conflict, lastSignalDate: newest }), result.score, decision.action);
   return decision;
 }
 

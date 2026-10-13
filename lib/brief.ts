@@ -1,6 +1,7 @@
 // Investor brief (DECISIONS #50): the person and fund facts Vikram needs to decide whether and how to pitch, built in
 // code from verified research, curated fund notes, structured verified deals and dated investment signals. No AI text:
 // deal headlines come from source-article URLs (amounts dropped: URL slugs garble decimals, e.g. "3-3-million").
+import { roleTitle } from './plain';
 
 export type Deal = { label: string; round: string | null; year: string | null; url: string | null; inSpace: boolean; verified: boolean; competitor?: boolean };
 export type Brief = {
@@ -218,7 +219,7 @@ export function buildBrief(i: {
   const fund = clean(i.firmFund) ?? clean(r.fund);
   const chequeFlag = i.fitFlags.find((f) => /cheque|larger than this round/i.test(f));
   return {
-    title: clean(r.title), titleVerified: clean(r.title_verified)?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
+    title: roleTitle(clean(r.title)), titleVerified: clean(r.title_verified)?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? null,
     city: clean(r.city), thesis: clean(i.thesis), approach: clean(r.approach),
     linkedin: i.linkedinSlug ? `https://www.linkedin.com/in/${i.linkedinSlug}` : linkedinFrom(urls),
     website: firmSite(urls, i.firmName),

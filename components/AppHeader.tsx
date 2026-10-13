@@ -32,7 +32,7 @@ export default function AppHeader({ active, run, nextRun, credits }: {
             {NAV.map((n) => (
               <Link key={n.href} href={n.href} aria-current={active === n.href ? 'page' : undefined}
                 className={`relative flex items-center gap-2 px-4 text-[13px] transition-colors ${active === n.href ? 'text-ink' : 'text-ink-3 hover:text-ink'}`}>
-                <span className="font-mono text-[10px] text-ink-3">{n.code}</span>{n.label}
+                {n.label}
                 {active === n.href && <span className="absolute inset-x-4 bottom-0 h-px bg-ink" aria-hidden="true" />}
               </Link>
             ))}

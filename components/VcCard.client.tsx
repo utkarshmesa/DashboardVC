@@ -7,6 +7,7 @@ import { day, LEVEL_LABEL, REASON_LABEL } from './format';
 import { gsap } from 'gsap';
 import { burst, reducedMotion } from './motion';
 import { actionToneOf, Auto, Badge, btn, FitMeter, I, inputCls, NameLinks, TONE } from './ui';
+import { plainFitReason } from '@/lib/plain';
 
 const STATUSES = [
   ['not_contacted', 'Not contacted'], ['awaiting_response', 'Awaiting response'], ['in_conversation', 'In conversation'], ['passed', 'Passed'],
@@ -156,8 +157,11 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
     primary.push(link(vc.route.url, vc.route.label, 'linkedin', 'primary', I.linkedin));
     secondary.push(<CopyButton key="msg" text={vc.draft!.body} label="Copy message" />);
     if (vc.gmailUrl) overflow.push(link(vc.gmailUrl, 'Open in Gmail instead', 'email', 'ghost', I.mail));
+  } else if (canSend && vc.status === 'awaiting_response') {
+    // A nudge belongs in the original thread: open his sent mail at this investor; the nudge text is copied below.
+    primary.push(link(`https://mail.google.com/mail/u/0/#search/${encodeURIComponent(`in:sent "${vc.name}"`)}`, 'Find your thread in Gmail', 'email', 'primary', I.mail));
   } else if (canSend && vc.gmailUrl) {
-    primary.push(link(vc.gmailUrl, vc.status === 'awaiting_response' ? 'Open nudge in Gmail' : 'Open in Gmail', 'email', 'primary', I.mail));
+    primary.push(link(vc.gmailUrl, 'Open in Gmail', 'email', 'primary', I.mail));
     if (fresh && vc.route.kind === 'contact' && (vc.route.url || vc.route.findUrl)) secondary.push(link((vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'other', 'secondary', I.globe));
     if (fresh && vc.route.kind === 'email' && vc.route.findUrl) secondary.push(<a key="find" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className={btn('secondary')}><I.external width={14} height={14} />Find their email</a>);
   }
@@ -224,6 +228,7 @@ function SignalLine({ s }: { s: SignalView }) {
           {s.contribution !== null && <span className="font-mono tabular-nums text-ink-2" title="Points this signal adds to the activity score">+{s.contribution} pts</span>}
         </div>
         <a href={s.url} target="_blank" rel="noopener noreferrer" className="mt-1 block text-[14px] leading-snug text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink">{s.title}</a>
+        {s.context && <p className="mt-1 border-l border-line-2 pl-2 text-[12.5px] italic text-ink-2">“{s.context}”</p>}
         <p className="mt-1 text-[11.5px] text-ink-3">
           AI labels: {s.aboutThisVc ? 'about this VC' : 'not about this VC'} · {s.subject ?? '—'} · relevance {LEVEL_LABEL[s.relevanceLevel ?? ''] ?? '—'} · confidence {s.confidence ?? '—'}
           {s.competitor && <span className="text-danger"> · possible competitor</span>}
@@ -411,8 +416,15 @@ function Details({ vc }: { vc: VcView }) {
 
       {tab === 'evidence' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-evidence`}>
-          {vc.accepted.length ? <ul className="bg-surface px-4 border border-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
-            : <p className="bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 border border-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
+          {/* Scored items first; passing or off-topic mentions (0 points) folded away so they can't read as the reason. */}
+          {vc.accepted.some((s) => (s.contribution ?? 0) > 0) ? <ul className="bg-surface px-4 border border-line">{vc.accepted.filter((s) => (s.contribution ?? 0) > 0).map((s) => <SignalLine key={s.id} s={s} />)}</ul>
+            : <p className="bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 border border-line">No logistics activity in the last 30 days. {vc.whyFit ? 'The research in Profile is the case for reaching out.' : ''}</p>}
+          {vc.accepted.some((s) => !((s.contribution ?? 0) > 0)) && (
+            <details className="mt-3 border border-line bg-surface px-4 py-2.5">
+              <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-ink-2"><I.chevron width={14} height={14} />Other mentions ({vc.accepted.filter((s) => !((s.contribution ?? 0) > 0)).length}): passing, off-topic or undated, not scored</summary>
+              <ul>{vc.accepted.filter((s) => !((s.contribution ?? 0) > 0)).map((s) => <SignalLine key={s.id} s={s} />)}</ul>
+            </details>
+          )}
           {vc.othersCount > 0 && <OtherItems vcId={vc.id} count={vc.othersCount} />}
         </div>
       )}
@@ -422,7 +434,7 @@ function Details({ vc }: { vc: VcView }) {
           <EditForm vc={vc} />
           <dl className="grid gap-x-6 gap-y-2 bg-surface p-4 text-[13px] border border-line sm:grid-cols-[140px_1fr]">
             {vc.conflict && <><dt className="text-ink-3">Research conflict</dt><dd className="text-danger">“{vc.conflict.evidence}” (applies to the whole firm){vc.conflict.dismissed && ' — dismissed by you'}</dd></>}
-            <dt className="text-ink-3">Activity score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strong this VC&apos;s public activity was in the last 30 days</dd>
+            <dt className="text-ink-3">Follow-up score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strongly they engaged with logistics in the last 30 days (off-topic activity barely counts)</dd>
             {vc.trust && <><dt className="text-ink-3">Research trust</dt><dd className="text-ink-2">{vc.trust}</dd></>}
             <dt className="text-ink-3">Recommended action</dt><dd className="text-ink-2">{vc.action} <Auto /></dd>
           </dl>
@@ -479,11 +491,12 @@ function FullCard({ vc, index, onCollapse, autoFocus }: { vc: VcView; index?: st
             <NameLinks name={vc.name} firm={vc.firm} linkedin={vc.brief.linkedin} website={vc.brief.website} />
           </h3>
           {(vc.brief.title || vc.brief.city) && <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">{[vc.brief.title, vc.brief.city].filter(Boolean).join(' · ')}</p>}
-          {vc.whyFit && <p className="mt-3 max-w-[760px] text-[14px] leading-relaxed text-ink-2">{vc.whyFit}</p>}
+          <p className="mt-3 max-w-[760px] text-[14px] leading-relaxed text-ink-2">{plainFitReason(vc.fit, vc.brief.stage)}</p>
+          {vc.whyFit && <p className="mt-1 max-w-[760px] text-[12px] leading-relaxed text-ink-3"><span className="label mr-1.5">Research note</span>{vc.whyFit}</p>}
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
           <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
-          <span className="label">{vc.fit.label} fit</span>
+          <span className="label text-right" title="Fit with a Seed-stage B2B logistics SaaS, from research (0–100)">{vc.action.startsWith('Reach out') && vc.fit.label === 'weak' ? 'Weak fit on paper · active on logistics now' : `${vc.fit.label} fit`}</span>
           {onCollapse && <button type="button" onClick={onCollapse} className="ml-auto inline-flex min-h-6 items-center font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3 hover:text-ink sm:ml-0 sm:mt-1">Collapse ↑</button>}
         </div>
 
@@ -504,7 +517,7 @@ function FullCard({ vc, index, onCollapse, autoFocus }: { vc: VcView; index?: st
               {vc.summary ?? 'No public activity found in the last 30 days.'}<Auto />
               {vc.newest && <> · <a href={vc.newest.url} target="_blank" rel="noopener noreferrer" className="text-ink-3 underline decoration-line-2 underline-offset-2 hover:text-ink">source {day(vc.newest.date)}</a></>}
             </p>
-            <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:inline" title="Activity score (0–100): how strong this VC's public activity is in the last 30 days">ACT {String(vc.score ?? 0).padStart(2, '0')}</span>
+            <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:inline" title="Follow-up score (0–100): how strongly they engaged with logistics in the last 30 days">Signal score {vc.score ?? 0}</span>
           </div>
 
           <Meta vc={vc} />
