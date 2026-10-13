@@ -2,7 +2,19 @@ import 'server-only';
 import { db } from './db';
 import { fitScore, type Research } from './fit';
 import { computeFunnel, type OutreachEvent } from './funnel';
+import { computeProgress, type ProgressEvent, type ProgressVc } from './progress';
 import { loadPersona } from './store';
+
+// Progress for the This week and Progress pages: the event log (demo events flagged) and each VC's current status.
+export async function loadProgress(now = new Date()) {
+  const [ev, vcs] = await Promise.all([
+    db().from('outreach_events').select('vc_id, event, at, demo').order('at'),
+    db().from('vcs').select('id, name, firm, status'),
+  ]);
+  if (ev.error) throw new Error(ev.error.message);
+  if (vcs.error) throw new Error(vcs.error.message);
+  return computeProgress((ev.data ?? []) as ProgressEvent[], (vcs.data ?? []) as ProgressVc[], now);
+}
 
 // Records an outreach event with the context needed to learn from it later (fit label, whether a news hook existed,
 // the action shown at the time). Never throws: logging must not break the user's action.

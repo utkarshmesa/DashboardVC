@@ -79,9 +79,9 @@ export default async function InvestorsPage({ searchParams }: { searchParams: Pr
   );
   return (
     <>
-      <AppHeader active="/investors" />
+      <AppHeader active="/pipeline" />
       <main id="main" tabIndex={-1} className="mx-auto max-w-[1040px] px-4 pb-28 pt-12 outline-none sm:px-8">
-        <PageTitle eyebrow="02 / Investors · Runway" title={<>Keep the pipeline full.</>}
+        <PageTitle eyebrow="02 / Pipeline · Add investors" title={<>Keep the pipeline full.</>}
           sub="Researched investors you don't track yet, plus anyone you want to add. Adding one puts them in your queue with a draft ready." />
         <div data-reveal="" className={`mb-12 flex flex-wrap items-end gap-x-10 gap-y-4 border-y px-1 py-6 ${low ? 'border-warn/40' : 'border-line'}`}>
           <div>

@@ -6,8 +6,8 @@ import { I } from './ui';
 
 const NAV = [
   { href: '/', label: 'This week', code: '01' },
-  { href: '/investors', label: 'Investors', code: '02' },
-  { href: '/quality', label: 'Quality', code: '03' },
+  { href: '/pipeline', label: 'Pipeline', code: '02' },
+  { href: '/progress', label: 'Progress', code: '03' },
   { href: '/settings', label: 'Settings', code: '04' },
 ] as const;
 
@@ -26,7 +26,7 @@ export default function AppHeader({ active, run, nextRun, credits }: {
           <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Pipeline home">
             <span className="flex h-7 w-7 items-center justify-center border border-ink text-ink"><I.route width={15} height={15} data-draw="" /></span>
             <span className="text-[14px] font-semibold tracking-[0.02em]">PIPELINE</span>
-            <span className="hidden font-mono text-[10.5px] tracking-[0.14em] text-ink-3 sm:inline">/ SEED · USD 1–3M</span>
+            <span className="hidden font-mono text-[10.5px] tracking-[0.14em] text-ink-3 sm:inline">/ SEED ROUND</span>
           </Link>
           <nav aria-label="Main" className="ml-auto hidden items-stretch self-stretch md:flex">
             {NAV.map((n) => (

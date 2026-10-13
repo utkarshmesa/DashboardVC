@@ -2,6 +2,8 @@
 
 *As of 2026-10-13. The live app is at https://vc-pipeline-zeta.vercel.app: open to anyone with the link, no password.*
 
+**Plan V2 (2026-10-13, DECISIONS #55):** rebuilt around the problem statement only. Recommendations are signal-first: "reach out" only on an observable logistics signal from the last 30 days; quiet VCs are listed with a reason. The persona holds only what the problem says (Seed, B2B logistics SaaS). The home page is now a weekly to-do list with progress tracking, plus a spreadsheet-style Pipeline page and a Progress page. A labelled demo contact history shows follow-ups and progress. See docs/PLAN-V2.md.
+
 **Summary.** Everything specified is built, deployed and stress-tested. Beyond the spec, the owner approved and received:
 - a fit-first weekly plan (Phase 5);
 - sendable email drafts, a digest and an outcome log (5b);

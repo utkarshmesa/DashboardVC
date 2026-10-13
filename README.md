@@ -64,7 +64,7 @@ Live: https://vc-pipeline-zeta.vercel.app (open to anyone with the link, no pass
 
   It also writes a 20-word summary and a one-sentence suggested opener per signal, and, separately, a **research-grounded opener** per VC from the verified research note (guarded so every name and number is in that note). Email drafts around the opener are **assembled in code** from Vikram's own pitch line.
 - **Code owns everything that must be verifiable and repeatable:**
-  - investor **fit** (research tier, thesis and deal relevance to the target space, deal recency, trust, deal-breakers for a USD 1–3M seed) and **standing conflicts** from the research (`lib/fit.ts`);
+  - investor **fit** (research tier, thesis and deal relevance to the target space, deal recency, trust, Seed-stage deal-breakers) and, only when a product is described in Settings, **standing conflicts** from the research (`lib/fit.ts`). Fit never makes a VC a "reach out" on its own (DECISIONS #55);
   - dates (source metadata only) and URLs (collectors only);
   - the window and name filters;
   - the mapping from relevance level to a number;
@@ -83,7 +83,7 @@ Live: https://vc-pipeline-zeta.vercel.app (open to anyone with the link, no pass
 | `about_this_vc` precision on the test split (gate ≥ 0.90) | **1.00** (recall 1.00) |
 | Type accuracy / relevance-level accuracy (test) | 0.70 / 0.77 |
 | Chosen `MIN_CONFIDENCE` / `MIN_RELEVANCE` | **0.7 / 0.** Tuned on the tune split; 0.5–0.7 tie, so the default is kept |
-| Ranking-review agreement (v2, fit-first model: full decision simulated per grid point) | **92%** (46/50); contact precision 0.88, recall 0.70. The 3 misses are queued as "Good fit" |
+| Ranking-review agreement (v2, fit-first model, superseded by the signal-first rules in DECISIONS #55) | 92% (46/50) under the old model; kept for history |
 | Chosen `REACH` / `WARM` / `HALF_LIFE_DAYS` / `FIT_STRONG` / `FIT_GOOD` | **30 / 15 / 20 / 70 / 50** (`eval/calibration.json`); the grid confirmed the current constants |
 
 The eval labels (60 items, 10 not about the VC) and the ranking-review answers were written by the builder (Claude Code) from first principles at the owner's request, not by a human. The classifier's definitions of "about this VC" and "irrelevant" were tightened after seeing errors from both splits, so the test split isn't fully blind to that change. See `docs/DECISIONS.md` #20–22.
@@ -108,7 +108,7 @@ flowchart TB
     RUNNOW[Dashboard Run now]
   end
   subgraph Vercel["Next.js app on Vercel (bom1)"]
-    DASH[Dashboard<br/>open link · week plan · cards with route actions<br/>details: draft · evidence + thumbs · notes<br/>/investors · /settings · /quality]
+    DASH[Dashboard<br/>open link · week plan · cards with route actions<br/>details: draft · evidence + thumbs · notes<br/>/pipeline · /progress · /settings]
     RUN[Batch runner<br/>10 VCs end to end · lock · claim]
     COL[Collectors<br/>Google News · Tavily · RSS] --> FIL[Filter<br/>window · names · ambiguous] --> CLS[Classifier<br/>labels · guards · opener] --> SCO[Score · actions · firm dedupe<br/>code only]
     ENR[Enrichment<br/>≤10 decisive items/run]
@@ -149,7 +149,7 @@ flowchart TB
 - **Undated results:** about a third of Tavily results have no date; they're scored conservatively, as if 30 days old.
 - **Free-tier limits:** Vercel Hobby functions stop at 300 s, so a full run with heavy reclassification can need the GitHub finisher. Gemini free-tier latency (13–70 s per call) dominates run time. Tavily allows 1,000 credits a month (this app stops at 800).
 - **Google News RSS is unofficial** and could change or rate-limit without notice.
-- **Little target-space news right now:** few VCs have a recent core logistics signal, so outreach is mostly fit-driven ("Reach out — strong fit"), with the research fit reason as the talking point.
+- **Logistics signals are rare:** in a typical 30-day window only 1–3 of the 50 VCs show observable logistics activity (an independent web search confirmed this is real, not a collector gap). The dashboard says so plainly and keeps fit-based picks in a separate, clearly labelled "If you have capacity" list.
 - **Fit comes from the seed research,** which is dated (`research_as_of`); stale roles show a "Re-verify role" badge, but fund status and theses can drift.
 - **Gemini output varies run to run,** even at temperature 0; a VC's score can move between runs on the same evidence.
 - **Eval labels and ranking answers came from the builder, not a human** (see above).

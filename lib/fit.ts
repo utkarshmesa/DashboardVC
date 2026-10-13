@@ -46,14 +46,14 @@ export function fitScore(i: FitInput, targetSpace: string, now = new Date()): Fi
   else if (ago !== null && ago <= 24) { score += 5; reasons.push('relevant deal in the last 24 months'); }
   if (i.trust === 'A') { score += 5; reasons.push('research trust A'); } else if (i.trust === 'A-') score += 3; else if (i.trust === 'C') score -= 5;
 
-  // Deal-breakers for a USD 1–3M seed, from the research text (each costs points and is shown on the card).
+  // Deal-breakers for a Seed round, from the research text (each costs points and is shown on the card). The round size
+  // isn't known (the problem only says Seed), so cheque-size judgements live in the brief, against Settings → Round size.
   const text = `${i.thesis ?? ''} ${r.fit_reason ?? ''} ${r.conflicts ?? ''} ${r.stage_focus ?? ''} ${r.first_cheque ?? ''}`;
   const flag = (re: RegExp, msg: string, cost: number) => { if (re.test(text)) { flags.push(msg); score -= cost; } };
-  flag(/too small to anchor/i, 'cheques too small to lead this round', 8);
   flag(/post-PMF|wants PMF|product-market fit established/i, 'wants product-market fit first', 8);
   flag(/(typical entry skews|usually) pre-Series A|Usually pre-Series A and Series A/i, 'usually invests after seed', 8);
   flag(/hard-science mandate|deep-tech remit|scope is specialised|do not assume appetite/i, 'thesis may not cover workflow SaaS', 5);
-  flag(/above seed size/i, 'past deals were larger than this round', 5);
+  flag(/above seed size/i, 'past deals were larger than a typical seed', 5);
   score = Math.max(0, Math.min(100, Math.round(score)));
   return { score, label: score >= FIT_STRONG ? 'strong' : score >= FIT_GOOD ? 'good' : 'weak', reasons, flags };
 }

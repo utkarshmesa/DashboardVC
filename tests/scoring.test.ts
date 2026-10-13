@@ -38,9 +38,10 @@ describe('scoring', () => {
     expect(scoreSignals([sig({ thumbs_down: true })], NOW).score).toBe(0);
   });
 
-  it('scores date_approx items as if SIGNAL_WINDOW_DAYS old', () => {
+  it('never scores undated items, including date-approx search results (observable past-30-day signal only)', () => {
     const r = scoreSignals([sig({ published_at: null, date_approx: true })], NOW);
-    expect(r.score).toBe(Math.round(100 * 0.5 ** 1.5));
+    expect(r.score).toBe(0);
+    expect(r.counted).toEqual([]);
   });
 
   it('caps at 100', () => {
@@ -58,5 +59,19 @@ describe('scoring', () => {
     expect(lastSignalDate([sig({ published_at: daysAgo(90) }), sig({ published_at: daysAgo(45) }), sig({ status: 'rejected', published_at: daysAgo(1) })]))
       .toBe('2026-08-28');
     expect(lastSignalDate([sig({ published_at: null, date_approx: true })])).toBeNull();
+  });
+});
+
+describe('scoring follows the problem: thinking about this space beats being busy elsewhere (Plan V2)', () => {
+  it('one in-space signal up to 14 days old outranks any volume of fresh off-topic activity', () => {
+    const offTopic = Array.from({ length: 25 }, (_, i) => sig({ relevance: 0.1, published_at: daysAgo(0), event_key: `adj${i}` }));
+    const busiest = scoreSignals(offTopic, NOW).score;
+    for (const type of ['investment', 'authored', 'speaking', 'press'] as const)
+      for (const subject of ['person', 'firm'] as const)
+        for (const relevance of [1, 0.8])
+          expect(scoreSignals([sig({ signal_type: type, subject, relevance, published_at: daysAgo(14) })], NOW).score).toBeGreaterThan(busiest);
+  });
+  it('unrelated activity scores zero', () => {
+    expect(scoreSignals([sig({ relevance: 0 }), sig({ relevance: 0, event_key: 'b' })], NOW).score).toBe(0);
   });
 });

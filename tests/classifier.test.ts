@@ -99,11 +99,11 @@ describe('classifier', () => {
     expect(r.updates[0]).toMatchObject({ status: 'rejected', reject_reason: 'llm_low_relevance' });
   });
 
-  it('maps relevance_level to 1.0 / 0.7 / 0.4 / 0.1 and stores both', async () => {
+  it('maps relevance_level to 1.0 / 0.8 / 0.1 / 0 and stores both (only logistics counts as this space)', async () => {
     const levels = ['core', 'logistics_non_software', 'adjacent', 'unrelated'] as const;
     const gen: GenerateFn = async () => JSON.stringify({ items: levels.map((lv, i) => label(i + 1, { relevance_level: lv })) });
     const r = await classify(levels.map((_, i) => input(i + 1)), opts(gen));
-    expect(r.updates.map((u) => [u.relevance_level, u.relevance])).toEqual([['core', 1], ['logistics_non_software', 0.7], ['adjacent', 0.4], ['unrelated', 0.1]]);
+    expect(r.updates.map((u) => [u.relevance_level, u.relevance])).toEqual([['core', 1], ['logistics_non_software', 0.8], ['adjacent', 0.1], ['unrelated', 0]]);
   });
 
   it('an empty my_product never yields a competitor flag', async () => {

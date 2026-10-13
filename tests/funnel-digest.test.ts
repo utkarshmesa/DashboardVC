@@ -29,21 +29,20 @@ describe('digest', () => {
     const t = buildDigest([
       { name: 'A', firm: 'FA', action: 'Nudge due — follow up on your email', section: 'followups', whyFit: null, daysSinceContact: 9, fitScore: 80 },
       { name: 'B', firm: 'FB', action: 'Close the loop — no reply in 3 weeks', section: 'followups', whyFit: null, daysSinceContact: 22, fitScore: 70 },
-      { name: 'C', firm: 'FC', action: 'Reach out — strong fit', section: 'thisWeek', whyFit: 'Supply-chain sector lead; more', daysSinceContact: null, fitScore: 92 },
+      { name: 'C', firm: 'FC', action: 'Reach out — signal this week', section: 'thisWeek', whyFit: 'Supply-chain sector lead; more', daysSinceContact: null, fitScore: 92, summary: 'In your space — Authored: wrote about logistics (30 Sep)' },
       { name: 'D', firm: 'FD', action: 'Check conflict — backed a TMS company', section: 'conflict', whyFit: null, daysSinceContact: null, fitScore: 78 },
     ], 'https://app.example/', new Date('2026-10-15T01:00:00Z'));
     expect(t).toMatch(/Follow-ups due \(2\):\n• B .*22 days ago\n• A /);
-    expect(t).toContain('• C (FC), fit 92: Reach out — strong fit — Supply-chain sector lead');
+    expect(t).toContain('Reach out: signal this week (1):\n• C (FC): In your space — Authored: wrote about logistics (30 Sep)');
     expect(t).toContain('Check before pitching (1): D (FD)');
     expect(t).toContain('https://app.example/');
   });
-  it('lists Warm cards separately as optional', () => {
+  it('lists the capacity list separately as optional, and says so plainly when no investor has a signal', () => {
     const t = buildDigest([
-      { name: 'C', firm: 'FC', action: 'Reach out — strong fit', section: 'thisWeek', whyFit: null, daysSinceContact: null, fitScore: 90 },
-      { name: 'W', firm: 'FW', action: 'Warm — reach out if capacity', section: 'thisWeek', whyFit: null, daysSinceContact: null, fitScore: 60 },
+      { name: 'W', firm: 'FW', action: 'If you have capacity — good fit, active elsewhere', section: 'capacity', whyFit: 'Logistics thesis; more', daysSinceContact: null, fitScore: 60 },
     ], 'https://app.example/');
-    expect(t).toContain('New outreach this week (1):\n• C ');
-    expect(t).toContain('Optional, if you have capacity (1):\n• W ');
+    expect(t).toContain('No investor showed logistics activity in the last 30 days.');
+    expect(t).toContain('Optional, if you have capacity (1):\n• W (FW), fit 60 — Logistics thesis');
   });
   it('posts once per run, only when the run processed VCs', () => {
     expect(shouldPostDigest({ step_a: { processed: 10 } })).toBe(true);

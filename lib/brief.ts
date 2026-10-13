@@ -139,10 +139,12 @@ export function chequeMaxUsd(text: string | null): number | null {
   const ok = vals.filter((v) => v >= 10_000 && v < 1e9);
   return ok.length ? Math.max(...ok) : null;
 }
-// The round is USD 1–3M: a cheque that tops out below USD 1M can join it but is unlikely to lead it.
-export function chequeNoteFrom(text: string | null): string | null {
+// Against the round size Vikram enters in Settings (unknown by default: the problem only says Seed). A cheque that tops
+// out below a third of the round can join it but is unlikely to lead it.
+export function chequeNoteFrom(text: string | null, roundSize?: string | null): string | null {
+  const round = chequeMaxUsd(roundSize ?? null);
   const max = chequeMaxUsd(text);
-  return max !== null && max < 1e6 ? `Cheques up to about ${usd(max)}: likely a co-investor, not your lead` : null;
+  return round !== null && max !== null && max < round / 3 ? `Cheques up to about ${usd(max)}: likely a co-investor, not your lead` : null;
 }
 const usd = (n: number) => (n >= 1e6 ? `$${(Math.round(n / 1e5) / 10).toString()}M` : `$${Math.round(n / 1e3)}K`);
 
@@ -185,7 +187,7 @@ export function linkedinFrom(urls: string[]): string | null {
 
 export function buildBrief(i: {
   research: Record<string, unknown> | null; thesis: string | null; trust: string | null; linkedinSlug: string | null;
-  firmFund: string | null; firmName?: string | null; fitFlags: string[];
+  firmFund: string | null; firmName?: string | null; fitFlags: string[]; roundSize?: string | null;
   competitors?: string[];      // known competitor companies (verified deals marked competitor) and category terms from my product
   verifiedDeals: { company: string; round: string | null; date: string | null; url: string | null }[];
 }, now = new Date()): Brief {
@@ -222,7 +224,7 @@ export function buildBrief(i: {
     website: firmSite(urls, i.firmName),
     fund, fundStatus: fundStatus(fund, now),
     stage: clean(r.stage_focus), cheque: clean(r.first_cheque),
-    chequeNote: chequeFlag ? `${chequeFlag[0].toUpperCase()}${chequeFlag.slice(1)}` : chequeNoteFrom(clean(r.first_cheque)),
+    chequeNote: chequeFlag ? `${chequeFlag[0].toUpperCase()}${chequeFlag.slice(1)}` : chequeNoteFrom(clean(r.first_cheque), i.roundSize),
     deals: deals.slice(0, 6), dealCount: deals.length, inSpaceCount: deals.filter((d) => d.inSpace).length,
     latestRelevant: clean(r.latest_relevant_deal),
     competitorDeals: deals.filter((d) => d.competitor).map((d) => d.label),

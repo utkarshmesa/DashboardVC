@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { competitorTerms, fitScore, monthsAgo, researchConflict, targetTerms } from '@/lib/fit';
 import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE } from '@/lib/config';
+import { EVAL_MY_PRODUCT } from './helpers/eval-persona';
 
 const NOW = new Date('2026-10-12T00:00:00Z');
 
@@ -15,11 +16,13 @@ describe('fit score (research-based, code only)', () => {
     expect(strong.score).toBeGreaterThan(weak.score);
   });
 
-  it('flags deal-breakers for a USD 1–3M seed and costs points', () => {
+  it('flags Seed-stage deal-breakers and costs points; cheque size is never judged while the round size is unknown', () => {
     const base = { tier: 2, trust: 'B', thesis: 'logistics', research: { fit_reason: 'logistics syndicate' } };
+    const late = fitScore({ ...base, research: { fit_reason: 'logistics syndicate', stage_focus: 'Usually pre-Series A and Series A' } }, DEFAULT_TARGET_SPACE, NOW);
+    expect(late.flags).toContain('usually invests after seed');
+    expect(late.score).toBeLessThan(fitScore(base, DEFAULT_TARGET_SPACE, NOW).score);
     const small = fitScore({ ...base, research: { fit_reason: 'Most logistics-active syndicate; cheques too small to anchor a USD 1-3M seed' } }, DEFAULT_TARGET_SPACE, NOW);
-    expect(small.flags).toContain('cheques too small to lead this round');
-    expect(small.score).toBeLessThan(fitScore(base, DEFAULT_TARGET_SPACE, NOW).score);
+    expect(small.flags).toEqual([]);
     expect(fitScore({ ...base, research: { stage_focus: 'Seed (post-PMF)' } }, DEFAULT_TARGET_SPACE, NOW).flags).toContain('wants product-market fit first');
   });
 
@@ -30,19 +33,20 @@ describe('fit score (research-based, code only)', () => {
   });
 
   it('derives target terms from the target space setting', () => {
-    expect(targetTerms(DEFAULT_TARGET_SPACE)).toEqual(expect.arrayContaining(['logistics', 'freight', 'procurement', 'warehouse', 'telematics']));
+    expect(targetTerms(DEFAULT_TARGET_SPACE)).toEqual(expect.arrayContaining(['logistics', 'freight', 'procurement', 'fleet', 'delivery']));
   });
 });
 
 describe('standing conflicts', () => {
   it('competitor terms come from the founder product; empty product means none', () => {
-    expect(competitorTerms(DEFAULT_MY_PRODUCT)).toEqual(expect.arrayContaining(['TMS', 'freight procurement']));
+    expect(competitorTerms(DEFAULT_MY_PRODUCT)).toEqual([]); // default: the problem doesn't name his product, so checks are off
+    expect(competitorTerms(EVAL_MY_PRODUCT)).toEqual(expect.arrayContaining(['TMS', 'freight procurement']));
     expect(competitorTerms('')).toEqual([]);
     expect(competitorTerms('Warehouse management (WMS) for 3PLs')).toEqual(expect.arrayContaining(['WMS', 'warehouse management']));
   });
 
   it('finds a research note that the VC or a firm partner backed a company in the founder category', () => {
-    const terms = competitorTerms(DEFAULT_MY_PRODUCT);
+    const terms = competitorTerms(EVAL_MY_PRODUCT);
     const c = researchConflict([{ fit_reason: 'Firm co-led an EXIM SaaS seed' }, { fit_reason: 'Personally associated with fresh TMS investment and logistics mandate.' }], terms);
     expect(c).toMatchObject({ term: 'TMS' });
     expect(c!.evidence).toContain('fresh TMS investment');

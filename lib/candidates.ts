@@ -25,7 +25,8 @@ export async function loadCandidates(): Promise<CandidateView[]> {
   ]);
   const firms = (firmsR.data ?? []) as { display_name: string; aliases: string[] | null; fund_info_research: string | null }[];
   const fundOf = (firm: string) => firms.find((f) => norm(f.display_name) === norm(firm) || (f.aliases ?? []).some((a) => norm(a) === norm(firm)))?.fund_info_research ?? null;
-  const competitors = [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...competitorTerms(persona.myProduct)];
+  const terms = competitorTerms(persona.myProduct); // empty product (the default) = no competitor flags
+  const competitors = terms.length ? [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...terms] : [];
   if (c.error) throw new Error(c.error.message);
   const tracked = (v.data ?? []) as { name: string; firm: string }[];
   return ((c.data ?? []) as { id: number; name: string; firm: string; tier: number | null; trust: string | null; research: Research | null }[])

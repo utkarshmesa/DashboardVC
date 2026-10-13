@@ -21,13 +21,12 @@ export type ScoreOptions = { windowDays?: number; halfLifeDays?: number };
 
 export type Contribution = { signal: ScorableSignal; value: number; daysOld: number };
 
-// An accepted signal counts if it is in the window (dated) or date_approx (scored at window age).
+// An accepted signal counts only if it is dated inside the window: the problem asks for an observable signal from the
+// past 30 days, so undated items (including date-approx search results) are shown as evidence but never scored.
 export function signalAge(s: ScorableSignal, now: Date, windowDays = SIGNAL_WINDOW_DAYS): number | null {
-  if (s.published_at) {
-    const d = Math.max(0, daysOld(s.published_at, now));
-    return d <= windowDays ? d : null;
-  }
-  return s.date_approx ? windowDays : null;
+  if (!s.published_at) return null;
+  const d = Math.max(0, daysOld(s.published_at, now));
+  return d <= windowDays ? d : null;
 }
 
 export function signalValue(s: ScorableSignal, age: number, halfLifeDays = HALF_LIFE_DAYS): number {
@@ -59,7 +58,8 @@ export function scoreSignals(signals: ScorableSignal[], now: Date, opts: ScoreOp
   const groups = [...best.values()].sort((a, b) => b.value - a.value);
   if (!groups.length) return { score: 0, top: null, groups, counted };
   const [top, ...rest] = groups;
-  const score = Math.min(100, Math.round(100 * (top.value + 0.25 * rest.reduce((s, c) => s + c.value, 0))));
+  // Volume bonus capped at the next two events: many off-topic posts can't outscore one in-space signal.
+  const score = Math.min(100, Math.round(100 * (top.value + 0.25 * rest.slice(0, 2).reduce((s, c) => s + c.value, 0))));
   return { score, top, groups, counted };
 }
 

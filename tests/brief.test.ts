@@ -134,11 +134,12 @@ describe('stress: cheque size against a USD 1–3M round', () => {
     expect(Math.round(chequeMaxUsd('INR 6–8 crore for announced Fund III')! / 1000)).toBe(964);
     expect(chequeMaxUsd('Typical seed cheque not public')).toBeNull();
   });
-  it('notes "likely a co-investor" only when the cheque tops out below USD 1M', () => {
-    expect(chequeNoteFrom('USD 250,000–600,000 initial investment')).toBe('Cheques up to about $600K: likely a co-investor, not your lead');
-    expect(chequeNoteFrom('USD 500k–1M; firm prefers to lead or co-lead.')).toBeNull();
-    expect(chequeNoteFrom('USD 1–2 million initial investment')).toBeNull();
-    expect(chequeNoteFrom(null)).toBeNull();
+  it('notes "likely a co-investor" only against a round size Vikram entered (cheque below a third of it)', () => {
+    expect(chequeNoteFrom('USD 250,000–600,000 initial investment')).toBeNull(); // round size unknown: no judgement
+    expect(chequeNoteFrom('USD 250,000–600,000 initial investment', 'USD 2M')).toBe('Cheques up to about $600K: likely a co-investor, not your lead');
+    expect(chequeNoteFrom('USD 500k–1M; firm prefers to lead or co-lead.', 'USD 2M')).toBeNull();
+    expect(chequeNoteFrom('USD 1–2 million initial investment', 'USD 3M')).toBeNull();
+    expect(chequeNoteFrom(null, 'USD 2M')).toBeNull();
   });
 });
 

@@ -12,16 +12,16 @@ import { scoreSignals, signalAge, type ScorableSignal } from './scoring';
 import type { VcRow } from './types';
 
 // SPEC §11 sections, in display order (Phase 5: follow-ups and fit-first outreach first).
+// Plan V2 (DECISIONS #55): the week is follow-ups, then signal-backed outreach, then optional (fit-backed) outreach.
 export const SECTIONS = [
   { key: 'followups', title: 'Follow-ups due', match: (a: string) => /^(Nudge due|Close the loop|Next step due|Nudge — reference)/.test(a), open: true },
-  { key: 'thisWeek', title: 'New outreach this week', match: (a: string) => /^(Reach out|Warm)/.test(a), open: true },
-  { key: 'conflict', title: 'Check conflict', match: (a: string) => a.startsWith('Check conflict') },
-  { key: 'queue', title: 'Next up — good fit', match: (a: string) => a.startsWith('Good fit') || a.startsWith('Added by you') },
+  { key: 'thisWeek', title: 'Reach out — signal this week', match: (a: string) => a.startsWith('Reach out'), open: true },
+  { key: 'conflict', title: 'Check before pitching', match: (a: string) => a.startsWith('Check conflict') },
+  { key: 'capacity', title: 'If you have capacity', match: (a: string) => a.startsWith('If you have capacity') || a.startsWith('Added by you') },
   { key: 'sameFirm', title: 'Same firm', match: (a: string) => a.startsWith('Same firm') },
   { key: 'wait', title: 'Waiting / in conversation', match: (a: string) => a.startsWith('Wait') || a.startsWith('In conversation') || a.startsWith('Mention') },
   { key: 'snoozed', title: 'Snoozed', match: (a: string) => a.startsWith('Snoozed') },
-  { key: 'quiet', title: 'Quiet — hold', match: (a: string) => a.startsWith('Quiet') },
-  { key: 'low', title: 'Low priority', match: (a: string) => a.startsWith('Low') },
+  { key: 'quiet', title: 'Not worth chasing this week', match: (a: string) => a.startsWith('Quiet') || a.startsWith('Low') },
   { key: 'unavailable', title: 'Data unavailable', match: (a: string) => a.startsWith('Data unavailable') },
   { key: 'passed', title: 'Passed', match: (a: string) => a.startsWith('Passed') },
 ] as const;
@@ -164,8 +164,9 @@ export async function loadDashboard() {
       gmailUrl: draft ? gmailCompose(draft.subject, draft.body) : null,
       brief: buildBrief({
         research: prof?.research as Record<string, unknown> | null, thesis: v.thesis, trust: prof?.trust ?? null, linkedinSlug: (prof?.linkedin_slug as string | null) ?? null,
-        firmFund: fundNote.get(prof?.firm_key as string) ?? null, firmName: v.firm, fitFlags: fit.flags,
-        competitors: [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...terms],
+        firmFund: fundNote.get(prof?.firm_key as string) ?? null, firmName: v.firm, fitFlags: fit.flags, roundSize: draftSettings.roundSize,
+        // Competitor flags only when Vikram has described his product (the golden set's competitor labels assume one).
+        competitors: terms.length ? [...golden.events.filter((g) => g.competitor_under_default_persona).map((g) => g.company), ...terms] : [],
         // Verified deals: the structured golden events for this VC/firm, plus accepted investment signals naming the company verbatim.
         verifiedDeals: [
           ...golden.events.filter((g) => g.tracked_vc === v.name || g.firm === v.firm).map((g) => ({ company: g.company, round: g.round, date: g.approx_date, url: g.sources[0] ?? null })),
@@ -184,7 +185,7 @@ export async function loadDashboard() {
   vcs.sort((a, b) => (a.section === 'followups' && b.section === 'followups' ? (b.daysSinceContact ?? 0) - (a.daysSinceContact ?? 0) : 0)
     || b.priority - a.priority || a.name.localeCompare(b.name));
   // Runway (REVIEW-2 item 2): firms still to contact with a fit-based outreach action, in weeks at the weekly cap.
-  const firmsLeft = new Set(vcs.filter((v) => v.status === 'not_contacted' && /^(Reach out|Warm|Good fit|Added by you)/.test(v.action)).map((v) => v.firm.toLowerCase())).size;
+  const firmsLeft = new Set(vcs.filter((v) => v.status === 'not_contacted' && /^(Reach out|If you have capacity|Quiet — good fit|Added by you)/.test(v.action)).map((v) => v.firm.toLowerCase())).size;
   const runway = { firms: firmsLeft, weeks: Math.round((firmsLeft / OUTREACH_PER_WEEK) * 10) / 10, perWeek: OUTREACH_PER_WEEK };
   return { vcs, runway, generatedAt: now.toISOString() };
 }
@@ -222,6 +223,6 @@ function draftFor(v: VcRow, action: string, opener: string | null, hook: string 
     const since = v.last_contact_date ? `${Number(v.last_contact_date.slice(8, 10))} ${MONTHS[Number(v.last_contact_date.slice(5, 7)) - 1]}` : null;
     return assembleDraft({ vcName: v.name, opener: null, hook, settings: { ...settings, ask: settings.ask }, nudgeSince: since });
   }
-  if (/^(Reach out|Warm|Good fit|Added by you)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
+  if (/^(Reach out|If you have capacity|Quiet — good fit|Added by you)/.test(action) && v.status === 'not_contacted') return assembleDraft({ vcName: v.name, opener, hook, settings });
   return null;
 }

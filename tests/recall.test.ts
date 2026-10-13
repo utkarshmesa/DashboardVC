@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { classify, geminiGenerate, responseSchema, type ClassifyInput, type GenerateFn } from '@/lib/classifier';
-import { DEFAULT_MY_PRODUCT, DEFAULT_TARGET_SPACE } from '@/lib/config';
+import { EVAL_MY_PRODUCT, EVAL_TARGET_SPACE } from './helpers/eval-persona';
 import { recallWindowDays } from '@/lib/eval';
 import { filterReason } from '@/lib/filter';
 import type { LabelUpdate } from '@/lib/types';
@@ -75,7 +75,7 @@ describe(`recall on frozen golden fixtures (${mode})`, () => {
           firm_aliases: fx.firm_aliases, title: item.title, snippet: item.snippet, source: 'google_news' });
       }
     }
-    const opts = { keys: keys.length ? keys : ['replay'], model: model || recorded?.model || 'replay', persona: { targetSpace: DEFAULT_TARGET_SPACE, myProduct: DEFAULT_MY_PRODUCT }, generate, backoffMs: [2000, 4000, 8000] };
+    const opts = { keys: keys.length ? keys : ['replay'], model: model || recorded?.model || 'replay', persona: { targetSpace: EVAL_TARGET_SPACE, myProduct: EVAL_MY_PRODUCT }, generate, backoffMs: [2000, 4000, 8000] };
     const first = await classify(inputs, opts);
     expect(first.failedVcIds, first.errors.join('; ')).toEqual([]);
     const labels = new Map(first.updates.map((u) => [u.id, u]));

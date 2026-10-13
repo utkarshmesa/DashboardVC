@@ -2,7 +2,7 @@
 import { acceptance, type Thresholds } from './classifier';
 import { MIN_CALIBRATED_REACH, MIN_CONFIDENCE, MIN_RELEVANCE } from './config';
 import { ACTIONS as A, decideAction as decide, planPass as plan } from './actions';
-import { FIT_GOOD as FG, FIT_STRONG as FS, HALF_LIFE_DAYS as HL, REACH as RC, WARM as WM, OUTREACH_PER_WEEK as CAP } from './config';
+import { FIT_GOOD as FG, FIT_STRONG as FS, HALF_LIFE_DAYS as HL, REACH as RC, WARM as WM } from './config';
 import type { Labels } from './types';
 
 export type GoldLabel = {
@@ -112,7 +112,7 @@ export function recallWindowDays(approxDate: string, capturedAt: string): number
 
 // ---- §12.3 calibration v2 (Phase 5): agreement between "would contact this week" and the full decision ----
 // For every grid point, simulate decideAction + planPass and count a VC as "contact" when its final action is a
-// new-outreach action (Reach out this week, Reach out — strong fit, Warm). Ties prefer the current constants.
+// outreach action (Reach out — signal this week, If you have capacity). Ties prefer the current constants.
 
 export type PlanReviewRow = {
   id: string; name: string; firm: string; trust: string | null; tier: number | null; fitScore: number; fitFlags?: string[]; conflict: boolean; would_contact: boolean;
@@ -129,11 +129,11 @@ export function simulatePlan(rows: PlanReviewRow[], g: PlanGrid, now = new Date(
     return { id: r.id, name: r.name, firm: r.firm, status: 'not_contacted' as const, action, priority: r.fitScore + 0.5 * h.score, trust: r.trust, tier: r.tier };
   });
   const final = new Map(computed.map((c) => [c.id, c.action]));
-  for (const ch of plan(computed, CAP)) final.set(ch.id, ch.action);
+  for (const ch of plan(computed)) final.set(ch.id, ch.action);
   return final;
 }
 
-const CONTACT = new Set<string>([A.reach, A.strongFit, A.warm]);
+const CONTACT = new Set<string>([A.reach, A.capacity]); // shown as outreach (signal tier or capacity list)
 
 export function calibratePlan(rows: PlanReviewRow[], now = new Date()) {
   const current: PlanGrid = { halfLife: HL, reach: RC, warm: WM, fitStrong: FS, fitGood: FG };

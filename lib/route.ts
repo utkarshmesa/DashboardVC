@@ -27,13 +27,13 @@ export function outreachRoute(approach: string | null, firm: string, linkedinSlu
 }
 
 // Copy-ready answers for a pitch form, from Vikram's own Settings (never AI-written).
-export function formAnswers(s: { pitch: string; ask: string; deckUrl: string; senderName: string }): string {
+export function formAnswers(s: { pitch: string; ask: string; deckUrl: string; senderName: string; roundSize?: string }): string {
   const pitch = s.pitch.trim();
   const oneLiner = pitch.split(/(?<=[.!?])\s/)[0] ?? '';
   return [
     `One-line pitch: ${oneLiner || '[Add your pitch in Settings]'}`,
     `Short description: ${pitch || '[Add your pitch in Settings]'}`,
-    `Round: Seed, USD 1–3M`,
+    `Round: Seed${s.roundSize?.trim() ? `, ${s.roundSize.trim()}` : ''}`,
     `Deck: ${s.deckUrl.trim() || '[Add your deck link in Settings]'}`,
     `Contact: ${s.senderName.trim() || '[Your name]'}`,
   ].join('\n');

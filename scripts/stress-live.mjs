@@ -30,7 +30,8 @@ const gate = async (name, path, headers, want, init = {}) => {
   const html = await (await req("/")).text();
   check("dashboard opens with no password and shows Run now", html.includes("Run now") && !html.includes("Sign in"), "anonymous request");
 }
-for (const p of ["/investors", "/quality", "/settings"]) await gate(`${p} opens with no password`, p, {}, [200]);
+for (const p of ["/pipeline", "/progress", "/investors", "/settings"]) await gate(`${p} opens with no password`, p, {}, [200]);
+await gate("/quality redirects to /progress", "/quality", {}, [307, 308]);
 await gate("/login no longer exists", "/login", {}, [404]);
 await gate("Run now estimate works anonymously", "/api/run/estimate", {}, [200]);
 await gate("evidence list is readable", "/api/vc/00000000-0000-4000-8000-000000000000/others", {}, [200, 404]);

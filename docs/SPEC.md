@@ -24,6 +24,8 @@ His Supabase table is already updated when he opens it. The system writes only f
 
 ## 2. Vikram's company (the persona)
 
+*Amended 2026-10-13 (DECISIONS #55):* the defaults now hold only what the problem statement says. The target space is B2B logistics and supply-chain technology plus logistics companies. `my_product` is empty, so competitor checks stay off until set. The round size is optional (Settings). The previous freight/TMS persona survives only as the recall-test fixture.
+
 Relevance and competitor checks depend on two settings, stored in the `settings` table and editable on the dashboard:
 
 - **`target_space`** drives relevance only. Default:
@@ -414,6 +416,8 @@ User content: JSON array of `{ item_id, vc_name, vc_firm, vc_aliases, firm_alias
 
 ### 9.5 Scoring (`lib/scoring.ts`, pure)
 
+*Amended 2026-10-13 (DECISIONS #55):* relevance values are core 1.0, logistics 0.8, adjacent 0.1 and unrelated 0. The volume bonus counts only the next two events. Only signals dated inside the window are scored.
+
 ```
 TYPE_WEIGHT    = { investment: 1.0, authored: 0.8, speaking: 0.7, press: 0.5, other: 0.3 }
 SUBJECT_WEIGHT = { person: 1.0, firm: 0.7 }       // firm_rss items are always subject=firm
@@ -431,6 +435,8 @@ score = min(100, round(100 × (top + 0.25 × sum(other groups))))
 `last_signal_date` = newest accepted signal ever stored for the VC (may be older than 30 days).
 
 ### 9.6 Actions (`lib/actions.ts`, pure, evaluated top-down; amended in Phase 5, see docs/REVIEW.md)
+
+*Amended 2026-10-13 (DECISIONS #55):* for VCs not yet contacted, an in-space evidence signal (investment, authored, speaking or press; relevance ≥ 0.6; dated in the window) means "Reach out — signal this week", uncapped. A good fit becomes "If you have capacity" when active elsewhere, or "Quiet — good fit, revisit when active" when not. A weak fit becomes "Low — active outside your space" or "Quiet — hold". Fit alone never produces "reach out". A nudge references news only when such a signal exists.
 
 Phase 5 replaced "news decides everything" with **fit decides whether to reach out, news is the hook and a boost, and Vikram's own pipeline state drives follow-ups.**
 
@@ -473,6 +479,8 @@ Changed actions are written via `apply_signals` with the other three values unch
 
 ### 9.7 Summary text (`lib/summary.ts`, code)
 
+*Amended 2026-10-13 (DECISIONS #55):* the summary leads with the in-space signal, otherwise states "No logistics activity in 30 days. Active elsewhere — …" or "Quiet: …".
+
 - With signals: `"{Type}: {top summary} ({DD Mon})"` plus `" · +N more"`.
 - Conflict: `"Backed {company} ({DD Mon}), a likely competitor."`
 - Quiet with history: `"No public activity in 30 days. Last seen {DD Mon YYYY}."`
@@ -485,6 +493,8 @@ Changed actions are written via `apply_signals` with the other three values unch
 *Amended 2026-10-13 (DECISIONS #54):* no dashboard password. Every page and action is open to anyone with the link; only the scheduled routes require `Authorization: Bearer <CRON_SECRET>`.
 
 ## 11. Dashboard
+
+*Amended 2026-10-13 (DECISIONS #55):* the pages are This week (to-do list, progress, funnel, done this week, not worth chasing), Pipeline (table mirroring the Supabase columns), Progress (funnel, weekly comparison, outcomes, signal quality) and Settings (persona, optional round size, labelled demo history).
 
 Designed backwards from Vikram's Monday morning: the decision first, the proof one click away.
 

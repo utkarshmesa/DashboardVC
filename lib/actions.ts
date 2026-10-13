@@ -1,6 +1,6 @@
-// SPEC §9.6 action table (amended in Phase 5: fit-first plan, standing conflicts, follow-up engine). Pure, top-down.
+// SPEC §9.6 action table (amended in Phase 5 and again in Plan V2, DECISIONS #55: signal first, honestly labelled). Pure, top-down.
 import {
-  CLOSE_LOOP_DAYS, WEAK_FIT_WARM_RELEVANCE, EVIDENCE_MIN_RELEVANCE, EVIDENCE_TYPES, LOW_RELEVANCE, NEXT_STEP_DAYS, NUDGE_AFTER_DAYS, OUTREACH_PER_WEEK, REACH, WARM,
+  CLOSE_LOOP_DAYS, EVIDENCE_MIN_RELEVANCE, EVIDENCE_TYPES, NEXT_STEP_DAYS, NUDGE_AFTER_DAYS, REACH, WARM,
 } from './config';
 import type { Fit } from './fit';
 import type { FetchStatus, VcStatus } from './types';
@@ -15,15 +15,13 @@ export const ACTIONS = {
   nudgeDue: 'Nudge due — follow up on your email',
   nextStep: 'Next step due — keep the conversation moving',
   inConversation: 'In conversation — nothing due',
-  strongFit: 'Reach out — strong fit',
-  reach: 'Reach out this week',
-  nudge: 'Nudge — reference recent activity',
+  reach: 'Reach out — signal this week',
+  nudge: 'Nudge — reference their recent activity',
   mention: 'Mention in next touchpoint',
-  warm: 'Warm — reach out if capacity',
-  goodFit: 'Good fit — queue for outreach',
+  capacity: 'If you have capacity — good fit, active elsewhere',
   ownerAdded: 'Added by you — queue for outreach',
-  lowOutside: 'Low — activity outside your space',
-  lowWeak: 'Low — weak or fading signal',
+  quietFit: 'Quiet — good fit, revisit when active',
+  lowOutside: 'Low — active outside your space',
   quiet: 'Quiet — hold',
 } as const;
 
@@ -33,6 +31,7 @@ export type ActionInput = {
   fetchStatus: FetchStatus;
   score: number;                  // recent-signal score (timing)
   topRelevance: number | null;
+  active?: boolean;               // any dated, accepted activity in the window (any topic); defaults to score ≥ 1
   conflictCompany: string | null; // accepted competitor signal or standing research conflict, not dismissed
   hasEvidence: boolean;           // evidence floor (meetsEvidenceFloor)
   fit: Pick<Fit, 'label'> & { flags?: string[] }; // research-based fit (lib/fit.ts) and its deal-breaker flags
@@ -45,8 +44,8 @@ export type ActionInput = {
 
 export type ActionResult = { action: string; row: string; keepOtherColumns: boolean };
 
-// Evidence floor: contact-on-news actions need ≥ 1 counted signal (accepted, in-window, not a competitor, no
-// thumbs-down) of type investment / authored / speaking with relevance ≥ 0.6, whatever the score.
+// Evidence floor = the problem's "observable signal": ≥ 1 counted signal (accepted, dated in the window, not a
+// competitor, no thumbs-down) they wrote, said, invested in or appeared at, in the space (core or logistics, ≥ 0.6).
 export function meetsEvidenceFloor(counted: { signal_type: string | null; relevance: number | null }[]): boolean {
   return counted.some((s) => !!s.signal_type && (EVIDENCE_TYPES as readonly string[]).includes(s.signal_type) && (s.relevance ?? 0) >= EVIDENCE_MIN_RELEVANCE);
 }
@@ -65,11 +64,12 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const dayLabel = (iso: string) => { const d = new Date(`${iso}T00:00:00Z`); return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]}`; };
 
 export function decideAction(i: ActionInput): ActionResult {
-  const reach = i.reach ?? REACH, warm = i.warm ?? WARM;
+  void (i.reach ?? REACH); // kept in the input for calibration tooling; the signal tier is gated by evidence, not score
+  const warm = i.warm ?? WARM;
   const r = (row: string, action: string, keepOtherColumns = false): ActionResult => ({ action, row, keepOtherColumns });
   const since = daysSince(i.lastContactDate, i.now);
-  const newsContact = i.score >= reach && i.hasEvidence;
-  const low = () => (i.topRelevance ?? 0) < LOW_RELEVANCE ? r('L1', ACTIONS.lowOutside) : r('L2', ACTIONS.lowWeak);
+  const signal = i.hasEvidence;
+  const active = i.active ?? i.score >= 1;
 
   if (i.status === 'passed') return r('1', ACTIONS.passed);
   if (i.snoozedUntil && Date.parse(`${i.snoozedUntil}T00:00:00Z`) > todayUtc(i.now)) return r('2', ACTIONS.snoozed(dayLabel(i.snoozedUntil)));
@@ -80,7 +80,7 @@ export function decideAction(i: ActionInput): ActionResult {
   // Follow-up engine: driven by Vikram's own status and last-contact date, not by news.
   if (i.status === 'awaiting_response') {
     if (since !== null && since >= CLOSE_LOOP_DAYS) return r('F1', ACTIONS.closeLoop);
-    if (since === null || since >= NUDGE_AFTER_DAYS) return newsContact ? r('F2', ACTIONS.nudge) : r('F2', ACTIONS.nudgeDue);
+    if (since === null || since >= NUDGE_AFTER_DAYS) return signal ? r('F2', ACTIONS.nudge) : r('F2', ACTIONS.nudgeDue);
     return r('F0', ACTIONS.wait);
   }
   if (i.status === 'in_conversation') {
@@ -88,21 +88,20 @@ export function decideAction(i: ActionInput): ActionResult {
     return i.score >= warm ? r('F4', ACTIONS.mention) : r('F4', ACTIONS.inConversation);
   }
 
-  // Not contacted yet: fit decides whether to reach out; news is the hook and a boost, not the gate.
-  if (newsContact) return r('O1', ACTIONS.reach);
-  if (i.fit.label === 'strong') return r('O2', ACTIONS.strongFit);
-  if (i.fit.label === 'good') return i.score >= warm ? r('O3', ACTIONS.warm) : r('O4', ACTIONS.goodFit);
-  // Weak fit: only in-space news (core / logistics) earns Warm, and never past a deal-breaker (e.g. invests after seed).
-  if (i.score >= warm && (i.topRelevance ?? 0) >= WEAK_FIT_WARM_RELEVANCE && !(i.fit.flags?.length)) return r('O5', ACTIONS.warm);
+  // Not contacted yet. The problem's rule: reach out on an observable in-space signal from the past 30 days, "not a
+  // hunch". Fit never makes a VC a "reach out"; it only decides whether an active or quiet VC is worth keeping warm.
+  if (signal) return r('O1', ACTIONS.reach);
+  const goodFit = (i.fit.label === 'strong' || i.fit.label === 'good') && !(i.fit.flags?.length);
+  if (goodFit) return active ? r('O2', ACTIONS.capacity) : r('O3', ACTIONS.quietFit);
   // Weak fit but Vikram chose to add them: his judgement queues them (never past a deal-breaker).
   if (i.ownerAdded && !(i.fit.flags?.length)) return r('O6', ACTIONS.ownerAdded);
-  if (i.score >= 1) return low();
+  if (active) return r('L', ACTIONS.lowOutside);
   return r('Q', ACTIONS.quiet);
 }
 
 // ---- Plan pass: firm routing and weekly capacity (end of every run and after every rescore) ----
 
-export const OUTREACH_ACTIONS: readonly string[] = [ACTIONS.strongFit, ACTIONS.reach, ACTIONS.warm, ACTIONS.goodFit, ACTIONS.ownerAdded];
+export const OUTREACH_ACTIONS: readonly string[] = [ACTIONS.reach, ACTIONS.capacity, ACTIONS.ownerAdded];
 export const sameFirm = (name: string) => `Same firm — go via ${name}`;
 
 export type PlanRow = {
@@ -123,9 +122,10 @@ const better = (a: PlanRow, b: PlanRow) =>
 
 // 1. A firm already engaged (a partner awaiting a reply or in conversation) routes its other partners via that partner.
 // 2. Otherwise only the best partner per firm keeps an outreach action; the others go via them.
-// 3. At most OUTREACH_PER_WEEK new-outreach cards (Reach out this week + strong fit); the overflow queues as Good fit.
+// The signal tier is never capped: every VC with a real in-space signal is worth contacting (OUTREACH_PER_WEEK is the
+// weekly target shown on the dashboard, not a quota that hides signals).
 // Returns only the rows whose action must change.
-export function planPass(rows: PlanRow[], capacity = OUTREACH_PER_WEEK): { id: string; action: string }[] {
+export function planPass(rows: PlanRow[]): { id: string; action: string }[] {
   const next = new Map(rows.map((r) => [r.id, r.action ?? '']));
   const byFirm = new Map<string, PlanRow[]>();
   for (const r of rows) { const k = r.firm.trim().toLowerCase(); byFirm.set(k, [...(byFirm.get(k) ?? []), r]); }
@@ -137,8 +137,5 @@ export function planPass(rows: PlanRow[], capacity = OUTREACH_PER_WEEK): { id: s
     const [top, ...rest] = [...outreach].sort(better);
     for (const r of rest) next.set(r.id, sameFirm(top.name));
   }
-  const isNew = (a: string) => a === ACTIONS.reach || a === ACTIONS.strongFit;
-  rows.filter((r) => isNew(next.get(r.id)!)).sort(better)
-    .forEach((r, i) => { if (i >= capacity && next.get(r.id) === ACTIONS.strongFit) next.set(r.id, ACTIONS.goodFit); });
   return rows.filter((r) => next.get(r.id) !== (r.action ?? '')).map((r) => ({ id: r.id, action: next.get(r.id)! }));
 }

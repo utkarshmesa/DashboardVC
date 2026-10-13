@@ -4,6 +4,7 @@ import AppHeader from '@/components/AppHeader';
 import { btn, helpCls, I, inputCls, labelCls, PageTitle, SectionTitle } from '@/components/ui';
 import { redirect } from 'next/navigation';
 import { SIGNAL_WINDOW_DAYS } from '@/lib/config';
+import { clearDemoHistory, demoActive, loadDemoHistory } from '@/lib/demo';
 import { loadDraftSettings, loadPersona, saveDraftSettings, setSettings } from '@/lib/store';
 import { DEFAULT_ASK } from '@/lib/opener';
 
@@ -25,17 +26,29 @@ async function save(formData: FormData) {
 
 async function saveDraft(formData: FormData) {
   'use server';
-  await saveDraftSettings({ pitch: String(formData.get('my_pitch') ?? ''), senderName: String(formData.get('sender_name') ?? ''), ask: String(formData.get('outreach_ask') ?? ''), deckUrl: String(formData.get('deck_url') ?? '') });
+  await saveDraftSettings({ pitch: String(formData.get('my_pitch') ?? ''), senderName: String(formData.get('sender_name') ?? ''), ask: String(formData.get('outreach_ask') ?? ''), deckUrl: String(formData.get('deck_url') ?? ''), roundSize: String(formData.get('round_size') ?? '') });
   redirect('/settings?draft=1');
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; draft?: string }> }) {
-  const [{ saved, error, draft: draftSaved }, persona, draft] = await Promise.all([searchParams, loadPersona(), loadDraftSettings()]);
+async function loadDemo() {
+  'use server';
+  const r = await loadDemoHistory();
+  redirect(`/settings?demo=loaded-${r.loaded}#demo`);
+}
+
+async function clearDemo() {
+  'use server';
+  const n = await clearDemoHistory();
+  redirect(`/settings?demo=cleared-${n}#demo`);
+}
+
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; draft?: string; demo?: string }> }) {
+  const [{ saved, error, draft: draftSaved, demo: demoMsg }, persona, draft, demoOn] = await Promise.all([searchParams, loadPersona(), loadDraftSettings(), demoActive()]);
   return (
     <>
       <AppHeader active="/settings" />
       <main id="main" tabIndex={-1} className="mx-auto max-w-[880px] px-4 pb-28 pt-12 outline-none sm:px-8">
-        <PageTitle eyebrow="04 / Settings · Persona" title="Tune it to your round." sub="Your company and pitch shape what the pipeline looks for and what your drafts say. Nothing here is written by AI." />
+        <PageTitle eyebrow="04 / Settings · Persona" title="Tune it to your round." sub="The problem statement says only that you are raising a Seed round for a B2B logistics SaaS, so that is all the pipeline assumes. Add your product and round size here to sharpen drafts, cheque notes and competitor checks. Nothing here is written by AI." />
 
         <section data-reveal="" className="mb-10 border border-line bg-surface p-6">
           <SectionTitle index="§1" tone="accent">Your drafts and pitch forms</SectionTitle>
@@ -56,6 +69,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <input name="sender_name" defaultValue={draft.senderName} maxLength={80} placeholder="Vikram" className={inputCls} />
               </label>
             </div>
+            <label className={labelCls}>Round size <span className="font-normal text-ink-3">(optional)</span>
+              <span className={helpCls}>For example &quot;USD 2M&quot;. Used in form answers and to flag cheques too small to lead your round. Leave empty if undecided.</span>
+              <input name="round_size" defaultValue={draft.roundSize} maxLength={40} placeholder="USD 2M" className={inputCls} />
+            </label>
             <label className={labelCls}>Deck link
               <span className={helpCls}>A view-only link (DocSend, Google Drive, Notion). Added to drafts and form answers. http(s) links only.</span>
               <input name="deck_url" type="url" defaultValue={draft.deckUrl} maxLength={500} placeholder="https://" className={inputCls} />
@@ -71,15 +88,30 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           {error && <p role="alert" className="mb-5 border-l-2 border-danger bg-danger-soft px-4 py-2.5 text-[13.5px] text-danger">Target space can&apos;t be empty.</p>}
           <form action={save} className="grid gap-5">
             <label className={labelCls}>Target space
-              <span className={helpCls}>Decides relevance: core, logistics (non-software), adjacent or unrelated.</span>
+              <span className={helpCls}>Decides relevance. Only activity in this space (core, or a logistics company) counts as a signal worth reaching out on.</span>
               <textarea name="target_space" defaultValue={persona.targetSpace} rows={4} required maxLength={2000} className={inputCls} />
             </label>
             <label className={labelCls}>My product
-              <span className={helpCls}>Used only to spot investors who backed a competitor. Leave empty to turn competitor checks off.</span>
+              <span className={helpCls}>Describe what you sell (e.g. &quot;TMS for shippers&quot;, &quot;WMS for 3PLs&quot;) to switch on checks for investors who backed a competitor. Empty (the default) means no competitor checks: a logistics investment then counts in the investor&apos;s favour.</span>
               <textarea name="my_product" defaultValue={persona.myProduct} rows={5} maxLength={2000} className={inputCls} />
             </label>
             <div><button type="submit" className={btn('secondary', 'md')}>Save and re-check</button></div>
           </form>
+        </section>
+
+        <section id="demo" data-reveal="" className="mt-10 scroll-mt-28 border border-line bg-surface p-6">
+          <SectionTitle index="§3" tone="warn">Demo contact history</SectionTitle>
+          <p className="-mt-1 mb-4 text-[13px] leading-relaxed text-ink-3">
+            The problem&apos;s Vikram is two months in and waiting on replies, but he is fictional, so that history can&apos;t come from real use. Loading the demo
+            writes example statuses, contact dates and notes for 11 investors so follow-ups and progress are visible. Every demo row is labelled DEMO, every note starts with
+            &quot;[demo]&quot; and says it is not a real interaction, and rows with your own notes are never touched. Clearing it restores those rows.
+          </p>
+          {demoMsg && <p role="status" className="fade-in mb-4 flex items-center gap-2 border-l-2 border-accent-text bg-accent-soft px-4 py-2.5 text-[13.5px] text-accent-text"><I.check width={16} height={16} />{demoMsg.startsWith('loaded') ? `Demo history loaded for ${demoMsg.split('-')[1]} investors.` : `Demo history cleared from ${demoMsg.split('-')[1]} investors.`}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <form action={loadDemo}><button type="submit" className={btn('secondary', 'md')}>{demoOn ? 'Reload demo history' : 'Load demo history'}</button></form>
+            {demoOn && <form action={clearDemo}><button type="submit" className={btn('danger', 'md')}>Clear demo history</button></form>}
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3">{demoOn ? 'Demo history is loaded' : 'No demo history'}</span>
+          </div>
         </section>
       </main>
     </>

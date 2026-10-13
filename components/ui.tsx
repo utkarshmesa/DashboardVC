@@ -59,10 +59,10 @@ export const TONE: Record<Tone, { soft: string; text: string; dot: string; borde
 export function actionToneOf(action: string): Tone {
   if (action.startsWith('Reach out')) return 'signal';
   if (action.startsWith('Nudge') || action.startsWith('Close the loop') || action.startsWith('Next step') || action.startsWith('Mention')) return 'info';
-  if (action.startsWith('Warm') || action.startsWith('Data unavailable')) return 'warn';
+  if (action.startsWith('Data unavailable')) return 'warn';
   if (action.startsWith('Check conflict')) return 'danger';
   if (action.startsWith('Same firm')) return 'violet';
-  if (action.startsWith('Good fit') || action.startsWith('Added by you')) return 'accent';
+  if (action.startsWith('If you have capacity') || action.startsWith('Added by you')) return 'accent';
   return 'neutral';
 }
 

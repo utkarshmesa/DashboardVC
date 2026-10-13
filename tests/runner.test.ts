@@ -169,11 +169,16 @@ describe('runner', () => {
     expect(enriched.every((s) => s.status === 'accepted' && s.snippet?.startsWith('Full context') && s.url.startsWith('https://canonical.example/'))).toBe(true);
   });
 
-  it('evidence floor: a high score from press-only signals gets Warm (in-space news), not Reach out', async () => {
+  it('in-space press counts as a signal ("said in an interview"); off-topic press does not', async () => {
     const m = memoryStore(1);
     await runAll(m.store, labeller({ signal_type: 'press', relevance_level: 'core' }));
     expect(m.vcs[0].follow_up_score).toBeGreaterThanOrEqual(50);
-    expect(m.vcs[0].recommended_action).toBe(ACTIONS.warm);
+    expect(m.vcs[0].recommended_action).toBe(ACTIONS.reach);
+    expect(m.vcs[0].signal_summary).toMatch(/^In your space — Press: /);
+    const o = memoryStore(1);
+    await runAll(o.store, labeller({ signal_type: 'press', relevance_level: 'adjacent' }));
+    expect(o.vcs[0].recommended_action).not.toBe(ACTIONS.reach);
+    expect(o.vcs[0].signal_summary).toMatch(/^No logistics activity in 30 days. Active elsewhere — /);
   });
 
   it('a standing research conflict at the firm flags every partner, until dismissed', async () => {

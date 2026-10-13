@@ -44,6 +44,15 @@ export async function rescoreVc(vcId: string) {
   return rescoreAll(supabaseStore, [vcId], () => fetch);
 }
 
+// Rescore several VCs (e.g. after loading or clearing the demo history), keeping each one's last fetch status.
+export async function rescoreMany(vcIds: string[]) {
+  if (!vcIds.length) return { rescored: 0, deduped: 0 };
+  const r = await db().from('vc_profile').select('vc_id, last_fetch_status').in('vc_id', vcIds);
+  if (r.error) throw new Error(r.error.message);
+  const status = new Map((r.data ?? []).map((x) => [x.vc_id as string, (x.last_fetch_status ?? 'ok') as FetchStatus]));
+  return rescoreAll(supabaseStore, vcIds, (id) => status.get(id) ?? 'ok');
+}
+
 // Estimate for the Run now confirmation: VCs due (not processed in the last 24 h) and the Tavily credits they could use.
 export async function runEstimate() {
   const env = serverEnv(['supabase', 'tavily']);
