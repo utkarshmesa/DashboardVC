@@ -6,7 +6,7 @@ import type { SignalView, VcView } from '@/lib/dashboard';
 import { day, LEVEL_LABEL, REASON_LABEL } from './format';
 import { gsap } from 'gsap';
 import { burst, reducedMotion } from './motion';
-import { actionToneOf, Auto, Avatar, Badge, btn, FitMeter, I, inputCls, TONE } from './ui';
+import { actionToneOf, Auto, Badge, btn, FitMeter, I, inputCls, TONE } from './ui';
 
 const STATUSES = [
   ['not_contacted', 'Not contacted'], ['awaiting_response', 'Awaiting response'], ['in_conversation', 'In conversation'], ['passed', 'Passed'],
@@ -47,7 +47,7 @@ function CopyButton({ text, label, variant = 'secondary' }: { text: string; labe
   );
 }
 
-function Thumbs({ s }: { s: SignalView }) {
+function Thumbs({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -64,11 +64,12 @@ function Thumbs({ s }: { s: SignalView }) {
     const Icon = v === 'up' ? I.thumbUp : I.thumbDown;
     return (
       <button type="button" disabled={busy} onClick={() => vote(v)} aria-label={label} aria-pressed={on} title={label}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50 ${on ? (v === 'up' ? 'bg-accent-soft text-accent-text' : 'bg-danger-soft text-danger') : 'text-ink-3 hover:bg-surface-2 hover:text-ink'}`}>
+        className={`inline-flex h-7 w-7 items-center justify-center transition-colors disabled:opacity-50 ${on ? (v === 'up' ? 'bg-accent-soft text-accent-text' : 'bg-danger-soft text-danger') : 'text-ink-3 hover:bg-surface-2 hover:text-ink'}`}>
         <Icon width={15} height={15} />
       </button>
     );
   };
+  if (!canEdit) return s.verdict ? <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">{s.verdict === 'up' ? 'Marked useful' : 'Marked wrong'}</span> : null;
   return (
     <span className="inline-flex items-center gap-0.5">
       {failed && <span role="alert" className="mr-1 text-[11.5px] text-danger">Not saved</span>}
@@ -119,7 +120,7 @@ function EditForm({ vc }: { vc: VcView }) {
 
 const ROUTE_ICON = { form: I.form, linkedin: I.linkedin, email: I.mail, contact: I.globe, unknown: I.route } as const;
 
-function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; open: boolean }) {
+function Actions({ vc, canEdit, onDetails, open }: { vc: VcView; canEdit: boolean; onDetails: () => void; open: boolean }) {
   const { busy, go, failed, clearFailed } = useQuick(vc);
   const [confirm, setConfirm] = useState<Channel | null>(null);
   const [more, setMore] = useState(false);
@@ -137,7 +138,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
   const fresh = vc.status === 'not_contacted';
   const defaultChannel: Channel = fresh && vc.route.kind === 'form' ? 'form' : fresh && vc.route.kind === 'linkedin' ? 'linkedin' : 'email';
   const link = (href: string, label: string, channel: Channel, variant: 'primary' | 'secondary' | 'ghost', Icon = I.external) => (
-    <a key={label} href={href} target="_blank" rel="noopener noreferrer" onClick={() => { setMore(false); setConfirm(channel); }} className={btn(variant)}>
+    <a key={label} href={href} target="_blank" rel="noopener noreferrer" onClick={() => { setMore(false); if (canEdit) setConfirm(channel); }} className={btn(variant)}>
       <Icon width={14} height={14} />{label}
     </a>
   );
@@ -163,7 +164,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
   }
   if (vc.draft) secondary.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" variant={primary.length ? 'ghost' : 'secondary'} />);
 
-  if (vc.status !== 'passed') {
+  if (canEdit && vc.status !== 'passed') {
     if (fresh) secondary.push(quick('emailed', 'Mark as sent', 'ghost', defaultChannel));
     if (vc.status === 'awaiting_response') { secondary.push(quick('replied', 'They replied')); overflow.push(quick('emailed', 'Nudged today', 'ghost', 'email')); }
     if (vc.status === 'in_conversation') secondary.push(quick('meeting', 'Meeting booked'));
@@ -171,33 +172,34 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
     overflow.push(vc.snoozedUntil ? quick('unsnooze', 'Unsnooze', 'ghost') : quick('snooze', 'Snooze 2 weeks', 'ghost'));
     overflow.push(quick('passed', 'Mark as passed', 'ghost'));
   }
-  if (vc.conflict && !vc.conflict.dismissed) secondary.unshift(quick('dismiss_conflict', 'Not a conflict', 'danger')); // the first decision on a conflict card
-  if (vc.conflict?.dismissed) overflow.push(quick('restore_conflict', 'Restore conflict flag', 'ghost'));
+  if (canEdit && vc.conflict && !vc.conflict.dismissed) secondary.unshift(quick('dismiss_conflict', 'Not a conflict', 'danger')); // the first decision on a conflict card
+  if (canEdit && vc.conflict?.dismissed) overflow.push(quick('restore_conflict', 'Restore conflict flag', 'ghost'));
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
+    <div className="flex flex-wrap items-center gap-2 border-t border-line bg-paper/40 px-5 py-3 sm:pl-[100px] sm:pr-6">
       {primary}{secondary}
       {overflow.length > 0 && (
         <span className="relative" ref={menuRef}>
           <button type="button" aria-expanded={more} aria-label="More actions" onClick={() => setMore((m) => !m)} className={btn('quiet')}><I.more width={16} height={16} /></button>
           {more && (
-            <span data-menu="" className="fade-in absolute left-0 top-9 z-30 flex min-w-48 flex-col items-stretch gap-0.5 rounded-xl bg-surface p-1.5 shadow-lift ring-1 ring-line [&>*]:justify-start">
+            <span data-menu="" className="fade-in absolute left-0 top-9 z-30 flex min-w-48 flex-col items-stretch gap-0.5 border border-line-2 bg-surface-2 p-1 [&>*]:justify-start">
               {overflow}
             </span>
           )}
         </span>
       )}
-      <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ml-auto`}>
-        {open ? 'Hide details' : 'Details'}<I.chevron width={14} height={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      {!canEdit && <span className="ml-auto hidden font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3 lg:inline" title="Sign in as the owner to log outreach">View only</span>}
+      <button type="button" onClick={onDetails} aria-expanded={open} className={`${btn('quiet')} ${canEdit ? 'ml-auto' : ''} font-mono text-[11px] uppercase tracking-[0.12em]`}>
+        {open ? 'Close' : 'Details'}<I.chevron width={14} height={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {failed && (
-        <div role="alert" className="fade-in flex w-full items-center gap-2 rounded-xl bg-danger-soft px-3 py-2 text-[13px] text-danger">
+        <div role="alert" className="fade-in flex w-full items-center gap-2 border-l-2 border-danger bg-danger-soft px-3 py-2 text-[13px] text-danger">
           <I.alert width={15} height={15} />Couldn&apos;t save that. Check your connection and try again; nothing was changed.
           <button type="button" onClick={clearFailed} className="ml-auto underline">Dismiss</button>
         </div>
       )}
       {confirm && (
-        <div className="fade-in flex w-full flex-wrap items-center gap-2 rounded-xl bg-warn-soft px-3 py-2 text-[13px] text-warn" role="status">
+        <div className="fade-in flex w-full flex-wrap items-center gap-2 border-l-2 border-signal bg-signal-soft px-3 py-2 text-[13px] text-signal" role="status">
           <I.check width={15} height={15} />
           <span className="font-medium">Sent it?</span>
           <span className="text-ink-2">Logging it starts the follow-up timer.</span>
@@ -213,7 +215,7 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
   );
 }
 
-function SignalLine({ s }: { s: SignalView }) {
+function SignalLine({ s, canEdit }: { s: SignalView; canEdit: boolean }) {
   return (
     <li className="flex gap-3 border-t border-line py-3 first:border-t-0">
       <div className="min-w-0 flex-1">
@@ -231,7 +233,7 @@ function SignalLine({ s }: { s: SignalView }) {
           {s.verdict === 'down' && <span className="text-danger"> · excluded by your thumbs-down</span>}
         </p>
       </div>
-      <Thumbs s={s} />
+      <Thumbs s={s} canEdit={canEdit} />
     </li>
   );
 }
@@ -251,7 +253,7 @@ function OtherItems({ vcId, count }: { vcId: string; count: number }) {
     } catch { setState('error'); }
   }
   return (
-    <details className="mt-3 rounded-xl bg-surface px-4 py-2.5 ring-1 ring-line" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) load(); }}>
+    <details className="mt-3 bg-surface px-4 py-2.5 border border-line" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) load(); }}>
       <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-ink-2"><I.chevron width={14} height={14} />Rejected and undated items ({count})</summary>
       {state === 'loading' && <p className="py-2 text-[12.5px] text-ink-3">Loading…</p>}
       {state === 'error' && <p role="alert" className="py-2 text-[12.5px] text-danger">Couldn&apos;t load these. <button type="button" onClick={load} className="underline">Retry</button></p>}
@@ -271,9 +273,9 @@ function OtherItems({ vcId, count }: { vcId: string; count: number }) {
 
 function TextBlock({ title, text, tone = 'neutral', copy, auto }: { title: string; text: string; tone?: 'accent' | 'info' | 'neutral'; copy?: boolean; auto?: boolean }) {
   return (
-    <div className={`rounded-xl p-4 ${tone === 'neutral' ? 'bg-surface-2 ring-1 ring-line' : TONE[tone].soft}`}>
+    <div className={`p-4 ${tone === 'neutral' ? 'bg-surface border border-line' : `border-l-2 ${TONE[tone].soft} ${tone === 'accent' ? 'border-accent-text' : 'border-info'}`}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={`text-[12px] font-semibold uppercase tracking-wider ${tone === 'neutral' ? 'text-ink-3' : TONE[tone].text}`}>{title}{auto && <Auto />}</span>
+        <span className={`font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] ${tone === 'neutral' ? 'text-ink-3' : TONE[tone].text}`}>{title}{auto && <Auto />}</span>
         {copy && <CopyButton text={text} label="Copy" variant="ghost" />}
       </div>
       <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-ink">{text}</p>
@@ -290,8 +292,8 @@ function Profile({ vc }: { vc: VcView }) {
       <dt className="text-[12.5px] text-ink-3">{label}</dt><dd className="text-[13.5px] leading-relaxed text-ink">{value}</dd>
     </div>
   );
-  const box = 'rounded-xl bg-surface p-4 ring-1 ring-line';
-  const head = 'mb-3 text-[12px] font-semibold uppercase tracking-wider text-ink-3';
+  const box = 'bg-surface p-4 border border-line';
+  const head = 'mb-3 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-3';
   return (
     <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-profile`} className="grid gap-3">
       <section className={box} aria-label={`${vc.name}: cheque and fund`}>
@@ -306,7 +308,7 @@ function Profile({ vc }: { vc: VcView }) {
 
       <section className={box} aria-label={`${vc.name}: track record`}>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h4 className="text-[12px] font-semibold uppercase tracking-wider text-ink-3">Have they backed companies like yours?</h4>
+          <h4 className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-3">Have they backed companies like yours?</h4>
           <span className="text-[12px] text-ink-3">
             {b.dealCount ? `${b.dealCount} deal${b.dealCount === 1 ? '' : 's'} found · ${b.inSpaceCount} in your space` : 'No deals found in the research'}
             {b.latestRelevant && ` · latest relevant ${b.latestRelevant}`}
@@ -316,7 +318,7 @@ function Profile({ vc }: { vc: VcView }) {
           <ul className="grid gap-2">
             {b.deals.map((d) => (
               <li key={d.label} className="flex items-start gap-2 text-[13.5px]">
-                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${d.competitor ? 'bg-danger' : d.inSpace ? 'bg-accent' : 'bg-line-2'}`} aria-hidden="true" />
+                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 ${d.competitor ? 'bg-danger' : d.inSpace ? 'bg-accent-text' : 'bg-line-2'}`} aria-hidden="true" />
                 <span className="min-w-0 flex-1">
                   {d.url ? <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-ink underline decoration-line-2 underline-offset-2 hover:decoration-ink">{d.label}</a> : <span className="text-ink">{d.label}</span>}
                   <span className="ml-1.5 inline-flex flex-wrap gap-1 align-middle">
@@ -346,8 +348,8 @@ function Profile({ vc }: { vc: VcView }) {
       </section>
 
       {b.caveats && (
-        <section className="rounded-xl bg-warn-soft p-4" aria-label={`${vc.name}: before you write`}>
-          <h4 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider text-warn"><I.alert width={13} height={13} />Before you write</h4>
+        <section className="border-l-2 border-warn bg-warn-soft p-4" aria-label={`${vc.name}: before you write`}>
+          <h4 className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-warn"><I.alert width={13} height={13} />Before you write</h4>
           <p className="text-[13.5px] leading-relaxed text-ink">{b.caveats}</p>
         </section>
       )}
@@ -356,7 +358,7 @@ function Profile({ vc }: { vc: VcView }) {
   );
 }
 
-function Details({ vc }: { vc: VcView }) {
+function Details({ vc, canEdit }: { vc: VcView; canEdit: boolean }) {
   const hasDraft = !!(vc.draft || vc.hook || vc.opener || vc.formAnswers);
   // Decide first, then draft: the profile opens first.
   const [tab, setTab] = useState<'profile' | 'draft' | 'evidence' | 'notes'>('profile');
@@ -380,8 +382,8 @@ function Details({ vc }: { vc: VcView }) {
   ];
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
-    <div ref={panelRef} className="rounded-b-2xl border-t border-line bg-surface-2/60 px-5 pb-5 pt-3">
-      <div role="tablist" aria-label={`${vc.name} details`} className="mb-4 flex gap-1 overflow-x-auto"
+    <div ref={panelRef} className="border-t border-line bg-paper/60 px-5 pb-6 pt-1 sm:pl-[100px] sm:pr-6">
+      <div role="tablist" aria-label={`${vc.name} details`} className="mb-5 flex gap-1 overflow-x-auto border-b border-line"
         onKeyDown={(e) => {
           // WAI-ARIA tabs: arrow keys move between tabs, Home/End jump to the ends.
           const keys = tabs.map(([k]) => k), i = keys.indexOf(tab);
@@ -392,7 +394,7 @@ function Details({ vc }: { vc: VcView }) {
         }}>
         {tabs.map(([k, label]) => (
           <button key={k} role="tab" data-tab={k} id={`tab-${vc.id}-${k}`} aria-controls={`panel-${vc.id}`} tabIndex={tab === k ? 0 : -1} aria-selected={tab === k} type="button" onClick={() => setTab(k)}
-            className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${tab === k ? 'bg-surface text-ink shadow-card ring-1 ring-line' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
+            className={`relative whitespace-nowrap px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.12em] transition-colors ${tab === k ? 'text-ink after:absolute after:inset-x-3 after:bottom-[-1px] after:h-px after:bg-ink' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
         ))}
       </div>
 
@@ -411,16 +413,18 @@ function Details({ vc }: { vc: VcView }) {
 
       {tab === 'evidence' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-evidence`}>
-          {vc.accepted.length ? <ul className="rounded-xl bg-surface px-4 ring-1 ring-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} />)}</ul>
-            : <p className="rounded-xl bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 ring-1 ring-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
+          {vc.accepted.length ? <ul className="bg-surface px-4 border border-line">{vc.accepted.map((s) => <SignalLine key={s.id} s={s} canEdit={canEdit} />)}</ul>
+            : <p className="bg-surface px-4 py-6 text-center text-[13.5px] text-ink-3 border border-line">No public activity accepted in the last 30 days. The research above is the case for reaching out.</p>}
           {vc.othersCount > 0 && <OtherItems vcId={vc.id} count={vc.othersCount} />}
         </div>
       )}
 
       {tab === 'notes' && (
         <div role="tabpanel" id={`panel-${vc.id}`} aria-labelledby={`tab-${vc.id}-notes`} className="grid gap-4">
-          <EditForm vc={vc} />
-          <dl className="grid gap-x-6 gap-y-2 rounded-xl bg-surface p-4 text-[13px] ring-1 ring-line sm:grid-cols-[140px_1fr]">
+          {canEdit ? <EditForm vc={vc} /> : (
+            <p className="flex items-center gap-2 border border-dashed border-line-2 px-4 py-3 text-[13px] text-ink-3"><I.lock width={13} height={13} />View-only link. <a href="/login" className="text-ink underline underline-offset-4">Sign in</a> as the owner to change status or notes.</p>
+          )}
+          <dl className="grid gap-x-6 gap-y-2 bg-surface p-4 text-[13px] border border-line sm:grid-cols-[140px_1fr]">
             {vc.conflict && <><dt className="text-ink-3">Research conflict</dt><dd className="text-danger">“{vc.conflict.evidence}” (applies to the whole firm){vc.conflict.dismissed && ' — dismissed by you'}</dd></>}
             <dt className="text-ink-3">Activity score</dt><dd className="text-ink-2"><span className="font-mono">{vc.score ?? 0}</span>/100 <Auto /> · how strong this VC&apos;s public activity was in the last 30 days</dd>
             {vc.trust && <><dt className="text-ink-3">Research trust</dt><dd className="text-ink-2">{vc.trust}</dd></>}
@@ -450,92 +454,97 @@ function Meta({ vc }: { vc: VcView }) {
   );
 }
 
-function FullCard({ vc, onCollapse, autoFocus }: { vc: VcView; onCollapse?: () => void; autoFocus?: boolean }) {
+// A dossier entry: index, who, one action, why they fit; the proof one click away.
+function FullCard({ vc, index, canEdit, onCollapse, autoFocus }: { vc: VcView; index?: string; canEdit: boolean; onCollapse?: () => void; autoFocus?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => { if (autoFocus) ref.current?.focus({ preventScroll: true }); }, [autoFocus]); // keep keyboard users in place after expanding a row
   const tone = actionToneOf(vc.action);
   const conflictCard = vc.action.startsWith('Check conflict');
   return (
-    <article ref={ref} data-card="" data-spotlight="" tabIndex={autoFocus ? -1 : undefined} aria-label={`${vc.name}, ${vc.firm}`} id={`vc-${vc.id}`} className={`group ${autoFocus ? 'fade-in ' : ''}relative scroll-mt-28 rounded-2xl bg-surface has-[[data-menu]]:z-30 shadow-card ring-1 transition-shadow duration-200 hover:shadow-lift ${conflictCard ? 'ring-danger/25' : 'ring-line'}`}>
-      <div className="p-5">
-        <div className="flex gap-4">
-          <Avatar name={vc.name} fit={vc.fit.label} size={44} />
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex flex-wrap items-center gap-1.5">
-              <Badge tone={tone} title="Recommended by the pipeline from fit, activity and your status"><span className={`h-1.5 w-1.5 rounded-full ${TONE[tone].dot}`} />{vc.action}</Badge>
-              {vc.badges.map((b) => <Badge key={b} tone="violet">{b}</Badge>)}
-              {vc.linkedin && (
-                <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" title="Posts found through search results in the last 30 days (can under-count, never over-count)"
-                  className="inline-flex min-h-6 items-center gap-1 rounded-full bg-info-soft px-2 py-1 text-[11.5px] font-medium text-info hover:underline">
-                  <I.linkedin width={12} height={12} />
-                  Active: {[vc.linkedin.own && `${vc.linkedin.own} own post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm`].filter(Boolean).join(', ')}
-                </a>
-              )}
-            </div>
-            <h3 className="text-[18px] font-semibold leading-tight tracking-tight text-ink">
-              {vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span>
-            </h3>
-            {(vc.brief.title || vc.brief.city) && <p className="mt-0.5 text-[12.5px] text-ink-3">{[vc.brief.title, vc.brief.city].filter(Boolean).join(' · ')}</p>}
+    <article ref={ref} data-card="" tabIndex={autoFocus ? -1 : undefined} aria-label={`${vc.name}, ${vc.firm}`} id={`vc-${vc.id}`}
+      className={`row-hover group ${autoFocus ? 'fade-in ' : ''}relative scroll-mt-28 border bg-surface transition-colors has-[[data-menu]]:z-30 ${conflictCard ? 'border-danger/35' : 'border-line hover:border-line-2'}`}>
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-px ${TONE[tone].dot}`} />
+      <div className="grid gap-x-6 gap-y-4 p-5 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:p-6">
+        <span className="hidden pt-0.5 font-mono text-[12px] tabular-nums text-ink-3 sm:block" aria-hidden="true">{index ?? '—'}</span>
+        <div className="min-w-0">
+          <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+            <Badge tone={tone} title="Recommended by the pipeline from fit, activity and your status">{vc.action}</Badge>
+            {vc.badges.map((b) => <Badge key={b} tone="violet">{b}</Badge>)}
+            {vc.linkedin && (
+              <a href={vc.linkedin.latestUrl} target="_blank" rel="noopener noreferrer" title="Posts found through search results in the last 30 days (can under-count, never over-count)"
+                className="inline-flex items-center gap-1.5 border border-info/35 px-1.5 py-[3px] font-mono text-[10.5px] uppercase leading-none tracking-[0.08em] text-info hover:bg-info-soft">
+                <I.linkedin width={11} height={11} />
+                {[vc.linkedin.own && `${vc.linkedin.own} post${vc.linkedin.own === 1 ? '' : 's'}`, vc.linkedin.firm && `${vc.linkedin.firm} by firm`].filter(Boolean).join(' · ')}
+              </a>
+            )}
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
-            <span className="text-[10.5px] font-medium uppercase tracking-wider text-ink-3">{vc.fit.label} fit</span>
-            {onCollapse && <button type="button" onClick={onCollapse} className="mt-1 inline-flex min-h-6 items-center px-1 text-[11.5px] text-ink-3 underline">Collapse</button>}
-          </div>
+          <h3 className="text-[20px] font-medium leading-tight tracking-[-0.02em] text-ink">
+            {vc.name} <span className="text-ink-3">/ {vc.firm}</span>
+          </h3>
+          {(vc.brief.title || vc.brief.city) && <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.1em] text-ink-3">{[vc.brief.title, vc.brief.city].filter(Boolean).join(' · ')}</p>}
+          {vc.whyFit && <p className="mt-3 max-w-[760px] text-[14px] leading-relaxed text-ink-2">{vc.whyFit}</p>}
         </div>
-        {vc.whyFit && <p className="mt-2 text-[14px] leading-relaxed text-ink-2 sm:pl-[60px]">{vc.whyFit}</p>}
-        {vc.brief.competitorDeals.length > 0 && !vc.action.startsWith('Check conflict') && (
-          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger sm:ml-[60px]">
-            <I.alert width={15} height={15} className="mt-0.5 shrink-0" />
-            <span>A research source mentions a deal with a possible competitor: <strong className="font-semibold">{vc.brief.competitorDeals[0]}</strong>{vc.brief.competitorDeals.length > 1 && ` (+${vc.brief.competitorDeals.length - 1} more)`}. Open Details → Profile and check the source before pitching.</span>
-          </p>
-        )}
-        {conflictCard && vc.conflict && !vc.conflict.dismissed && (
-          <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger sm:ml-[60px]"><I.alert width={15} height={15} className="mt-0.5 shrink-0" />Research: “{vc.conflict.evidence}”. Applies to the whole firm; check before pitching.</p>
-        )}
-
-        <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-2 px-3 py-2.5 text-[13.5px] ring-1 ring-line">
-          <I.sparkle width={14} height={14} className="mt-0.5 shrink-0 text-ink-3" />
-          <p className="min-w-0 flex-1 text-ink-2">
-            {vc.summary ?? 'No public activity found in the last 30 days.'}<Auto />
-            {vc.newest && <> · <a href={vc.newest.url} target="_blank" rel="noopener noreferrer" className="text-ink-3 underline decoration-line-2 underline-offset-2 hover:text-ink">source {day(vc.newest.date)}</a></>}
-          </p>
-          <span className="hidden shrink-0 font-mono text-[12px] tabular-nums text-ink-3 sm:inline" title="Activity score (0–100): how strong this VC's public activity is in the last 30 days">activity {vc.score ?? 0}</span>
+        <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
+          <FitMeter score={vc.fit.score} label={vc.fit.label} title={`Fit ${vc.fit.score}/100: ${vc.fit.reasons.join('; ')}`} />
+          <span className="label">{vc.fit.label} fit</span>
+          {onCollapse && <button type="button" onClick={onCollapse} className="ml-auto inline-flex min-h-6 items-center font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-3 hover:text-ink sm:ml-0 sm:mt-1">Collapse ↑</button>}
         </div>
 
-        <Meta vc={vc} />
-        {vc.fit.flags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">{vc.fit.flags.map((f) => <Badge key={f} tone="warn"><I.alert width={12} height={12} />{f}</Badge>)}</div>
-        )}
+        <div className="grid gap-3 sm:col-start-2 sm:col-end-4">
+          {vc.brief.competitorDeals.length > 0 && !conflictCard && (
+            <p className="flex items-start gap-2 border-l-2 border-danger bg-danger-soft px-3 py-2 text-[13px] text-danger">
+              <I.alert width={15} height={15} className="mt-0.5 shrink-0" />
+              <span>A research source mentions a deal with a possible competitor: <strong className="font-semibold">{vc.brief.competitorDeals[0]}</strong>{vc.brief.competitorDeals.length > 1 && ` (+${vc.brief.competitorDeals.length - 1} more)`}. Open Details → Profile and check the source before pitching.</span>
+            </p>
+          )}
+          {conflictCard && vc.conflict && !vc.conflict.dismissed && (
+            <p className="flex items-start gap-2 border-l-2 border-danger bg-danger-soft px-3 py-2 text-[13px] text-danger"><I.alert width={15} height={15} className="mt-0.5 shrink-0" />Research: “{vc.conflict.evidence}”. Applies to the whole firm; check before pitching.</p>
+          )}
+
+          <div className="grid gap-2 border-t border-line pt-3 text-[13px] sm:grid-cols-[110px_minmax(0,1fr)_auto] sm:gap-4">
+            <span className="label pt-0.5">Last 30 days</span>
+            <p className="min-w-0 text-ink-2">
+              {vc.summary ?? 'No public activity found in the last 30 days.'}<Auto />
+              {vc.newest && <> · <a href={vc.newest.url} target="_blank" rel="noopener noreferrer" className="text-ink-3 underline decoration-line-2 underline-offset-2 hover:text-ink">source {day(vc.newest.date)}</a></>}
+            </p>
+            <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:inline" title="Activity score (0–100): how strong this VC's public activity is in the last 30 days">ACT {String(vc.score ?? 0).padStart(2, '0')}</span>
+          </div>
+
+          <Meta vc={vc} />
+          {vc.fit.flags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">{vc.fit.flags.map((f) => <Badge key={f} tone="warn"><I.alert width={11} height={11} />{f}</Badge>)}</div>
+          )}
+        </div>
       </div>
-      <Actions vc={vc} open={open} onDetails={() => setOpen((o) => !o)} />
+      <Actions vc={vc} canEdit={canEdit} open={open} onDetails={() => setOpen((o) => !o)} />
       <div className="reveal" data-open={open}>
-        <div>{open && <Details vc={vc} />}</div>
+        <div>{open && <Details vc={vc} canEdit={canEdit} />}</div>
       </div>
     </article>
   );
 }
 
-// Compact row for the rest of the pipeline; expands into the full card.
-function CompactRow({ vc }: { vc: VcView }) {
+// Compact ledger row for the rest of the pipeline; expands into the full entry.
+function CompactRow({ vc, index, canEdit }: { vc: VcView; index?: string; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
-  if (open) return <FullCard vc={vc} onCollapse={() => setOpen(false)} autoFocus />;
+  if (open) return <FullCard vc={vc} index={index} canEdit={canEdit} onCollapse={() => setOpen(false)} autoFocus />;
   const tone = actionToneOf(vc.action);
   return (
-    <button type="button" data-card="" data-spotlight="" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
-      className="group flex w-full scroll-mt-28 items-center gap-3 rounded-xl bg-surface px-4 py-3 text-left ring-1 ring-line transition-[box-shadow,--tw-ring-color] hover:shadow-card hover:ring-line-2">
-      <Avatar name={vc.name} fit={vc.fit.label} size={32} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium text-ink">{vc.name} <span className="font-normal text-ink-3">· {vc.firm}</span></span>
-        <span className={`block truncate text-[12.5px] ${TONE[tone].text}`}>{vc.action}</span>
+    <button type="button" data-card="" id={`vc-${vc.id}`} onClick={() => setOpen(true)} aria-expanded={false}
+      className="row-hover group grid w-full scroll-mt-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-line px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface sm:grid-cols-[40px_minmax(0,1.3fr)_minmax(0,1fr)_auto_16px]">
+      <span className="hidden font-mono text-[11px] tabular-nums text-ink-3 sm:block">{index}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-[14px] text-ink">{vc.name} <span className="text-ink-3">/ {vc.firm}</span></span>
+        <span className={`block truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:hidden ${TONE[tone].text}`}>{vc.action}</span>
       </span>
-      <span className="hidden font-mono text-[12px] tabular-nums text-ink-3 sm:inline" title="Fit score">fit {vc.fit.score}</span>
-      <I.chevron width={16} height={16} className="text-ink-3 transition-transform group-hover:translate-y-0.5" />
+      <span className={`hidden truncate font-mono text-[10.5px] uppercase tracking-[0.08em] sm:block ${TONE[tone].text}`}>{vc.action}</span>
+      <FitMeter score={vc.fit.score} label={vc.fit.label} compact />
+      <I.chevron width={14} height={14} className="hidden text-ink-3 transition-transform group-hover:translate-y-0.5 sm:block" />
     </button>
   );
 }
 
-export default function VcCard({ vc, compact = false }: { vc: VcView; compact?: boolean }) {
-  return compact ? <CompactRow vc={vc} /> : <FullCard vc={vc} />;
+export default function VcCard({ vc, compact = false, index, canEdit = false }: { vc: VcView; compact?: boolean; index?: string; canEdit?: boolean }) {
+  return compact ? <CompactRow vc={vc} index={index} canEdit={canEdit} /> : <FullCard vc={vc} index={index} canEdit={canEdit} />;
 }

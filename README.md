@@ -1,8 +1,8 @@
 # VC Fundraising Pipeline Intelligence
 
-**What it does.** It ranks the founder's 50 VCs by **fit** (from verified research) and, twice a week, collects public signals (deals, writing, talks, press) about the 50 VCs on a founder's list, has Gemini label each item, and lets plain code score every VC and pick an action. It writes four system columns of the founder's Supabase `vcs` table (last signal date, summary, follow-up score, recommended action) and never touches the founder's own columns. A password-protected dashboard shows who to contact this week, why, with a source link and a suggested opener, and the proof is one click away.
+**What it does.** It ranks the founder's 50 VCs by **fit** (from verified research) and, twice a week, collects public signals (deals, writing, talks, press) about the 50 VCs on a founder's list, has Gemini label each item, and lets plain code score every VC and pick an action. It writes four system columns of the founder's Supabase `vcs` table (last signal date, summary, follow-up score, recommended action) and never touches the founder's own columns. A dashboard (view-only by link; owner sign-in to change anything) shows who to contact this week, why, with a source link and a suggested opener, and the proof is one click away.
 
-Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SPEC.md` · Decisions where the spec was silent: `docs/DECISIONS.md` · Demo: `docs/DEMO.md` · Acceptance: `docs/ACCEPTANCE.md` · Build status: `docs/STATUS.md`
+Live: https://vc-pipeline-zeta.vercel.app (view-only for anyone with the link; the owner signs in to make changes) · Spec: `docs/SPEC.md` · Decisions where the spec was silent: `docs/DECISIONS.md` · Demo: `docs/DEMO.md` · Acceptance: `docs/ACCEPTANCE.md` · Build status: `docs/STATUS.md`
 
 ## Setup
 
@@ -24,7 +24,7 @@ Live: https://vc-pipeline-zeta.vercel.app (password-protected) · Spec: `docs/SP
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Classifier; `GEMINI_API_KEY_2` is an optional fallback, tried on invalid-key, 401/403 and 429 errors |
 | `TAVILY_API_KEY`, `TAVILY_MONTHLY_BUDGET` | Fallback search with a hard monthly cap |
 | `CRON_SECRET` | Bearer secret for `/api/cron` (sent by Vercel Cron) and `/api/run/step` (the finisher) |
-| `DASHBOARD_PASSWORD`, `SESSION_SECRET` | Dashboard login; 30-day HMAC-signed cookie |
+| `DASHBOARD_PASSWORD`, `SESSION_SECRET` | Owner sign-in (writes only; viewing is open); 30-day HMAC-signed cookie |
 | `SUPABASE_ANON_KEY` | Optional, local only: lets the ownership test prove the anon role can't read `vcs` |
 | `DIGEST_WEBHOOK_URL` | Optional: Slack/Discord incoming webhook; the cron posts the weekly digest after each finished run |
 
@@ -93,7 +93,7 @@ The eval labels (60 items, 10 not about the VC) and the ranking-review answers w
 
 - **Stored per item:** headline, a snippet of at most 300 characters (enforced by a database check), the link, the source's own date, and the AI's labels. Full articles are never fetched or stored. Enrichment uses a search API's own ≤300-character excerpt.
 - **Sources:** Google News RSS (no key; requests at least 300 ms apart), Tavily search (capped monthly; X and investor-directory sites are excluded), the VC's or firm's own RSS feed where one is listed, and, weekly, **LinkedIn posts by the VC or their firm page found through Tavily search results** (handles in `seed/linkedin_handles.csv`). The app never visits or logs in to LinkedIn and never uses X.
-- **Scope:** only public, professional information about investors in their professional capacity. Data stays in the founder's own Supabase project. The dashboard is password-protected, and the database denies all access to anon and authenticated roles.
+- **Scope:** only public, professional information about investors in their professional capacity. Data stays in the founder's own Supabase project. Anyone with the link can view the dashboard, but only the signed-in owner can change anything, and the database denies all access to anon and authenticated roles.
 
 ## Components Map
 

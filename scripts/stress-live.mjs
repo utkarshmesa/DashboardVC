@@ -28,13 +28,28 @@ const gate = async (name, path, headers, want, init = {}) => {
   const r = await req(path, { headers, ...init });
   check(name, want.includes(r.status), `HTTP ${r.status}`);
 };
-await gate('dashboard without cookie redirects', '/', {}, [307, 308]);
-await gate('expired cookie rejected', '/', cookie(token(Date.now() - 1000)), [307, 308]);
-await gate('cookie signed with wrong secret rejected', '/', cookie(token(Date.now() + 600_000, 'not-the-secret')), [307, 308]);
-await gate('tampered expiry rejected', '/', cookie(`9999999999999.${token(Date.now() + 600_000).split('.')[1]}`), [307, 308]);
-await gate('garbage cookie rejected', '/', cookie('x.y.z'), [307, 308]);
-await gate('valid cookie accepted', '/', good, [200]);
+// View-only sharing (DECISIONS #53): pages open to anyone; a bad cookie is treated as a visitor, never as the owner.
+const ownerView = async (name, headers, wantOwner) => {
+  const r = await req('/', { headers });
+  const html = r.status === 200 ? await r.text() : '';
+  const owner = html.includes('Run now'), visitor = html.includes('View only');
+  check(name, r.status === 200 && (wantOwner ? owner && !visitor : visitor && !owner), `HTTP ${r.status}, ${owner ? 'owner' : visitor ? 'visitor' : 'neither'} view`);
+};
+await ownerView('dashboard without cookie: view-only page', {}, false);
+await ownerView('expired cookie: visitor, not owner', cookie(token(Date.now() - 1000)), false);
+await ownerView('cookie signed with wrong secret: visitor', cookie(token(Date.now() + 600_000, 'not-the-secret')), false);
+await ownerView('tampered expiry: visitor', cookie(`9999999999999.${token(Date.now() + 600_000).split('.')[1]}`), false);
+await ownerView('garbage cookie: visitor', cookie('x.y.z'), false);
+await ownerView('valid cookie: owner view', good, true);
+for (const p of ['/investors', '/quality', '/settings']) await gate(`${p} viewable without cookie`, p, {}, [200]);
 await gate('API without cookie → 401', '/api/run/estimate', {}, [401]);
+const anonJson = { 'content-type': 'application/json' };
+await gate('visitor: feedback write → 401', '/api/feedback', anonJson, [401], { method: 'POST', body: JSON.stringify({ signal_id: 1, verdict: 'up' }) });
+await gate('visitor: card edit → 401', '/api/vc/00000000-0000-4000-8000-000000000000', anonJson, [401], { method: 'PATCH', body: JSON.stringify({ status: 'passed', last_contact_date: null, notes: null }) });
+await gate('visitor: quick action → 401', '/api/vc/00000000-0000-4000-8000-000000000000/quick', anonJson, [401], { method: 'POST', body: JSON.stringify({ action: 'emailed', channel: 'email' }) });
+await gate('visitor: Run now → 401', '/api/run/manual', anonJson, [401], { method: 'POST', body: '{}' });
+await gate('visitor: server action POST to /settings → 401', '/settings', { 'next-action': 'x', 'content-type': 'text/plain' }, [401], { method: 'POST', body: '[]' });
+await gate('visitor: evidence list is readable', '/api/vc/00000000-0000-4000-8000-000000000000/others', {}, [200, 404]);
 await gate('cron without bearer → 401', '/api/cron', {}, [401]);
 await gate('cron with wrong bearer → 401', '/api/cron', { authorization: 'Bearer wrong' }, [401]);
 await gate('cron with session cookie but no bearer → 401', '/api/cron', good, [401]);

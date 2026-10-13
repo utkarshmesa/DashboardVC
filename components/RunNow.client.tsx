@@ -41,7 +41,7 @@ export default function RunNow() {
         <I.bolt width={14} height={14} className={busy ? 'animate-pulse' : ''} />{busy ? 'Running…' : 'Run now'}
       </button>
       {msg && (
-        <span aria-live="polite" className="fade-in absolute right-0 top-10 z-30 w-64 rounded-lg bg-surface p-2.5 text-[12.5px] text-ink-2 shadow-lift ring-1 ring-line">
+        <span aria-live="polite" className="fade-in absolute right-0 top-10 z-30 w-64 border border-line-2 bg-surface-2 p-2.5 text-[12.5px] text-ink-2">
           {msg}
           {!busy && <button type="button" onClick={() => setMsg(null)} className="ml-2 text-ink-3 underline">Dismiss</button>}
         </span>

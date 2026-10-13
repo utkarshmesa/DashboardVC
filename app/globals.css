@@ -1,61 +1,35 @@
 @import "tailwindcss";
 
-/* Design tokens. Warm "paper" surfaces, ink text, one deep-green accent; semantic tones for attention / conflict /
-   info / same-firm. Every colour in the UI comes from here, so dark mode is a token swap. */
+/* Design tokens — "operational console". Near-black surfaces, white type, hairline rules, square geometry.
+   Colour is semantic only: amber = act now, red = conflict, steel blue = follow-up / info, green = positive state.
+   Token names are kept from the previous theme so every component re-themes from here. */
 :root {
-  --paper: #f6f4ef;
-  --surface: #ffffff;
-  --surface-2: #faf9f6;
-  --ink: #15171c;
-  --ink-2: #4a4f59;
-  --ink-3: #676d77;
-  --line: #e7e3da;
-  --line-2: #d8d2c6;
-  --accent: #14532d;
-  --accent-ink: #ffffff;
-  --accent-2: #1d6b3d;
-  --accent-soft: #e6f1e9;
-  --accent-text: #166534;
-  --warn: #9a4b05;
-  --warn-soft: #fbf0dc;
-  --danger: #9f1239;
-  --danger-soft: #fbe9ed;
-  --info: #0b4f75;
-  --info-soft: #e5f0f7;
-  --violet: #5b2bb5;
-  --violet-soft: #efeafb;
-  --shadow: 0 1px 2px rgb(21 23 28 / 0.05), 0 2px 8px rgb(21 23 28 / 0.04);
-  --shadow-lift: 0 2px 4px rgb(21 23 28 / 0.06), 0 10px 24px rgb(21 23 28 / 0.08);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0e1013;
-    --surface: #16191e;
-    --surface-2: #1b1f25;
-    --ink: #eceef1;
-    --ink-2: #b6bcc6;
-    --ink-3: #868d98;
-    --line: #262a31;
-    --line-2: #333842;
-    --accent: #3fae6a;
-    --accent-ink: #07130b;
-    --accent-2: #52c07c;
-    --accent-soft: #15281c;
-    --accent-text: #6fd396;
-    --warn: #f0b45e;
-    --warn-soft: #2b2112;
-    --danger: #f28aa0;
-    --danger-soft: #2d161c;
-    --info: #79bfe6;
-    --info-soft: #132530;
-    --violet: #b9a2f2;
-    --violet-soft: #221b33;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-lift: 0 4px 18px rgb(0 0 0 / 0.45);
-    color-scheme: dark;
-  }
+  --paper: #07080a;        /* page */
+  --surface: #0c0e11;      /* panels */
+  --surface-2: #121519;    /* raised / hover */
+  --ink: #eef0f2;          /* primary text */
+  --ink-2: #a9afb8;        /* secondary text */
+  --ink-3: #7f8792;        /* tertiary / labels */
+  --line: #1b1f25;         /* hairline */
+  --line-2: #2a2f37;       /* strong hairline */
+  --accent: #eef0f2;       /* primary action = white on black */
+  --accent-ink: #07080a;
+  --accent-2: #ffffff;
+  --accent-soft: #14251c;  /* positive surface */
+  --accent-text: #6fd39a;  /* positive text */
+  --signal: #f2ab3c;       /* act now */
+  --signal-soft: #241c0f;
+  --warn: #f2ab3c;
+  --warn-soft: #241c0f;
+  --danger: #ff6b6b;
+  --danger-soft: #2a1214;
+  --info: #8fb2ff;
+  --info-soft: #121a2b;
+  --violet: #b6a6ff;
+  --violet-soft: #1a1630;
+  --shadow: 0 0 0 1px var(--line);
+  --shadow-lift: 0 0 0 1px var(--line-2), 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -72,6 +46,8 @@
   --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
@@ -81,65 +57,68 @@
   --color-violet: var(--violet);
   --color-violet-soft: var(--violet-soft);
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-serif), ui-serif, Georgia, serif;
+  --font-display: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --shadow-card: var(--shadow);
   --shadow-lift: var(--shadow-lift);
 }
 
 html { background: var(--paper); }
-/* The hero aurora bleeds past the content edges on purpose; clip (not hidden) keeps the sticky header working. */
 html, body { overflow-x: clip; }
-body { font-feature-settings: "ss01", "cv11"; }
-::selection { background: var(--accent-soft); color: var(--ink); }
+body { font-feature-settings: "ss01", "cv11", "tnum"; letter-spacing: -0.005em; }
+::selection { background: var(--signal); color: var(--paper); }
 
-/* Keyboard focus is always visible; mouse clicks don't flash rings. */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+/* Keyboard focus: a crisp square outline. */
+:focus-visible { outline: 1.5px solid var(--signal); outline-offset: 2px; border-radius: 1px; }
+
+/* Mono metadata labels — the console voice. */
+.label { font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+
+/* Fine coordinate grid behind the hero, fading out downward. */
+.grid-bg { position: absolute; inset: -1px; pointer-events: none; z-index: 0;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px; background-position: -1px -1px;
+  mask-image: radial-gradient(ellipse 80% 90% at 20% 0%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 90% at 20% 0%, black 30%, transparent 75%); }
+/* Crosshair ticks on the grid (pure decoration, aria-hidden). */
+.tick { position: absolute; width: 9px; height: 9px; pointer-events: none; }
+.tick::before, .tick::after { content: ""; position: absolute; background: var(--ink-3); opacity: 0.6; }
+.tick::before { left: 4px; top: 0; width: 1px; height: 9px; }
+.tick::after { top: 4px; left: 0; height: 1px; width: 9px; }
 
 /* Smooth open/close for card details without layout jank. */
-.reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms ease; }
+.reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms cubic-bezier(.2,.7,.2,1); }
 .reveal[data-open="true"] { grid-template-rows: 1fr; }
 .reveal > * { overflow: hidden; }
 
 .fade-in { animation: fade-in 260ms ease both; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
+/* Live indicator (pipeline status). */
+.live-dot { position: relative; display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--accent-text); }
+.live-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; border: 1px solid var(--accent-text); opacity: 0; animation: live 2.4s ease-out infinite; }
+@keyframes live { 0% { transform: scale(0.4); opacity: 0.7; } 100% { transform: scale(1.6); opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 
 details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 
+/* Scrollbar in the console palette. */
+* { scrollbar-color: var(--line-2) transparent; }
+
 /* ---- Motion (components/Motion.client.tsx) ---- */
 /* Before the motion script takes over, hide only what will animate in (no flash of the final state).
    The layout adds .motion-pending pre-paint and always removes it within 2.5 s, so content is never hidden for good. */
-html.motion-pending [data-word], html.motion-pending [data-reveal], html.motion-pending [data-card] { opacity: 0; }
+html.motion-pending [data-line], html.motion-pending [data-reveal], html.motion-pending [data-card] { opacity: 0; }
 
-/* Hero aurora: soft drifting colour behind the headline, plus a fine grain so it reads as material, not a gradient. */
-.aurora { position: absolute; inset: -120px -40px auto -40px; height: 520px; overflow: hidden; pointer-events: none; z-index: 0;
-  mask-image: linear-gradient(to bottom, black 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent); }
-.aurora > span { position: absolute; border-radius: 999px; filter: blur(64px); opacity: 0.8; will-change: transform; }
-.aurora > span:nth-child(1) { width: 520px; height: 360px; left: 2%; top: 40px; background: radial-gradient(circle, color-mix(in oklab, var(--accent) 55%, transparent), transparent 70%); }
-.aurora > span:nth-child(2) { width: 460px; height: 320px; left: 38%; top: -10px; background: radial-gradient(circle, color-mix(in oklab, var(--warn) 45%, transparent), transparent 70%); opacity: 0.6; }
-.aurora > span:nth-child(3) { width: 420px; height: 300px; right: 4%; top: 70px; background: radial-gradient(circle, color-mix(in oklab, var(--info) 50%, transparent), transparent 70%); opacity: 0.55; }
-.grain::after { content: ""; position: absolute; inset: 0; opacity: 0.07; mix-blend-mode: multiply; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-@media (prefers-color-scheme: dark) { .aurora > span { opacity: 0.35; } .grain::after { mix-blend-mode: screen; opacity: 0.05; } }
+/* Headline lines lift out of a mask. */
+.mask-line { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.mask-line > span { display: inline-block; will-change: transform; }
 
-/* Gradient sweep on the hero's emphasised words. */
-.shimmer { background-image: linear-gradient(100deg, var(--accent-text) 0%, var(--accent-text) 40%, var(--warn) 50%, var(--accent-text) 60%, var(--accent-text) 100%);
-  background-size: 250% 100%; background-position: 0% 50%; -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-/* Cursor spotlight on cards and tiles (position set by Motion via --mx / --my). */
-[data-spotlight] { background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), color-mix(in oklab, var(--accent) 7%, transparent), transparent 45%); }
-
-/* Primary buttons: a light sweep on hover. */
-.btn-shine { position: relative; overflow: hidden; isolation: isolate; }
-.btn-shine::after { content: ""; position: absolute; inset: 0; z-index: -1; transform: translateX(-120%);
-  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%); transition: transform 650ms cubic-bezier(.2,.7,.2,1); }
-.btn-shine:hover::after { transform: translateX(120%); }
-
-/* Lift on hover for interactive surfaces. */
-.lift { transition: transform 220ms cubic-bezier(.2,.7,.2,1), box-shadow 220ms ease; }
-.lift:hover { transform: translateY(-2px); }
+/* Hover on interactive rows: a thin signal edge, no lift or glow. */
+.row-hover { position: relative; }
+.row-hover::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--signal); transform: scaleY(0); transform-origin: top; transition: transform 220ms cubic-bezier(.2,.7,.2,1); }
+.row-hover:hover::before, .row-hover:focus-within::before { transform: scaleY(1); }

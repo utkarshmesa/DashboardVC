@@ -1,13 +1,15 @@
 # Build status: VC Fundraising Pipeline Intelligence
 
-*As of 2026-10-12 (night). The live app is at https://vc-pipeline-zeta.vercel.app (commit `fcf8040`).*
+*As of 2026-10-13. The live app is at https://vc-pipeline-zeta.vercel.app: anyone with the link can view it, and the owner signs in to make changes.*
 
 **Summary.** Everything specified is built, deployed and stress-tested. Beyond the spec, the owner approved and received:
 - a fit-first weekly plan (Phase 5);
 - sendable email drafts, a digest and an outcome log (5b);
 - LinkedIn posts as an activity and relevance signal (5c; X stays off);
 - route-aware outreach and a pipeline runway with one-click "Add investors" (5d);
-- a full frontend redesign, stress-tested for accessibility, layout, keyboard use and failures (5e).
+- a full frontend redesign, stress-tested for accessibility, layout, keyboard use and failures (5e);
+- an investor brief on every card: cheque, fund status, past deals, competitor flags (5f);
+- an operational-console redesign with a matching GSAP motion layer, plus **view-only sharing**: no password to view, owner sign-in for every change (DECISIONS #52–53).
 
 What remains:
 - **11 of 13 acceptance items (SPEC §15) are verified on production.** The other 2 depend on the calendar: a scheduled cron that processes all 50 VCs by itself, and a third day of full runs. Both fall on **Thursday 2026-10-15**. A scheduled task checks them at 09:30 IST and updates this file and `docs/ACCEPTANCE.md`.

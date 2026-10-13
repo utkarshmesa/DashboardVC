@@ -1,6 +1,7 @@
 // POST /api/vc/[id]/quick { action } — one-click logging from a card (Phase 5 follow-up engine).
 // Status and last-contact changes go through update_my_fields (Vikram's columns); snooze and conflict dismissal live on
 // vc_profile. The VC is then rescored from stored signals, which also re-runs firm routing and the weekly cap.
+import { forbidden, ownerFromRequest } from '@/lib/auth';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { logEvent } from '@/lib/outcomes';
@@ -14,6 +15,7 @@ const SNOOZE_DAYS = 14;
 const istToday = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!ownerFromRequest(req)) return forbidden(); // view-only visitors can read, not write
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: 'invalid id' }, { status: 400 });
   const parsed = Body.safeParse(await req.json().catch(() => null));
