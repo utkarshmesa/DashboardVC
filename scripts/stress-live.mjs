@@ -32,6 +32,11 @@ const gate = async (name, path, headers, want, init = {}) => {
 }
 for (const p of ["/pipeline", "/progress", "/investors", "/settings"]) await gate(`${p} opens with no password`, p, {}, [200]);
 await gate("/quality redirects to /progress", "/quality", {}, [307, 308]);
+{
+  const r = await req("/api/export");
+  const csv = r.status === 200 ? await r.text() : "";
+  check("CSV export downloads every investor with all 10 columns", r.status === 200 && csv.startsWith("name,firm,thesis,status,last_contact_date,notes,last_signal_date,signal_summary,follow_up_score,recommended_action") && csv.trim().split(/\r?\n/).length >= 51, `HTTP ${r.status}`);
+}
 await gate("/login no longer exists", "/login", {}, [404]);
 await gate("Run now estimate works anonymously", "/api/run/estimate", {}, [200]);
 await gate("evidence list is readable", "/api/vc/00000000-0000-4000-8000-000000000000/others", {}, [200, 404]);
