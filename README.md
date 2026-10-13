@@ -24,6 +24,7 @@ Live: https://vc-pipeline-zeta.vercel.app (open to anyone with the link, no pass
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Classifier; `GEMINI_API_KEY_2` is an optional fallback, tried on invalid-key, 401/403 and 429 errors |
 | `TAVILY_API_KEY`, `TAVILY_MONTHLY_BUDGET` | Fallback search with a hard monthly cap |
 | `CRON_SECRET` | Bearer secret for `/api/cron` (sent by Vercel Cron) and `/api/run/step` (the finisher) |
+| `HUNTER_API_KEY` | Optional, local only (never on Vercel): `npm run emails` finds published contact emails, with a monthly reserve (DECISIONS #57) |
 | `SUPABASE_ANON_KEY` | Optional, local only: lets the ownership test prove the anon role can't read `vcs` |
 | `DIGEST_WEBHOOK_URL` | Optional: Slack/Discord incoming webhook; the cron posts the weekly digest after each finished run |
 

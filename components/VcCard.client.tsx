@@ -163,7 +163,8 @@ function Actions({ vc, onDetails, open }: { vc: VcView; onDetails: () => void; o
   } else if (canSend && vc.gmailUrl) {
     primary.push(link(vc.gmailUrl, 'Open in Gmail', 'email', 'primary', I.mail));
     if (fresh && vc.route.kind === 'contact' && (vc.route.url || vc.route.findUrl)) secondary.push(link((vc.route.url ?? vc.route.findUrl)!, vc.route.label, 'other', 'secondary', I.globe));
-    if (fresh && vc.route.kind === 'email' && vc.route.findUrl) secondary.push(<a key="find" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className={btn('secondary')}><I.external width={14} height={14} />Find their email</a>);
+    if (fresh && vc.contact) secondary.push(<CopyButton key="email" text={vc.contact.email} label={vc.contact.kind === 'personal' ? 'Copy email' : 'Copy firm inbox'} variant="ghost" />);
+    else if (fresh && vc.route.kind === 'email' && vc.route.findUrl) secondary.push(<a key="find" href={vc.route.findUrl} target="_blank" rel="noopener noreferrer" className={btn('secondary')}><I.external width={14} height={14} />Find their email</a>);
   }
   if (vc.draft) secondary.push(<CopyButton key="draft" text={`Subject: ${vc.draft.subject}\n\n${vc.draft.body}`} label="Copy draft" variant={primary.length ? 'ghost' : 'secondary'} />);
 
@@ -346,6 +347,8 @@ function Profile({ vc }: { vc: VcView }) {
           {b.city && row('Based in', b.city)}
           {b.thesis && row('Thesis', <span className="italic text-ink-2">“{b.thesis}”</span>)}
           {b.approach && row('How they like to be approached', b.approach)}
+          {vc.contact && row('Email', <span className="break-all"><a href={`mailto:${vc.contact.email}`} className="text-info underline underline-offset-2">{vc.contact.email}</a>
+            <span className="text-ink-3"> · {vc.contact.kind === 'firm' ? 'firm inbox · ' : ''}{vc.contact.source === 'hunter' ? `Hunter, ${vc.contact.confidence ?? '?'}% confidence` : 'published by the firm'}{vc.contact.sourceUrl && <> · <a href={vc.contact.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">source</a></>}</span></span>)}
           {b.linkedin && row('LinkedIn', <a href={b.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-info underline underline-offset-2"><I.linkedin width={13} height={13} />Profile</a>)}
         </dl>
       </section>

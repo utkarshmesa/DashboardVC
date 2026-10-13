@@ -78,7 +78,8 @@ export type VcView = {
   draft: { subject: string; body: string } | null; // code-assembled email draft (outreach or nudge)
   route: Route;               // how to reach them, from the research approach note (REVIEW-2 item 3)
   formAnswers: string | null; // copy-ready pitch-form answers when the route is a form
-  gmailUrl: string | null;    // Gmail compose with the draft filled in
+  gmailUrl: string | null;    // Gmail compose with the draft filled in (To = the published address, when known)
+  contact: { email: string; kind: 'personal' | 'firm'; source: 'firm_page' | 'hunter'; sourceUrl: string | null; confidence: number | null } | null;
   linkedin: { own: number; firm: number; latestUrl: string } | null;
   brief: Brief;               // investor brief: person, fund, cheque, track record (DECISIONS #50) // posts by the VC / firm page in 30 days (DECISIONS #45)
   accepted: SignalView[];
@@ -97,15 +98,19 @@ const verifiedDate = (research: Record<string, unknown> | null, asOf: string | n
 
 export async function loadDashboard() {
   const now = new Date();
-  const [vcsR, profR, sigR, fbR, firmsR] = await Promise.all([
+  const [vcsR, profR, sigR, fbR, firmsR, contactR] = await Promise.all([
     db().from('vcs').select('*'),
     db().from('vc_profile').select('vc_id, trust, tier, research, research_as_of, snoozed_until, conflict_dismissed_at, opener, linkedin_slug, firm_key'),
     db().from('signals').select('id, vc_id, title, snippet, url, source, source_name, published_at, date_approx, status, reject_reason, subject, signal_type, relevance, relevance_level, confidence, about_this_vc, possible_competitor, event_key, summary, hook, role_change_hint, created_at, funded_company')
       .order('published_at', { ascending: false, nullsFirst: false }),
     db().from('signal_feedback').select('signal_id, verdict'),
     db().from('firms').select('firm_key, fund_info_research'),
+    db().from('vc_contact').select('vc_id, email, kind, source, source_url, confidence').not('email', 'is', null),
   ]);
   for (const r of [vcsR, profR, sigR, fbR, firmsR]) if (r.error) throw new Error(r.error.message);
+  // Contact emails (DECISIONS #57) are optional: a missing table or failed read just means no addresses.
+  type ContactRow = { vc_id: string; email: string; kind: 'personal' | 'firm'; source: 'firm_page' | 'hunter'; source_url: string | null; confidence: number | null };
+  const contacts = new Map(((contactR.error ? [] : contactR.data ?? []) as ContactRow[]).map((c) => [c.vc_id, c]));
   const fundNote = new Map(((firmsR.data ?? []) as { firm_key: string; fund_info_research: string | null }[]).map((f) => [f.firm_key, f.fund_info_research]));
   const [persona, draftSettings] = await Promise.all([loadPersona(), loadDraftSettings()]);
   const terms = competitorTerms(persona.myProduct);
@@ -167,7 +172,9 @@ export async function loadDashboard() {
       draft,
       route,
       formAnswers: draft && route.kind === 'form' && v.status === 'not_contacted' ? formAnswers(draftSettings) : null,
-      gmailUrl: draft ? gmailCompose(draft.subject, draft.body) : null,
+      // New outreach goes to the published address; a nudge is a reply in his existing thread (no To needed there).
+      gmailUrl: draft ? gmailCompose(draft.subject, draft.body, v.status === 'not_contacted' ? contacts.get(v.id)?.email ?? '' : '') : null,
+      contact: contacts.has(v.id) ? { email: contacts.get(v.id)!.email, kind: contacts.get(v.id)!.kind, source: contacts.get(v.id)!.source, sourceUrl: contacts.get(v.id)!.source_url, confidence: contacts.get(v.id)!.confidence } : null,
       brief: buildBrief({
         research: prof?.research as Record<string, unknown> | null, thesis: v.thesis, trust: prof?.trust ?? null, linkedinSlug: (prof?.linkedin_slug as string | null) ?? null,
         firmFund: fundNote.get(prof?.firm_key as string) ?? null, firmName: v.firm, fitFlags: fit.flags, roundSize: draftSettings.roundSize,

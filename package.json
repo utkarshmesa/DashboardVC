@@ -25,7 +25,8 @@
     "rescore": "tsx --conditions=react-server --env-file=.env.local scripts/rescore-all.ts",
     "openers": "tsx --conditions=react-server --env-file=.env.local scripts/refresh-openers.ts",
     "linkedin:handles": "tsx --conditions=react-server --env-file=.env.local scripts/linkedin-handles.ts",
-    "candidates:import": "tsx --conditions=react-server --env-file=.env.local scripts/import-candidates.ts"
+    "candidates:import": "tsx --conditions=react-server --env-file=.env.local scripts/import-candidates.ts",
+    "emails": "tsx --conditions=react-server --env-file=.env.local scripts/find-emails.ts"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
